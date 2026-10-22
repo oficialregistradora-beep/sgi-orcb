@@ -128,6 +128,48 @@ try {
   await page.goto(`${BASE}/ferias`);
   check('Férias: coluna de faltas do art. 130', await page.locator('th:has-text("Faltas (art. 130)")').isVisible());
 
+  // 6d. Fase 3 — gestão documental
+  await page.goto(`${BASE}/painel`);
+  check('Painel avisa documentos institucionais para ciência', await page.locator('text=aguardando sua ciência').isVisible());
+  await page.goto(`${BASE}/documentos`);
+  check('Repositório lista documentos (inclusive confidencial para a Oficial)', await page.locator('text=Plano de Continuidade de Negócios (fictício)').isVisible());
+  const pcnHref = await page.locator('a:has-text("Plano de Continuidade")').getAttribute('href');
+  await page.screenshot({ path: `${SHOTS}/14-repositorio.png`, fullPage: true });
+  await page.goto(`${BASE}/documentos?q=sigilo`);
+  check('Pesquisa textual pelo conteúdo', (await page.locator('tbody tr').count()) === 1 && await page.locator('tbody a:has-text("Código de Ética")').isVisible());
+  await page.click('a:has-text("Código de Ética")');
+  await page.waitForURL(/\/documentos\/[0-9a-f-]+$/);
+  await page.check('input[name=confirmed]');
+  await page.click('button:has-text("Registrar ciência")');
+  await page.waitForSelector('text=Ciência registrada', { timeout: 10000 });
+  check('Ciência registrada com assinatura vinculada à versão', true);
+  await page.screenshot({ path: `${SHOTS}/15-documento-vigente.png`, fullPage: true });
+  await page.goto(`${BASE}/documentos?aba=aprovacoes`);
+  await page.click('a:has-text("Prenotação")');
+  await page.waitForURL(/\/documentos\/[0-9a-f-]+$/);
+  page.once('dialog', (d) => d.accept());
+  await page.locator('form:has(input[value=APROVADA]) input[name=confirmed]').check();
+  await page.click('button:has-text("Aprovar e tornar vigente")');
+  await page.waitForSelector('text=Versão vigente — v2', { timeout: 10000 });
+  check('Aprovação de revisão pela interface (v2 vigente)', true);
+  await page.goto(`${BASE}/documentos?aba=novo`);
+  await page.selectOption('#novo-cat', { label: 'Atas de reunião' });
+  await page.fill('#novo-title', 'Ata de reunião E2E (fictícia)');
+  await page.selectOption('#novo-sector', { index: 1 });
+  await page.click('button:has-text("Criar rascunho")');
+  await page.waitForURL(/\/documentos\/[0-9a-f-]+$/, { timeout: 10000 });
+  await page.fill('#d-texto', 'Pauta fictícia de homologação.');
+  await page.setInputFiles('#d-file', { name: 'ata.txt', mimeType: 'text/plain', buffer: Buffer.from('Ata fictícia — teste E2E\n') });
+  await page.click('button:has-text("Salvar rascunho")');
+  await page.waitForSelector('text=Rascunho salvo', { timeout: 10000 });
+  check('Rascunho com arquivo anexado', await page.locator('a:has-text("ata.txt")').isVisible());
+  const dl = await page.request.get(new URL(await page.locator('a:has-text("ata.txt")').getAttribute('href'), BASE).toString());
+  check('Download autorizado como anexo, sem interpretação', dl.status() === 200 && /attachment/.test(dl.headers()['content-disposition'] ?? '') && dl.headers()['x-content-type-options'] === 'nosniff');
+  page.once('dialog', (d) => d.accept());
+  await page.click('button:has-text("Submeter à aprovação")');
+  await page.waitForSelector('text=aguardando aprovação', { timeout: 10000 });
+  check('Autor não decide a própria versão (segregação)', await page.locator('text=segregação de funções').isVisible());
+
   // 7. Colaborador: marcação e restrições
   await page.context().close();
   page = await newPage();
@@ -152,6 +194,13 @@ try {
   check('API recusa consulta a outro funcionário', [403, 404].includes(other.status()), `HTTP ${other.status()}`);
   const forged = await page.request.post(`${BASE}/api/v1/ponto`, { headers: { origin: 'https://atacante.example' } });
   check('API recusa escrita de origem externa (CSRF)', forged.status() === 403, `HTTP ${forged.status()}`);
+
+  await page.goto(`${BASE}/documentos`);
+  check('Colaborador vê documentos do seu público e não vê o confidencial', await page.locator('tbody a:has-text("Código de Ética")').isVisible() && !(await page.locator('tbody a:has-text("Plano de Continuidade")').count()));
+  const conf = await page.goto(`${BASE}${pcnHref}`);
+  check('Acesso direto a documento confidencial é bloqueado', await page.locator('text=Não foi possível exibir esta página').isVisible(), `HTTP ${conf?.status()}`);
+  const confFile = await page.request.get(`${BASE}${pcnHref.replace('/documentos/', '/api/v1/documentos/')}/exportar/00000000-0000-4000-8000-000000000000`);
+  check('Exportação de documento confidencial recusada', [403, 404].includes(confFile.status()), `HTTP ${confFile.status()}`);
 
   // 8. Celular: sem rolagem horizontal
   await page.context().close();

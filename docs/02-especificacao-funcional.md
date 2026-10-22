@@ -71,5 +71,14 @@ Cadastro de instrumentos (lei, CCT, súmula) e de regras com fundamento, fonte, 
 ## F12. Modelos de checklist editáveis (Fase 2c)
 Criar, editar (nova versão em rascunho), duplicar, ordenar, remover itens, publicar e inativar. Cada item define prazo, obrigatoriedade (não admite "não se aplica"), exigência de evidência, papel responsável e verificação automática. Editar e publicar são permissões distintas, e a publicação exige reautenticação. Versões publicadas são imutáveis (garantido no banco). Checklists já iniciados preservam a versão usada.
 
+## F13. Gestão documental (Fase 3)
+- **Repositório** (*Gestão documental*): pesquisa por título, código, resumo e conteúdo da versão vigente (com flexões do português), filtros por categoria e situação.
+- **Elaboração:** quem tem `documentos.editar` no setor cria o documento (rascunho), escreve o texto e/ou anexa arquivo (PDF, DOCX, XLSX, ODT, ODS, PNG, JPG, TXT; até 15 MB; formato conferido pelo conteúdo) e submete. Na revisão de documento vigente, a nota da versão é obrigatória e o arquivo vigente é reaproveitado se não for trocado.
+- **Aprovação:** outra pessoa com `documentos.aprovar` aprova (assinatura simples vinculada ao hash, com reautenticação) ou rejeita com motivo (o conteúdo volta ao rascunho). A versão aprovada vigora na data da aprovação; a anterior fica superada; a próxima revisão é calculada pelos meses definidos.
+- **Ciência:** documentos com "exigir ciência" aparecem em *Para ciência* e no painel de cada pessoa do público; a ciência é assinatura simples da versão vigente. Nova versão reabre a ciência. Gestão e responsável veem a cobertura por pessoa.
+- **Acesso:** público (todos, setores, pessoas) e confidencialidade (interno, restrito, confidencial) — ver ADR 0009.
+- **Ciclo de vida:** obsoleto, arquivado e descarte do conteúdo dos arquivos após a retenção (somente com prazo e fundamento registrados na categoria, permissão própria e reautenticação).
+- **Exportação:** pacote JSON por versão com conteúdo, hashes, assinaturas e verificação.
+
 ## Pendentes
-Avaliações de desempenho e treinamentos (Fase 5); reinício automático do período aquisitivo (art. 133); leitura integral da CCT 2026/2027 e cadastro das regras validadas correspondentes (J-14).
+Avaliações de desempenho e treinamentos (Fase 5); reinício automático do período aquisitivo (art. 133); leitura integral da CCT 2026/2027 e cadastro das regras validadas correspondentes (J-14); prazos de retenção documental (J-15); integração com o Google Drive (P-03).

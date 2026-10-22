@@ -10,7 +10,9 @@ Autenticação: cookie de sessão do sistema (mesma sessão da interface, com MF
 | POST | `/api/v1/ponto` | `jornada.registrar` (próprio) | Registra marcação com horário do servidor → `{id, horario, tipo}` |
 | GET | `/api/v1/banco-de-horas?funcionario=<uuid>` | `banco.ver` no escopo | Resumo, lotes PEPS, lançamentos, acordo e pendências |
 | GET | `/api/v1/relatorios/folha?periodo=AAAA-MM` | `banco.ocorrencias.tratar` | CSV para a contabilidade (exportação auditada) |
-| POST | `/api/cron/processar` | `Authorization: Bearer <CRON_SECRET>` (≥ 32 caracteres) | Apuração de todos os funcionários (opcional) |
+| GET | `/api/v1/documentos/{id}/arquivo/{versão \| rascunho}` | público do documento (versão vigente) ou acesso ao histórico | Download do arquivo como anexo (`nosniff`, CSP `sandbox`, cabeçalho `x-sha256`); hash conferido; auditado; 60/min por usuário; 410 se descartado |
+| GET | `/api/v1/documentos/{id}/exportar/{versão}` | idem | Pacote JSON: metadados, conteúdo, hashes, assinaturas e verificação recalculada (auditado) |
+| POST | `/api/cron/processar` | `Authorization: Bearer <CRON_SECRET>` (≥ 32 caracteres) | Apuração de todos os funcionários e avisos de revisão documental (opcional) |
 | GET | `/api/auth/google/start` · `/callback` | pública | Fluxo OIDC |
 | POST | `/api/auth/dev` | somente homologação | Login de teste com usuários fictícios |
 

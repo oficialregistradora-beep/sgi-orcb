@@ -17,9 +17,10 @@
 | Integridade | Tabelas críticas imutáveis; auditoria encadeada por SHA-256; hash de documentos e evidências de assinatura | migrations, `documents.ts` |
 | Segregação de ambientes | `APP_ENV`; login de teste e seed proibidos em produção | `config.ts`, `seed.ts` |
 | Segredos | Somente variáveis de ambiente / Secret Manager; `.env` fora do Git | `.gitignore` |
+| Documentos | Acesso por público e confidencialidade verificado no servidor; resposta "não encontrado" sem revelar existência; arquivos só pela rota autorizada (anexo, `nosniff`, CSP `sandbox`); formatos em lista fechada conferidos pelo conteúdo; hash conferido na aprovação e no download; downloads e exportações auditados | `repository.ts`, `files.ts` |
 | Privilégio no banco | Aplicação com papel `sgi_app` (não dono; sem UPDATE/DELETE nas tabelas imutáveis) | `db/roles.sql` |
 
-**Limitações conhecidas:** limitação de taxa em memória (multiplica-se pelo número de instâncias); rotação da chave de campo exige script de recifragem (o formato `v1.` já prevê versionamento — Pendente); cadastro de dispositivos autorizados não implementado (avaliar o Endpoint Management do Workspace).
+**Limitações conhecidas:** limitação de taxa em memória (multiplica-se pelo número de instâncias); rotação da chave de campo exige script de recifragem (o formato `v1.` já prevê versionamento — Pendente); cadastro de dispositivos autorizados não implementado (avaliar o Endpoint Management do Workspace); anexos documentais sem verificação antivírus (Pendente).
 
 ## LGPD — inventário inicial (dependente de validação do encarregado — P-06)
 | Dado | Finalidade | Base legal provável (validar) | Acesso | Proteção |

@@ -36,7 +36,14 @@ Configurável em **Usuários e permissões → Matriz** sem alterar código. A O
 | regras.juridicas.gerenciar ★ | T | — | — | — |
 | checklists.modelos.editar | T | T | — | — |
 | checklists.modelos.publicar ★ | T | — | — | — |
+| documentos.ver | T | T | T | T |
+| documentos.editar | T | T | S | — |
+| documentos.aprovar | T | T | — | — |
+| documentos.gerenciar ★ | T | T | — | — |
+| documentos.descartar ★ | T | — | — | — |
 
 ★ permissão sensível. Papéis se acumulam: a Escrevente Substituta recebe *Coordenação de setor* e *Colaborador*.
 
 **Regras adicionais (codificadas, não configuráveis):** ninguém decide a própria solicitação nem analisa a própria ocorrência; ninguém atribui papel a si mesmo; o funcionário não aprova o próprio espelho; a aprovação de espelho exige a manifestação prévia do titular (dupla conferência); operações ★ e assinaturas exigem reautenticação. A Oficial pode decidir pedidos próprios, e isso fica registrado expressamente na auditoria.
+
+**Documentos (Fase 3):** `documentos.ver` dá acesso apenas aos documentos **vigentes** cujo público inclui a pessoa. Quem elaborou ou submeteu uma versão não a aprova — **nem a Oficial**. Documento **confidencial** só é visto pela Oficial, pelo responsável, pelo autor e pelas pessoas da lista; as permissões de gestão, edição e aprovação não o alcançam sem inclusão na lista. Aprovação, ciência e descarte exigem reautenticação.

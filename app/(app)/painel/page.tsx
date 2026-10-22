@@ -6,17 +6,26 @@ import { fmtDate, fmtMin, fmtTime, label } from '@/ui/format.ts';
 import { Empty, PageHead, Stat } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { punchAction } from '../../actions/journey.ts';
+import { listPendingAcknowledgements, listPendingDocApprovals } from '@/server/modules/repository.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Painel' };
 
 export default async function Painel() {
   const ctx = await requirePageCtx();
-  const [me, team, exec] = await Promise.all([personalDashboard(ctx), managementDashboard(ctx), executiveIndicators(ctx)]);
+  const [me, team, exec, docAcks, docApprovals] = await Promise.all([
+    personalDashboard(ctx), managementDashboard(ctx), executiveIndicators(ctx), listPendingAcknowledgements(ctx), listPendingDocApprovals(ctx),
+  ]);
   const firstName = ctx.principal.displayName.split(' ')[0];
   return (
     <div className="stack">
       <PageHead title={`Olá, ${firstName}`} subtitle="Resumo das informações que você está autorizado(a) a ver." />
+      {docAcks.length || docApprovals.length ? (
+        <div className="alert alert-warn small"><div>
+          {docAcks.length ? <><strong>{docAcks.length}</strong> documento(s) institucional(is) aguardando sua ciência — <Link href="/documentos?aba=ciencia">ver</Link>. </> : null}
+          {docApprovals.length ? <><strong>{docApprovals.length}</strong> versão(ões) aguardando sua aprovação — <Link href="/documentos?aba=aprovacoes">ver</Link>.</> : null}
+        </div></div>
+      ) : null}
 
       {me ? (
         <section className="stack" aria-labelledby="pessoal">

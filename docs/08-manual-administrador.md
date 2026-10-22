@@ -27,3 +27,11 @@
 - **Regras jurídicas** (*Configurações → Regras jurídicas*): após a leitura da CCT vigente, cadastre cada regra com fundamento e fonte. Ao registrar a validação (nome e OAB do responsável), a regra passa a valer. Regras históricas nunca valem.
 - **Modelos de checklist** (*Configurações → Modelos de checklist*): *Editar (nova versão)* → ajustar itens → *Publicar*. Checklists já abertos não mudam.
 - **Plantões:** se o substituto atendeu, troque o responsável antes de fechar. O sistema avisa quando há chamado registrado pelo substituto.
+
+## Fase 3 — gestão documental
+- **Categorias** (*Gestão documental → Categorias*): ajuste a revisão periódica e, após definir a tabela de temporalidade, o prazo de retenção **com o fundamento**. Sem prazo, o descarte permanece bloqueado.
+- **Aprovações:** *Gestão documental → Aprovações* lista as versões que você pode decidir (as que você elaborou ou submeteu não aparecem).
+- **Revisões:** *Gestão documental → Revisões* mostra revisões vencidas ou próximas; o responsável recebe aviso automático uma vez por data.
+- **Confidenciais:** indique nominalmente as pessoas. A Substituta Legal, mesmo com gestão documental, só vê o documento se estiver na lista.
+- **Cobertura de ciência:** no documento, quadro *Ciência da versão N*.
+- **Rotina diária opcional:** o agendador (`/api/cron/processar`) também envia os avisos de revisão.

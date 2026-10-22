@@ -1,0 +1,19 @@
+{
+  "executadoEm": "2026-10-22T22:40:14.006Z",
+  "metricas": {
+    "documentos": 40,
+    "confidenciais": 2,
+    "aprovacoes": 80,
+    "rejeicoes": 32,
+    "ciencias": 326,
+    "revisoes": 40,
+    "versoes": 112,
+    "verificacoes_de_acesso": 400,
+    "ciencia_publico_total": 183,
+    "ciencia_registrada": 176,
+    "ciencia_cobertura_pct": 96,
+    "avisos_de_revisao": 10,
+    "nao_arquivados_apos_lote": 39,
+    "eventos_auditoria": 720
+  }
+}

@@ -1,4 +1,4 @@
-# Relatórios de testes — Fases 1 e 2
+# Relatórios de testes — Fases 1, 2, 2b, 2c e 3
 
 **Execução:** 22/10/2026 · ambiente local (Node 22.22, PostgreSQL 16.15, Chromium 1194 headless) · dados 100% fictícios · base de código: commit `8ccf487` + alterações deste commit de relatórios.
 
@@ -128,3 +128,56 @@ Observação metodológica: nos primeiros testes de imutabilidade da auditoria, 
 | D15 | Rodada 2 (concorrência) | Duas validações simultâneas de regras com vigências sobrepostas eram aceitas | Restrição de exclusão no banco: uma regra validada por tipo em cada data |
 | D16 | E2E (inspeção visual) | Avisos com texto em negrito eram exibidos picados em colunas | Caixa de alerta passou a ser bloco (design system) |
 | — | Revisão dos próprios testes | Três casos estavam fracos (um retornava sem testar, um comparava data de forma aproximada, um usava valor inválido com desvio) | Reescritos com afirmações exatas |
+
+
+---
+
+# Fase 3 — execução de 22/10/2026 (branch `fase-3`)
+
+Escopo: gestão documental (repositório, versões, aprovação, ciência, acesso, ciclo de vida, retenção, arquivos, exportação). Dados 100% fictícios; ambiente local; **sem homologação** pela serventia.
+
+| Conjunto | Resultado |
+|---|---|
+| Unitário (inclui `phase3.test.ts`, 10 casos: formatos conferidos pelo conteúdo, nomes seguros, regras de acesso por público e confidencialidade) | 100/100 |
+| Rodada 1 — Funcional (inclui `phase3.test.ts`, 18 casos: ciclo completo, rejeição, revisão, ciência e cobertura, pesquisa, download, retenção e descarte, confidencialidade) | 72/72 |
+| Rodada 2 — Segurança (inclui `phase3-security.test.ts`, 14 casos: imutabilidade no banco, reautenticação, segregação, concorrência de aprovação e submissão, IDOR, revogação, adulteração de conteúdo e de arquivo, cadeia de auditoria) | 47/47 · backup/restauração: contagens idênticas em 50 tabelas, cadeia íntegra |
+| Rodada 3 — Simulação (inclui `phase3-cycle.test.ts`: 40 documentos nas 21 categorias, 3 ciclos, 112 versões, 32 rejeições, 326 ciências, 400 verificações de acesso) | 20/20 · [métricas](rodada3-fase3-metricas.json) |
+| Ponta a ponta (inclui 11 verificações da Fase 3) | 42/42 |
+| **Total automatizado** | **239/239 + 42/42** · `npm audit`: 0 vulnerabilidades |
+
+```
+ ✓ tests/simulation/six-months.test.ts (7 tests)
+ ✓ tests/simulation/phase2c-cycle.test.ts (1 test)
+ ✓ tests/simulation/phase3-cycle.test.ts (9 tests)
+ ✓ tests/integration/round1/phase2b.test.ts (13 tests)
+ ✓ tests/integration/round1/phase2c.test.ts (11 tests)
+ ✓ tests/simulation/phase2b-cycle.test.ts (3 tests)
+ ✓ tests/integration/round1/journey-bank.test.ts (18 tests)
+ ✓ tests/integration/round2/security.test.ts (25 tests)
+ ✓ tests/integration/round2/phase2c-security.test.ts (3 tests)
+ ✓ tests/integration/round2/phase3-security.test.ts (14 tests)
+ ✓ tests/integration/round1/phase3.test.ts (18 tests)
+ ✓ tests/integration/round1/auth-users.test.ts (12 tests)
+ ✓ tests/integration/round2/phase2b-security.test.ts (5 tests)
+ ✓ tests/unit/security-primitives.test.ts (17 tests)
+ ✓ tests/unit/vacation-oncall.test.ts (18 tests)
+ ✓ tests/unit/phase3.test.ts (10 tests)
+ ✓ tests/unit/phase2c.test.ts (18 tests)
+ ✓ tests/unit/hourBank.test.ts (15 tests)
+ ✓ tests/unit/journey.test.ts (22 tests)
+ Test Files  19 passed (19)
+      Tests  239 passed (239)
+```
+
+Capturas: [14-repositorio.png](telas/14-repositorio.png), [15-documento-vigente.png](telas/15-documento-vigente.png).
+
+## Ocorrências da Fase 3
+Nenhum defeito do sistema foi encontrado pelas rodadas desta fase. As falhas observadas durante a execução foram **dos próprios testes** e estão registradas por transparência:
+| Origem | Falha | Causa | Correção |
+|---|---|---|---|
+| E2E | 2 verificações falharam na primeira execução | Seletores casavam com a opção oculta "Código de Ética"/"Plano de Continuidade" do filtro de categorias | Seletores restritos aos links da tabela |
+| Unit | Arquivo ODF de teste recusado | O arquivo fictício não tinha o cabeçalho que separa as entradas de um ODF real | Arquivo de teste corrigido (a validação estava correta) |
+| Rodada 3 | Pendências ao fim do ciclo; Substituta "não encontrava" confidencial para arquivar | Roteiro da simulação: limite de tentativas após rejeições e uso da Substituta para documento confidencial que ela, corretamente, não alcança | Roteiro ajustado; a recusa confirmou a regra de confidencialidade |
+| Rodada 2 | Teste de CHECK ambíguo (duas restrições violadas ao mesmo tempo) | Cenário mal isolado | Separado em dois casos, com o nome exato da restrição |
+
+Limitações conhecidas (não testadas por não existirem): integração com Google Drive, antivírus de anexos, vigência futura, pré-visualização de PDF.

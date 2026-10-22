@@ -26,7 +26,9 @@
 | §12 Plantões RCPN (escala, substituto, chamados, comparecimento, sobreaviso × efetivo × banco separados) | `oncall.ts`, `domain/oncall.ts` | unit + phase2b + rodada 3 (6 meses) | Implementado · Testado · valores dependentes de validação (J-07) |
 | §10.2 Termo de entrega de uniforme; segunda etapa configurável por tipo | `checklists.ts`, `documents.ts` | phase2b | Implementado · Testado |
 | Férias (solicitação, fracionamento, abono, alertas) | `vacation.ts`, `domain/vacation.ts` | unit + phase2b + rodada 3 | Implementado · Testado (art. 130: J-13) |
-| §13 Gestão documental + Drive | base de versões/assinaturas | — | Planejado (Fase 3) |
+| §13 Repositório por categorias (21 iniciais), pesquisa textual, versões, histórico, aprovação, assinaturas, vigência, próxima revisão, responsável, obsoletos, arquivamento, controle de acesso, exportação, trilha | `repository.ts`, migration 0006, `/documentos` | unit (acesso e arquivos) + phase3 + phase3-security + rodada 3 (40 documentos, 3 ciclos) + E2E | Implementado · Testado |
+| §13 Prazos de retenção | categorias com prazo e fundamento; descarte bloqueado sem prazo | phase3 | Implementado · prazos **Dependentes de validação jurídica (J-15)** |
+| §13 Integração Google Drive | não integrada; arquivos no banco com acesso só pela rota autorizada (ADR 0009) | — | Dependente de configuração (P-03) |
 | §14–16 Tarefas, processos, financeiro | — | — | Planejado (Fase 4) |
 | §17 Qualidade e conformidade | — | — | Planejado (Fase 5) |
 | §18 Calendar, Chat, Gmail | notificações internas | — | Planejado (Fase 4) |
@@ -34,7 +36,7 @@
 | §20 Integridade, decimal, fuso | migrations, `domain/time.ts` | unit | Implementado · Testado |
 | §21 Controles OWASP ASVS (inclui limitação de taxa) | ver manual de segurança; `ratelimit.ts` | rodada 2 + unit | Implementado · Testado (verificação ASVS formal: Pendente) |
 | §22 Notificações | `notifications.ts` | — | Implementado (internas) |
-| §24 Três rodadas | `tests/` | relatórios | Executadas para as Fases 1–2 |
+| §24 Três rodadas | `tests/` | relatórios | Executadas para as Fases 1, 2, 2b, 2c e 3 |
 | §29 Autonomia da Oficial | telas de Configurações e Permissões | E2E | Implementado para os módulos existentes |
 | Validação jurídica J-13 (art. 130) | `vacation.ts` (classificação, conferência), `domain/vacation.ts` | unit (faixas) + phase2c + rodada 3 (5 faixas em 1 ano) | Implementado · Testado |
 | Validação jurídica J-07/J-14 (regras por vigência) | `legalRules.ts`, migration 0005 | phase2c + phase2c-security | Implementado · Testado · cláusulas da CCT vigente pendentes |

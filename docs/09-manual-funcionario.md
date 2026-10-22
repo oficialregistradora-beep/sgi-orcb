@@ -12,4 +12,6 @@
 
 **Espelho mensal:** em *Meus documentos*, gere o espelho e o extrato do mês anterior, confira e escolha *Ciência* (apenas tomou conhecimento), *Concordância* ou *Contestação* (com motivos). A manifestação exige o código do autenticador e fica vinculada exatamente àquela versão do documento.
 
+**Documentos institucionais:** em *Gestão documental*, consulte os documentos vigentes destinados a você (pesquise pelo título ou por palavras do texto). Quando o documento exigir ciência, ele aparece em *Para ciência* e no painel: leia, marque a declaração e confirme com o código do autenticador. Uma nova versão pede nova ciência.
+
 **Privacidade:** você só vê seus próprios dados. Dúvidas sobre tratamento de dados pessoais: encarregado(a) de dados da serventia (a definir — P-06).

@@ -4,6 +4,10 @@
 import { getConfig } from '../src/server/config.ts';
 import { closePool, getPool, query, queryOne } from '../src/server/db.ts';
 import { ensureProcessedAll } from '../src/server/modules/timeclock.ts';
+import { createSession, markMfaVerified } from '../src/server/auth/session.ts';
+import { loadPrincipal } from '../src/server/authz.ts';
+import type { Ctx } from '../src/server/context.ts';
+import { createDocument, decideVersion, saveDraft, submitForApproval } from '../src/server/modules/repository.ts';
 import { addDays, localToInstant, todayLocal, weekdayOf, formatHHMM } from '../src/domain/time.ts';
 
 const cfg = getConfig();
@@ -121,6 +125,39 @@ for (let d = addDays(today, -42); d < today; d = addDays(d, 1)) {
 console.log(`✓ ${k} plantões RCPN fictícios`);
 
 await query(db, `INSERT INTO audit_log (actor_user_id, action, entity_type, summary, prev_hash, hash) VALUES ($1,'CARGA_HOMOLOGACAO','sistema','Carga de dados fictícios de homologação','','')`, [ownerId]);
+// Documentos institucionais fictícios, criados pelos próprios serviços (com versões, aprovações e assinaturas).
+async function seedCtx(local: string): Promise<Ctx> {
+  const u = await id('SELECT id FROM users WHERE email = $1', [`${local}@${cfg.workspaceDomain}`]);
+  const { sessionId } = await createSession(db, u, 'DEV', '127.0.0.1', 'seed');
+  await markMfaVerified(db, sessionId);
+  await query(db, 'UPDATE sessions SET step_up_at = now() WHERE id = $1', [sessionId]);
+  return { principal: (await loadPrincipal(db, u))!, sessionId, authMethod: 'DEV', mfaVerifiedAt: new Date(), stepUpAt: new Date(), ip: '127.0.0.1', userAgent: 'seed' };
+}
+const [cHelena, cBeatriz, cCamila] = [await seedCtx('oficial'), await seedCtx('substituta'), await seedCtx('camila.ramos')];
+const cat = (code: string) => id('SELECT id FROM document_categories WHERE code = $1', [code]);
+async function publish(author: Ctx, approver: Ctx, meta: Parameters<typeof createDocument>[1], texto: string): Promise<string> {
+  const docId = await createDocument(author, meta);
+  await saveDraft(author, docId, { texto, notaVersao: 'Versão inicial' });
+  const v = await submitForApproval(author, docId);
+  await decideVersion(approver, docId, { versionId: v, decision: 'APROVADA', confirmed: true, notes: 'Conferido (fictício).' });
+  return docId;
+}
+await publish(cBeatriz, cHelena, { categoryId: await cat('CODIGO_ETICA'), title: 'Código de Ética (modelo fictício)', code: 'CE-001', sectorId: await sector('DIR'),
+  audienceType: 'TODOS', requiresAcknowledgement: true, summary: 'Texto fictício para homologação.' },
+  '1. Atender com urbanidade e imparcialidade.\n2. Preservar o sigilo das informações.\n3. Comunicar conflitos de interesse à Oficial.\n(Conteúdo fictício de homologação.)');
+const pop = await publish(cCamila, cBeatriz, { categoryId: await cat('POP'), title: 'POP — Prenotação de títulos (fictício)', code: 'POP-RI-001', sectorId: await sector('RI'),
+  audienceType: 'SETORES', audienceSectorIds: [await sector('RI')], requiresAcknowledgement: true },
+  '1. Receber o título e conferir os requisitos formais.\n2. Lançar no protocolo.\n3. Observar os prazos de qualificação.\n(Conteúdo fictício.)');
+await saveDraft(cCamila, pop, { texto: '1. Receber o título.\n2. Lançar no protocolo.\n3. Observar os prazos.\n4. Comunicar exigências.\n(Conteúdo fictício.)', notaVersao: 'Inclusão do passo 4' });
+await submitForApproval(cCamila, pop);
+const psi = await createDocument(cBeatriz, { categoryId: await cat('PSI'), title: 'Política de Segurança da Informação (rascunho fictício)', code: 'PSI-001',
+  sectorId: await sector('DIR'), audienceType: 'TODOS', requiresAcknowledgement: true });
+await saveDraft(cBeatriz, psi, { texto: 'Em elaboração (fictício).', notaVersao: '' });
+await publish(cBeatriz, cHelena, { categoryId: await cat('PCN'), title: 'Plano de Continuidade de Negócios (fictício)', code: 'PCN-001', sectorId: await sector('DIR'),
+  confidentiality: 'CONFIDENCIAL', audienceType: 'USUARIOS', audienceUserIds: [cHelena.principal.userId, cBeatriz.principal.userId] },
+  'Contatos de contingência e procedimentos (fictícios).');
+console.log('✓ 4 documentos institucionais fictícios');
+
 console.log('Apurando jornadas…');
 await ensureProcessedAll();
 console.log('Concluído. Entre pelo login de homologação (AUTH_DEV_LOGIN=true).');

@@ -16,4 +16,4 @@ Chaves de criptografia de campo (Secret Manager) devem ter cópia sob custódia 
 3. Conferir as contagens contra o relatório do último backup e registrar o incidente.
 
 ## Teste executado (22/10/2026, ambiente local, dados fictícios)
-`scripts/backup-restore-test.sh` → dump com hash SHA-256, restauração em banco temporário, **contagens idênticas em 33 tabelas** e **cadeia de auditoria íntegra** no banco restaurado. O teste em infraestrutura de nuvem está pendente (depende de P-02).
+`scripts/backup-restore-test.sh` → dump com hash SHA-256, restauração em banco temporário, **contagens idênticas em 33 tabelas** (Fase 1; 50 tabelas na Fase 3, incluindo os arquivos documentais em bytea) e **cadeia de auditoria íntegra** no banco restaurado. O teste em infraestrutura de nuvem está pendente (depende de P-02).
