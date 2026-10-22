@@ -9,6 +9,7 @@ import { decryptField, encryptField, hmacLookup, normalizeCpf } from '../crypto.
 import { revokeAllUserSessions } from '../auth/session.ts';
 import { addDays, todayLocal } from '../../domain/time.ts';
 import { recomputeDays } from './timeclock.ts';
+import { createChecklistFromTemplate } from './checklists.ts';
 
 const uuid = z.uuid();
 const isoDate = z.iso.date();
@@ -120,6 +121,7 @@ export async function createEmployee(ctx: Ctx, input: z.input<typeof createSchem
         emp!.id, d.scheduleId, d.admissionDate, ctx.principal.userId,
       ]);
     }
+    await createChecklistFromTemplate(c, ctx.principal.userId, emp!.id, 'ADMISSAO', d.admissionDate);
     await audit(c, ctx, {
       action: 'FUNCIONARIO_ADMITIDO', entityType: 'employee', entityId: emp!.id,
       summary: `Admissão de ${d.fullName} (matrícula ${d.registrationCode})`, data: { ...d },
@@ -461,6 +463,7 @@ export async function terminateEmployee(ctx: Ctx, id: string, input: z.input<typ
       await query(c, 'UPDATE user_roles SET revoked_at = now(), revoked_by = $2 WHERE user_id = $1 AND revoked_at IS NULL', [e.user_id, ctx.principal.userId]);
       await revokeAllUserSessions(c, e.user_id, 'DESLIGAMENTO');
     }
+    await createChecklistFromTemplate(c, ctx.principal.userId, id, 'DESLIGAMENTO', d.terminationDate);
     await audit(c, ctx, {
       action: 'FUNCIONARIO_DESLIGADO', entityType: 'employee', entityId: id,
       summary: `Desligamento de ${e.full_name} em ${d.terminationDate}; acessos revogados; saldo do banco sinalizado para apuração rescisória`,

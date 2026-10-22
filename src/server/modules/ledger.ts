@@ -59,7 +59,7 @@ export async function loadLedger(db: Db, employeeId: string): Promise<{ entries:
   };
 }
 
-type Origin = { occurrenceId?: string | null; requestId?: string | null; notes: string; userId: string };
+type Origin = { occurrenceId?: string | null; requestId?: string | null; oncallShiftId?: string | null; notes: string; userId: string };
 
 export async function insertCredit(
   db: Db,
@@ -69,10 +69,11 @@ export async function insertCredit(
   await lockBank(db, p.employeeId);
   const r = await queryOne<{ id: string }>(
     db,
-    `INSERT INTO hour_bank_entries (employee_id, agreement_id, entry_date, kind, minutes, expires_on, occurrence_id, request_id, notes, created_by)
-     VALUES ($1,$2,$3,'CREDITO',$4,$5,$6,$7,$8,$9) RETURNING id`,
+    `INSERT INTO hour_bank_entries (employee_id, agreement_id, entry_date, kind, minutes, expires_on, occurrence_id, request_id,
+                                    oncall_shift_id, notes, created_by)
+     VALUES ($1,$2,$3,'CREDITO',$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
     [p.employeeId, p.agreement.id, p.date, p.minutes, creditExpiry(p.date, p.agreement.compensation_months),
-      p.occurrenceId ?? null, p.requestId ?? null, p.notes, p.userId],
+      p.occurrenceId ?? null, p.requestId ?? null, p.oncallShiftId ?? null, p.notes, p.userId],
   );
   return r!.id;
 }

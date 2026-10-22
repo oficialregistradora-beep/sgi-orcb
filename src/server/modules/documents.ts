@@ -20,7 +20,15 @@ import { notifyEmployee, notifyUsers, usersWithPermission } from './notification
 export const DOC_KINDS = {
   ESPELHO: { category: 'Espelho de jornada', title: 'Espelho mensal de frequência' },
   EXTRATO_BANCO: { category: 'Extrato de banco de horas', title: 'Extrato mensal do banco de horas' },
+  TERMO_ENTREGA: { category: 'Termos e declarações', title: 'Termo de entrega' },
 } as const;
+
+// Segunda etapa (aprovação por pessoa autorizada) configurável por tipo documental, sem alterar código.
+const APPROVAL_DEFAULTS: Record<DocKind, boolean> = { ESPELHO: true, EXTRATO_BANCO: true, TERMO_ENTREGA: false };
+
+export async function requiresApproval(db: Db, kind: DocKind): Promise<boolean> {
+  return (await getSetting<boolean>(db, `documentos.aprovacao.${kind}`, APPROVAL_DEFAULTS[kind])) === true;
+}
 export type DocKind = keyof typeof DOC_KINDS;
 
 export const RESSALVA_JORNADA =
@@ -135,42 +143,52 @@ export async function prepareMonthlyDocument(ctx: Ctx, kind: DocKind, employeeId
     [employeeId, period]))!.n;
   if (pending > 0) throw new AppError(`Há ${pending} ocorrência(s) pendente(s) de análise nesta competência. Conclua a análise antes de gerar o documento.`);
   const content = kind === 'ESPELHO' ? await buildTimesheet(db, e, period) : await buildBankStatement(db, e, period);
-  const hash = sha256Hex(canonicalJson(content));
-  return tx(async (c) => {
-    const refKey = `${employeeId}:${period}`;
-    let doc = await queryOne<{ id: string }>(c, 'SELECT id FROM documents WHERE reference_type = $1 AND reference_key = $2 FOR UPDATE', [kind, refKey]);
-    if (!doc) {
-      doc = await queryOne<{ id: string }>(
-        c,
-        `INSERT INTO documents (category, title, confidentiality, owner_employee_id, sector_id, reference_type, reference_key, created_by)
-         VALUES ($1,$2,'RESTRITO',$3,$4,$5,$6,$7) RETURNING id`,
-        [DOC_KINDS[kind].category, `${DOC_KINDS[kind].title} — ${period}`, employeeId, e.sector_id, kind, refKey, ctx.principal.userId],
-      );
-    }
-    const last = await queryOne<{ id: string; version_number: number; content_sha256: string }>(
-      c, 'SELECT id, version_number, content_sha256 FROM document_versions WHERE document_id = $1 ORDER BY version_number DESC LIMIT 1', [doc!.id]);
-    if (last && last.content_sha256 === hash) return last.id;
-    const v = await queryOne<{ id: string }>(
+  return tx((c) => storeVersion(c, ctx, { kind, refKey: `${employeeId}:${period}`, title: `${DOC_KINDS[kind].title} — ${period}`, employeeId, sectorId: e.sector_id, ownerName: e.full_name, content }));
+}
+
+/**
+ * Grava nova versão do documento (ou reutiliza a última, se o conteúdo for idêntico) e avisa o titular.
+ * Deve ser chamada dentro de uma transação.
+ */
+export async function storeVersion(
+  c: Db,
+  ctx: Ctx,
+  d: { kind: DocKind; refKey: string; title: string; employeeId: string; sectorId: string; ownerName: string; content: Record<string, unknown> },
+): Promise<string> {
+  const hash = sha256Hex(canonicalJson(d.content));
+  let doc = await queryOne<{ id: string }>(c, 'SELECT id FROM documents WHERE reference_type = $1 AND reference_key = $2 FOR UPDATE', [d.kind, d.refKey]);
+  if (!doc) {
+    doc = await queryOne<{ id: string }>(
       c,
-      'INSERT INTO document_versions (document_id, version_number, content, content_sha256, created_by) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-      [doc!.id, (last?.version_number ?? 0) + 1, JSON.stringify(content), hash, ctx.principal.userId],
+      `INSERT INTO documents (category, title, confidentiality, owner_employee_id, sector_id, reference_type, reference_key, created_by)
+       VALUES ($1,$2,'RESTRITO',$3,$4,$5,$6,$7) RETURNING id`,
+      [DOC_KINDS[d.kind].category, d.title, d.employeeId, d.sectorId, d.kind, d.refKey, ctx.principal.userId],
     );
-    await audit(c, ctx, {
-      action: 'DOCUMENTO_VERSAO', entityType: 'document_version', entityId: v!.id,
-      summary: `${DOC_KINDS[kind].title} ${period} de ${e.full_name}: versão ${(last?.version_number ?? 0) + 1} (sha256 ${hash.slice(0, 16)}…)`,
-    });
-    await notifyEmployee(c, employeeId, {
-      kind: 'DOCUMENTO_PARA_ASSINATURA', title: `${DOC_KINDS[kind].title} ${period} disponível`,
-      body: 'Confira e registre sua ciência ou contestação.', link: `/documentos-pessoais?doc=${v!.id}`, priority: 'ALTA',
-    });
-    return v!.id;
+  }
+  const last = await queryOne<{ id: string; version_number: number; content_sha256: string }>(
+    c, 'SELECT id, version_number, content_sha256 FROM document_versions WHERE document_id = $1 ORDER BY version_number DESC LIMIT 1', [doc!.id]);
+  if (last && last.content_sha256 === hash) return last.id;
+  const v = await queryOne<{ id: string }>(
+    c,
+    'INSERT INTO document_versions (document_id, version_number, content, content_sha256, created_by) VALUES ($1,$2,$3,$4,$5) RETURNING id',
+    [doc!.id, (last?.version_number ?? 0) + 1, JSON.stringify(d.content), hash, ctx.principal.userId],
+  );
+  await audit(c, ctx, {
+    action: 'DOCUMENTO_VERSAO', entityType: 'document_version', entityId: v!.id,
+    summary: `${d.title} de ${d.ownerName}: versão ${(last?.version_number ?? 0) + 1} (sha256 ${hash.slice(0, 16)}…)`,
   });
+  await notifyEmployee(c, d.employeeId, {
+    kind: 'DOCUMENTO_PARA_ASSINATURA', title: `${d.title} disponível`,
+    body: 'Confira e registre sua manifestação.', link: `/documentos-pessoais?doc=${v!.id}`, priority: 'ALTA',
+  });
+  return v!.id;
 }
 
 export type VersionView = {
   versionId: string; documentId: string; kind: DocKind; title: string; versionNumber: number; isLatest: boolean;
   content: Record<string, unknown>; contentSha256: string; createdAt: Date; ownerEmployeeId: string; sectorId: string;
   signatures: { id: string; act: Act; signer_name: string; signed_at: Date; comment: string | null; statement: string }[];
+  requiresApproval: boolean;
 };
 
 async function loadVersion(db: Db, versionId: string) {
@@ -191,7 +209,7 @@ async function loadVersion(db: Db, versionId: string) {
 }
 
 function viewPermission(kind: DocKind) {
-  return kind === 'ESPELHO' ? 'jornada.ver' : 'banco.ver';
+  return kind === 'ESPELHO' ? 'jornada.ver' : kind === 'EXTRATO_BANCO' ? 'banco.ver' : 'pessoas.ver';
 }
 
 export async function getVersion(ctx: Ctx, versionId: string): Promise<VersionView> {
@@ -207,7 +225,7 @@ export async function getVersion(ctx: Ctx, versionId: string): Promise<VersionVi
   return {
     versionId: v.id, documentId: v.document_id, kind: v.reference_type, title: v.title, versionNumber: v.version_number,
     isLatest: v.version_number === v.latest, content: v.content, contentSha256: v.content_sha256, createdAt: v.created_at,
-    ownerEmployeeId: v.owner_employee_id, sectorId: v.sector_id, signatures,
+    ownerEmployeeId: v.owner_employee_id, sectorId: v.sector_id, signatures, requiresApproval: await requiresApproval(db, v.reference_type),
   };
 }
 
@@ -223,7 +241,7 @@ export async function listEmployeeDocuments(ctx: Ctx, employeeId: string) {
             EXISTS (SELECT 1 FROM signatures s WHERE s.document_version_id = v.id AND s.act = 'APROVACAO') AS approved
        FROM documents d
        JOIN LATERAL (SELECT * FROM document_versions x WHERE x.document_id = d.id ORDER BY version_number DESC LIMIT 1) v ON TRUE
-      WHERE d.owner_employee_id = $1 AND d.reference_type IN ('ESPELHO','EXTRATO_BANCO')
+      WHERE d.owner_employee_id = $1 AND d.reference_type IN ('ESPELHO','EXTRATO_BANCO','TERMO_ENTREGA')
       ORDER BY d.reference_key DESC, d.reference_type`,
     [employeeId],
   );
@@ -250,6 +268,7 @@ export async function signVersion(ctx: Ctx, input: z.input<typeof signSchema>): 
     const isOwnerEmployee = ctx.principal.employeeId === v.owner_employee_id;
     if (d.act === 'APROVACAO') {
       if (isOwnerEmployee) throw new ForbiddenError('O próprio funcionário não pode aprovar seu documento.');
+      if (!(await requiresApproval(c, v.reference_type))) throw new AppError('Este tipo de documento não exige aprovação (configuração).');
       requirePermission(ctx, 'espelho.aprovar', { employeeId: v.owner_employee_id, sectorId: v.sector_id });
       const employeeAck = existing.find((s) => s.act !== 'APROVACAO');
       if (!employeeAck) throw new AppError('Dupla conferência: aguarde a manifestação do funcionário antes da aprovação.');
@@ -287,13 +306,13 @@ export async function signVersion(ctx: Ctx, input: z.input<typeof signSchema>): 
       action: `ASSINATURA_${d.act}`, entityType: 'document_version', entityId: v.id,
       summary: `${d.act} em "${v.title}" v${v.version_number} (sha256 ${v.content_sha256.slice(0, 16)}…)`,
     });
-    if (d.act !== 'APROVACAO') {
+    if (d.act !== 'APROVACAO' && (await requiresApproval(c, v.reference_type))) {
       const approvers = await usersWithPermission(c, 'espelho.aprovar', v.sector_id, ctx.principal.userId);
       await notifyUsers(c, approvers, {
         kind: 'DOCUMENTO_PARA_APROVACAO', title: d.act === 'CONTESTACAO' ? 'Documento CONTESTADO aguardando análise' : 'Documento aguardando aprovação',
         body: v.title, link: `/documentos-pessoais?doc=${v.id}`, priority: d.act === 'CONTESTACAO' ? 'ALTA' : 'NORMAL',
       });
-    } else {
+    } else if (d.act === 'APROVACAO') {
       await notifyEmployee(c, v.owner_employee_id, { kind: 'DOCUMENTO_APROVADO', title: 'Documento aprovado', body: v.title, link: `/documentos-pessoais?doc=${v.id}` });
     }
     return s!.id;
@@ -325,9 +344,10 @@ export async function verifyVersion(ctx: Ctx, versionId: string) {
 /** Documentos aguardando aprovação do usuário (coordenação/administração). */
 export async function listPendingApprovals(ctx: Ctx) {
   if (!can(ctx.principal, 'espelho.aprovar')) return [];
-  const rows = await query<{ version_id: string; title: string; full_name: string; employee_id: string; sector_id: string; employee_act: string; signed_at: Date }>(
-    getPool(),
-    `SELECT v.id AS version_id, d.title, e.full_name, e.id AS employee_id, e.sector_id, s.act AS employee_act, s.signed_at
+  const db = getPool();
+  const rows = await query<{ version_id: string; title: string; full_name: string; employee_id: string; sector_id: string; employee_act: string; signed_at: Date; kind: DocKind }>(
+    db,
+    `SELECT v.id AS version_id, d.title, d.reference_type AS kind, e.full_name, e.id AS employee_id, e.sector_id, s.act AS employee_act, s.signed_at
        FROM documents d
        JOIN LATERAL (SELECT * FROM document_versions x WHERE x.document_id = d.id ORDER BY version_number DESC LIMIT 1) v ON TRUE
        JOIN employees e ON e.id = d.owner_employee_id
@@ -335,7 +355,9 @@ export async function listPendingApprovals(ctx: Ctx) {
       WHERE NOT EXISTS (SELECT 1 FROM signatures a WHERE a.document_version_id = v.id AND a.act = 'APROVACAO')
       ORDER BY s.signed_at`,
   );
+  const needs = new Map<DocKind, boolean>();
+  for (const k of Object.keys(DOC_KINDS) as DocKind[]) needs.set(k, await requiresApproval(db, k));
   return rows.filter(
-    (r) => r.employee_id !== ctx.principal.employeeId && can(ctx.principal, 'espelho.aprovar', { employeeId: r.employee_id, sectorId: r.sector_id }),
+    (r) => needs.get(r.kind) && r.employee_id !== ctx.principal.employeeId && can(ctx.principal, 'espelho.aprovar', { employeeId: r.employee_id, sectorId: r.sector_id }),
   );
 }

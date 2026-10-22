@@ -11,11 +11,13 @@ import { activeAgreement, assertPeriodOpen, insertDebit, loadLedger } from './le
 import { computeRange, recomputeDays } from './timeclock.ts';
 import { findEmployee } from './people.ts';
 import { notifyEmployee, notifyUsers, usersWithPermission } from './notifications.ts';
+import { applyVacationApproval } from './vacation.ts';
 
 export const REQUEST_TYPES = {
   CORRECAO_PONTO: { label: 'Correção de marcação', approve: 'solicitacoes.correcao.aprovar' },
   COMPENSACAO: { label: 'Compensação de banco de horas', approve: 'solicitacoes.compensacao.aprovar' },
   AUTORIZACAO_EXTRA: { label: 'Autorização prévia de hora extra', approve: 'solicitacoes.extra.aprovar' },
+  FERIAS: { label: 'Férias', approve: 'ferias.aprovar' },
 } as const;
 export type RequestType = keyof typeof REQUEST_TYPES;
 
@@ -184,6 +186,8 @@ export async function decideRequest(ctx: Ctx, input: z.input<typeof decideSchema
             throw e;
           });
         }
+      } else if (r.type === 'FERIAS') {
+        await applyVacationApproval(c, ctx, r);
       } else if (r.type === 'COMPENSACAO') {
         await assertPeriodOpen(c, r.reference_date);
         const agreement = await activeAgreement(c, r.employee_id, r.reference_date);
@@ -203,7 +207,7 @@ export async function decideRequest(ctx: Ctx, input: z.input<typeof decideSchema
       summary: `${meta.label} de ${r.full_name} (${r.reference_date}) ${d.approve ? 'aprovada' : 'rejeitada'}${ownRequest ? ' — decisão pela Oficial sobre pedido próprio' : ''}`,
       data: { notes: d.notes ?? null },
     });
-    if (d.approve && r.type !== 'AUTORIZACAO_EXTRA') await recomputeDays(c, ctx, r.employee_id, r.reference_date, r.reference_date);
+    if (d.approve && (r.type === 'CORRECAO_PONTO' || r.type === 'COMPENSACAO')) await recomputeDays(c, ctx, r.employee_id, r.reference_date, r.reference_date);
     await notifyEmployee(c, r.employee_id, {
       kind: 'SOLICITACAO_DECIDIDA', title: `${meta.label} ${d.approve ? 'aprovada' : 'rejeitada'}`,
       body: `Referência ${r.reference_date}${d.notes ? ` — ${d.notes}` : ''}`, link: '/solicitacoes',
@@ -238,6 +242,11 @@ export function describePayload(type: RequestType, payload: Record<string, unkno
   }
   if (type === 'COMPENSACAO') {
     return `${String(payload.mode).replace(/_/g, ' ').toLowerCase()} — ${Math.floor(Number(payload.minutes) / 60)}h${String(Number(payload.minutes) % 60).padStart(2, '0')}`;
+  }
+  if (type === 'FERIAS') {
+    const [ys, ms, ds] = String(payload.start).split('-');
+    const [ye, me, de] = String(payload.end).split('-');
+    return `${ds}/${ms}/${ys} a ${de}/${me}/${ye} — ${payload.days} dias${Number(payload.soldDays) ? ` + ${payload.soldDays} de abono pecuniário` : ''} (período aquisitivo ${payload.periodIndex})`;
   }
   return `Até ${payload.minutes} min — destino: ${payload.destination === 'BANCO' ? 'banco de horas' : 'pagamento'}`;
 }

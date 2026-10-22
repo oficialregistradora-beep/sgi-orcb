@@ -446,7 +446,25 @@ const NUMERIC_LIMITS: Record<string, [number, number]> = {
   'banco.alerta_saldo_elevado_minutos': [60, 10000],
   'banco.divisor_salario_horas': [100, 240],
   'banco.adicional_extra_percentual': [50, 200],
+  'plantao.horario_inicio_minutos': [0, 1380],
+  'plantao.horario_fim_minutos': [60, 1440],
+  'plantao.sobreaviso_divisor': [1, 10],
+  'plantao.adicional_efetivo_percentual': [0, 200],
+  'ferias.aviso_minimo_dias': [0, 60],
 };
+
+/** Parâmetros booleanos editáveis (ex.: exigência de aprovação por tipo de documento). */
+export async function updateBooleanSetting(ctx: Ctx, key: string, value: boolean): Promise<void> {
+  requirePermission(ctx, 'configuracoes.gerenciar');
+  if (!/^documentos\.aprovacao\.[A-Z_]+$/.test(key)) throw new AppError('Parâmetro não editável por esta tela.');
+  await requireStepUp(getPool(), ctx);
+  await tx(async (c) => {
+    const r = await query(c, 'UPDATE settings SET value = $2, updated_by = $3, updated_at = now() WHERE key = $1 RETURNING key', [key, JSON.stringify(value), ctx.principal.userId]);
+    if (!r.length) throw new NotFoundError('Parâmetro inexistente.');
+    await audit(c, ctx, { action: 'PARAMETRO_ALTERADO', entityType: 'setting', entityId: key, summary: `${key} → ${value}` });
+  });
+  invalidateSettingsCache();
+}
 
 export async function updateNumericSetting(ctx: Ctx, key: string, value: number): Promise<void> {
   requirePermission(ctx, 'configuracoes.gerenciar');

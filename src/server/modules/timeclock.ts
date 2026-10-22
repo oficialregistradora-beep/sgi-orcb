@@ -164,6 +164,13 @@ export async function computeRange(db: Db, employeeId: string, from: string, to:
     'SELECT valid_from, valid_until, max_daily_extra_minutes FROM hour_bank_agreements WHERE employee_id = $1 AND revoked_at IS NULL',
     [employeeId],
   );
+  const oncallDays = new Set(
+    (await query<{ shift_date: string }>(
+      db,
+      "SELECT shift_date FROM oncall_shifts WHERE employee_id = $1 AND status <> 'CANCELADO' AND shift_date BETWEEN $2 AND $3",
+      [employeeId, from, to],
+    )).map((r) => r.shift_date),
+  );
   const punches = await listPunches(db, employeeId, addDays(from, -1), to);
   const byDate = new Map<string, PunchRow[]>();
   for (const p of punches) byDate.set(p.local_date, [...(byDate.get(p.local_date) ?? []), p]);
@@ -192,6 +199,7 @@ export async function computeRange(db: Db, employeeId: string, from: string, to:
       maxDailyExtraMinutes: agreement?.max_daily_extra_minutes ?? 120,
       restSincePreviousMinutes:
         lastPrev && firstToday ? Math.round((firstToday.punched_at.getTime() - lastPrev.punched_at.getTime()) / 60000) : null,
+      oncall: oncallDays.has(date),
     });
     out.push({
       date, result, punches: dayPunches, schedule, scheduleName: assign?.name ?? null,

@@ -18,7 +18,8 @@ export type DayAlert =
   | 'HORAS_EXTRAS_ACIMA_LIMITE'
   | 'JORNADA_ACIMA_10H'
   | 'TRABALHO_EM_DIA_NAO_UTIL'
-  | 'INTERJORNADA_INFERIOR_11H';
+  | 'INTERJORNADA_INFERIOR_11H'
+  | 'DIA_DE_PLANTAO';
 
 export const ALERT_LABELS: Record<DayAlert, string> = {
   MARCACAO_INCOMPLETA: 'Marcações em número ímpar (falta entrada ou saída)',
@@ -27,6 +28,7 @@ export const ALERT_LABELS: Record<DayAlert, string> = {
   JORNADA_ACIMA_10H: 'Jornada diária superior a 10 horas',
   TRABALHO_EM_DIA_NAO_UTIL: 'Trabalho em descanso semanal ou feriado — requer análise',
   INTERJORNADA_INFERIOR_11H: 'Descanso entre jornadas inferior a 11 horas (CLT art. 66)',
+  DIA_DE_PLANTAO: 'Dia de plantão: trabalho apurado no módulo de plantões (sem dupla contagem)',
 };
 
 export type DayInput = {
@@ -38,6 +40,7 @@ export type DayInput = {
   tolerance: Tolerance;
   maxDailyExtraMinutes: number;
   restSincePreviousMinutes: number | null; // da última marcação do dia anterior até a primeira do dia
+  oncall?: boolean; // dia sem expediente em que o funcionário é o plantonista designado
 };
 
 export type DayResult = {
@@ -51,6 +54,7 @@ export type DayResult = {
   incomplete: boolean;
   intervals: [number, number][];
   alerts: DayAlert[];
+  oncall: boolean;
 };
 
 export function scheduleMinutes(s: ScheduleDay): number {
@@ -116,12 +120,14 @@ export function computeDay(input: DayInput): DayResult {
   }
   if (diff > input.maxDailyExtraMinutes && kind === 'UTIL') alerts.push('HORAS_EXTRAS_ACIMA_LIMITE');
   if (worked > 600) alerts.push('JORNADA_ACIMA_10H');
-  if (worked > 0 && (kind === 'DESCANSO' || kind === 'FERIADO')) alerts.push('TRABALHO_EM_DIA_NAO_UTIL');
+  const oncall = !!input.oncall && (kind === 'DESCANSO' || kind === 'FERIADO');
+  if (oncall) alerts.push('DIA_DE_PLANTAO');
+  else if (worked > 0 && (kind === 'DESCANSO' || kind === 'FERIADO')) alerts.push('TRABALHO_EM_DIA_NAO_UTIL');
   if (input.restSincePreviousMinutes !== null && punches.length > 0 && input.restSincePreviousMinutes < 660) {
     alerts.push('INTERJORNADA_INFERIOR_11H');
   }
 
-  return { kind, expected, worked, compensated, rawDiff, diff, toleranceApplied, incomplete, intervals, alerts };
+  return { kind, expected, worked, compensated, rawDiff, diff, toleranceApplied, incomplete, intervals, alerts, oncall };
 }
 
 export type OccurrenceType = 'HORA_EXTRA' | 'DIFERENCA_NEGATIVA' | 'MARCACAO_INCOMPLETA';
@@ -131,6 +137,7 @@ export type OccurrenceType = 'HORA_EXTRA' | 'DIFERENCA_NEGATIVA' | 'MARCACAO_INC
  * NÃO são descartadas: ambas ficam pendentes até decisão de pessoa autorizada (J-05, J-06).
  */
 export function deriveOccurrences(r: DayResult): { type: OccurrenceType; minutes: number }[] {
+  if (r.oncall) return []; // apurado em oncall_shifts
   if (r.incomplete) return [{ type: 'MARCACAO_INCOMPLETA', minutes: 0 }];
   if (r.diff > 0) return [{ type: 'HORA_EXTRA', minutes: r.diff }];
   if (r.diff < 0) return [{ type: 'DIFERENCA_NEGATIVA', minutes: -r.diff }];
