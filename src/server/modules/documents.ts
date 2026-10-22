@@ -205,6 +205,8 @@ async function loadVersion(db: Db, versionId: string) {
     [versionId],
   );
   if (!v) throw new NotFoundError('Documento não encontrado.');
+  // Documentos do repositório institucional têm controle de acesso próprio (inclusive confidenciais): não são abertos aqui.
+  if (!(v.reference_type in DOC_KINDS)) throw new NotFoundError('Documento não encontrado.');
   return v;
 }
 
@@ -284,28 +286,7 @@ export async function signVersion(ctx: Ctx, input: z.input<typeof signSchema>): 
     }
     if (existing.some((s) => s.act === d.act && s.signer_user_id === ctx.principal.userId)) throw new AppError('Manifestação já registrada.');
 
-    const session = await queryOne<{ auth_method: string; mfa_verified_at: Date | null; step_up_at: Date | null }>(
-      c, 'SELECT auth_method, mfa_verified_at, step_up_at FROM sessions WHERE id = $1', [ctx.sessionId]);
-    const signedAt = new Date();
-    const statement = statementFor(d.act, v.content_sha256);
-    const evidence = {
-      documentVersionId: v.id, contentSha256: v.content_sha256, signerUserId: ctx.principal.userId, act: d.act, statement,
-      comment: d.comment ?? null, signedAt: signedAt.toISOString(), sessionId: ctx.sessionId, authMethod: session?.auth_method ?? ctx.authMethod,
-      mfaVerifiedAt: session?.mfa_verified_at?.toISOString() ?? null, stepUpAt: session?.step_up_at?.toISOString() ?? null,
-      ip: ctx.ip, userAgent: ctx.userAgent,
-    };
-    const s = await queryOne<{ id: string }>(
-      c,
-      `INSERT INTO signatures (document_version_id, signer_user_id, act, statement, comment, content_sha256, signed_at, session_id, auth_method,
-                               mfa_verified_at, step_up_at, ip, user_agent, evidence_sha256)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
-      [v.id, ctx.principal.userId, d.act, statement, d.comment ?? null, v.content_sha256, signedAt, ctx.sessionId, evidence.authMethod,
-        session?.mfa_verified_at ?? null, session?.step_up_at ?? null, ctx.ip, ctx.userAgent?.slice(0, 400) ?? null, sha256Hex(canonicalJson(evidence))],
-    );
-    await audit(c, ctx, {
-      action: `ASSINATURA_${d.act}`, entityType: 'document_version', entityId: v.id,
-      summary: `${d.act} em "${v.title}" v${v.version_number} (sha256 ${v.content_sha256.slice(0, 16)}…)`,
-    });
+    const signatureId = await recordSignature(c, ctx, { id: v.id, contentSha256: v.content_sha256, title: v.title, versionNumber: v.version_number }, d.act, d.comment);
     if (d.act !== 'APROVACAO' && (await requiresApproval(c, v.reference_type))) {
       const approvers = await usersWithPermission(c, 'espelho.aprovar', v.sector_id, ctx.principal.userId);
       await notifyUsers(c, approvers, {
@@ -315,8 +296,43 @@ export async function signVersion(ctx: Ctx, input: z.input<typeof signSchema>): 
     } else if (d.act === 'APROVACAO') {
       await notifyEmployee(c, v.owner_employee_id, { kind: 'DOCUMENTO_APROVADO', title: 'Documento aprovado', body: v.title, link: `/documentos-pessoais?doc=${v.id}` });
     }
-    return s!.id;
+    return signatureId;
   });
+}
+
+/**
+ * Registra a assinatura eletrônica simples com evidências (identidade, sessão, MFA, reautenticação, IP, navegador)
+ * vinculadas ao hash da versão. Deve ser chamada na transação, após as verificações de permissão e de regra.
+ */
+export async function recordSignature(
+  c: Db, ctx: Ctx, v: { id: string; contentSha256: string; title: string; versionNumber: number }, act: Act, comment?: string | null,
+): Promise<string> {
+  const session = await queryOne<{ auth_method: string; mfa_verified_at: Date | null; step_up_at: Date | null }>(
+    c, 'SELECT auth_method, mfa_verified_at, step_up_at FROM sessions WHERE id = $1', [ctx.sessionId]);
+  const signedAt = new Date();
+  const statement = statementFor(act, v.contentSha256);
+  const evidence = {
+    documentVersionId: v.id, contentSha256: v.contentSha256, signerUserId: ctx.principal.userId, act, statement,
+    comment: comment ?? null, signedAt: signedAt.toISOString(), sessionId: ctx.sessionId, authMethod: session?.auth_method ?? ctx.authMethod,
+    mfaVerifiedAt: session?.mfa_verified_at?.toISOString() ?? null, stepUpAt: session?.step_up_at?.toISOString() ?? null,
+    ip: ctx.ip, userAgent: ctx.userAgent,
+  };
+  const s = await queryOne<{ id: string }>(
+    c,
+    `INSERT INTO signatures (document_version_id, signer_user_id, act, statement, comment, content_sha256, signed_at, session_id, auth_method,
+                             mfa_verified_at, step_up_at, ip, user_agent, evidence_sha256)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
+    [v.id, ctx.principal.userId, act, statement, comment ?? null, v.contentSha256, signedAt, ctx.sessionId, evidence.authMethod,
+      session?.mfa_verified_at ?? null, session?.step_up_at ?? null, ctx.ip, ctx.userAgent?.slice(0, 400) ?? null, sha256Hex(canonicalJson(evidence))],
+  ).catch((e: { code?: string }) => {
+    if (e.code === '23505') throw new AppError('Manifestação já registrada.');
+    throw e;
+  });
+  await audit(c, ctx, {
+    action: `ASSINATURA_${act}`, entityType: 'document_version', entityId: v.id,
+    summary: `${act} em "${v.title}" v${v.versionNumber} (sha256 ${v.contentSha256.slice(0, 16)}…)`,
+  });
+  return s!.id;
 }
 
 /** Verificação independente: recalcula o hash do conteúdo e o hash de evidências de cada assinatura. */
