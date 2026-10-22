@@ -1,0 +1,42 @@
+{
+  "name": "sgi-orcb",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sistema de Gestão Integrada — Ofício de Registros de Capivari de Baixo/SC",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "node --env-file-if-exists=.env --experimental-strip-types scripts/migrate.ts",
+    "db:seed": "node --env-file-if-exists=.env --experimental-strip-types scripts/seed.ts",
+    "simulate": "node --env-file-if-exists=.env --experimental-strip-types scripts/simulate.ts",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:round1": "vitest run tests/unit tests/integration/round1",
+    "test:round2": "vitest run tests/integration/round2",
+    "test:round3": "vitest run tests/simulation"
+  },
+  "dependencies": {
+    "jose": "6.2.12",
+    "next": "16.4.0",
+    "pg": "8.23.1",
+    "qrcode": "1.5.4",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.9",
+    "@types/pg": "8.23.1",
+    "@types/qrcode": "1.5.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  }
+}
