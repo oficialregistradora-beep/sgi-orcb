@@ -10,6 +10,7 @@ import { ActionForm } from '@/ui/ActionForm.tsx';
 import { holidayAction, jobTitleAction, removeHolidayAction, scheduleAction, sectorAction, settingAction } from '../../actions/admin.ts';
 import { booleanSettingAction } from '../../actions/phase2b.ts';
 import { RegrasJuridicas } from './RegrasJuridicas.tsx';
+import { Integracoes } from './Integracoes.tsx';
 import { ModelosChecklist } from './ModelosChecklist.tsx';
 import { closePeriodAction, reopenPeriodAction } from '../../actions/bank.ts';
 
@@ -18,7 +19,7 @@ export const metadata = { title: 'Configurações' };
 
 const TABS = {
   setores: 'Setores e cargos', jornadas: 'Jornadas', feriados: 'Feriados', parametros: 'Parâmetros', competencias: 'Competências',
-  regras: 'Regras jurídicas', checklists: 'Modelos de checklist',
+  regras: 'Regras jurídicas', checklists: 'Modelos de checklist', integracoes: 'Integrações',
 } as const;
 
 export default async function ConfigPage({ searchParams }: { searchParams: Promise<{ aba?: string; ano?: string; modelo?: string }> }) {
@@ -42,6 +43,7 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
       {tab === 'competencias' ? <Closings canClose={can(ctx.principal, 'banco.periodo.fechar')} /> : null}
       {tab === 'regras' ? <RegrasJuridicas ctx={ctx} /> : null}
       {tab === 'checklists' ? <ModelosChecklist ctx={ctx} modelo={sp.modelo} /> : null}
+      {tab === 'integracoes' ? <Integracoes /> : null}
     </div>
   );
 }

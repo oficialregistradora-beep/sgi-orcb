@@ -18,6 +18,18 @@ const schema = z.object({
   FIELD_ENCRYPTION_KEY: base64Key,
   HMAC_KEY: base64Key,
   AUTH_DEV_LOGIN: z.enum(['true', 'false']).default('false'),
+  // Antivírus (ClamAV/clamd). Em produção, sem antivírus configurado, anexos são recusados.
+  CLAMAV_HOST: z.string().default(''),
+  CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
+  CLAMAV_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(30000),
+  // Armazenamento dos arquivos documentais: banco (padrão) ou Google Drive compartilhado.
+  DOCUMENT_STORAGE: z.enum(['banco', 'drive']).default('banco'),
+  GOOGLE_DRIVE_SHARED_DRIVE_ID: z.string().default(''),
+  GOOGLE_DRIVE_FOLDER_ID: z.string().default(''),
+  // Chave JSON da conta de serviço em base64. Opcional no Cloud Run (usa a identidade do serviço, sem chave).
+  GOOGLE_DRIVE_SA_KEY: z.string().default(''),
+  GOOGLE_DRIVE_API_URL: z.url().default('https://www.googleapis.com'),
+  GOOGLE_OAUTH_TOKEN_URL: z.url().default('https://oauth2.googleapis.com/token'),
 });
 
 export type AppConfig = {
@@ -34,6 +46,9 @@ export type AppConfig = {
   fieldKey: Buffer;
   hmacKey: Buffer;
   devLogin: boolean;
+  clamav: { host: string; port: number; timeoutMs: number } | null;
+  storage: 'banco' | 'drive';
+  drive: { sharedDriveId: string; folderId: string; saKey: string; apiUrl: string; tokenUrl: string };
 };
 
 let cached: AppConfig | null = null;
@@ -55,6 +70,12 @@ export function getConfig(): AppConfig {
   if (appEnv === 'producao' && !e.APP_URL.startsWith('https://')) {
     throw new Error('APP_URL deve usar HTTPS em produção.');
   }
+  if (e.DOCUMENT_STORAGE === 'drive' && !e.GOOGLE_DRIVE_SHARED_DRIVE_ID) {
+    throw new Error('DOCUMENT_STORAGE=drive exige GOOGLE_DRIVE_SHARED_DRIVE_ID.');
+  }
+  if (appEnv === 'producao' && (e.GOOGLE_DRIVE_API_URL !== 'https://www.googleapis.com' || e.GOOGLE_OAUTH_TOKEN_URL !== 'https://oauth2.googleapis.com/token')) {
+    throw new Error('Endereços da API do Google não podem ser substituídos em produção.');
+  }
   cached = {
     env: e.NODE_ENV,
     appEnv,
@@ -69,6 +90,12 @@ export function getConfig(): AppConfig {
     fieldKey: Buffer.from(e.FIELD_ENCRYPTION_KEY, 'base64'),
     hmacKey: Buffer.from(e.HMAC_KEY, 'base64'),
     devLogin,
+    clamav: e.CLAMAV_HOST ? { host: e.CLAMAV_HOST, port: e.CLAMAV_PORT, timeoutMs: e.CLAMAV_TIMEOUT_MS } : null,
+    storage: e.DOCUMENT_STORAGE,
+    drive: {
+      sharedDriveId: e.GOOGLE_DRIVE_SHARED_DRIVE_ID, folderId: e.GOOGLE_DRIVE_FOLDER_ID, saKey: e.GOOGLE_DRIVE_SA_KEY,
+      apiUrl: e.GOOGLE_DRIVE_API_URL.replace(/\/$/, ''), tokenUrl: e.GOOGLE_OAUTH_TOKEN_URL,
+    },
   };
   return cached;
 }

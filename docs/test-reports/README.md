@@ -181,3 +181,20 @@ Nenhum defeito do sistema foi encontrado pelas rodadas desta fase. As falhas obs
 | Rodada 2 | Teste de CHECK ambíguo (duas restrições violadas ao mesmo tempo) | Cenário mal isolado | Separado em dois casos, com o nome exato da restrição |
 
 Limitações conhecidas (não testadas por não existirem): integração com Google Drive, antivírus de anexos, vigência futura, pré-visualização de PDF.
+
+
+---
+
+# Fase 3b — antivírus e Google Drive — execução de 22/10/2026 (branch `fase-3b`)
+
+| Conjunto | Resultado |
+|---|---|
+| Suíte completa (unitário + rodadas 1, 2 e 3) | **258/258** (19 casos novos em `round2/phase3b-antivirus-drive.test.ts`) |
+| Antivírus com **ClamAV 1.5.4 real** (clamd por TCP) | limpo aceito e registrado; EICAR recusado, não gravado e auditado; EICAR embutido em arquivo de 300 KB (5 blocos) detectado; antivírus fora do ar → recusa; produção sem antivírus → recusa; verificação no download de arquivo não verificado; aprovação bloqueada para arquivo malicioso antigo |
+| Google Drive com **API do Google simulada** (token da conta de serviço com assinatura RS256 conferida) | envio ao Drive compartilhado sem conteúdo no banco; aprovação, download e exportação; adulteração no Drive detectada; Drive indisponível; MD5 divergente → lixeira; chave não reconhecida; descarte → lixeira; proteção do registro no banco |
+| Ponta a ponta (antivírus ligado na homologação local) | **45/45** — inclui envio do EICAR pela tela (bloqueado) e a aba *Integrações* |
+| `npm audit` | 0 vulnerabilidades |
+
+**Limites honestos desta execução:** a base **oficial** de assinaturas do ClamAV não pôde ser baixada (rede do ambiente de desenvolvimento bloqueia `database.clamav.net`); os testes usaram o mecanismo real com assinaturas **locais** de teste (EICAR por hash e por conteúdo). Em produção, a imagem `clamav/clamav` baixa a base oficial sozinha. O Drive **real** da serventia não foi acessado (depende das credenciais e dos passos do guia `docs/23`).
+
+Capturas: [16-antivirus-bloqueio.png](telas/16-antivirus-bloqueio.png), [17-integracoes.png](telas/17-integracoes.png).

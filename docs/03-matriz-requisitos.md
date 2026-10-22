@@ -28,7 +28,8 @@
 | Férias (solicitação, fracionamento, abono, alertas) | `vacation.ts`, `domain/vacation.ts` | unit + phase2b + rodada 3 | Implementado · Testado (art. 130: J-13) |
 | §13 Repositório por categorias (21 iniciais), pesquisa textual, versões, histórico, aprovação, assinaturas, vigência, próxima revisão, responsável, obsoletos, arquivamento, controle de acesso, exportação, trilha | `repository.ts`, migration 0006, `/documentos` | unit (acesso e arquivos) + phase3 + phase3-security + rodada 3 (40 documentos, 3 ciclos) + E2E | Implementado · Testado |
 | §13 Prazos de retenção | categorias com prazo e fundamento; descarte bloqueado sem prazo | phase3 | Implementado · prazos **Dependentes de validação jurídica (J-15)** |
-| §13 Integração Google Drive | não integrada; arquivos no banco com acesso só pela rota autorizada (ADR 0009) | — | Dependente de configuração (P-03) |
+| §13 Integração Google Drive | `drive.ts`, `fileStore.ts` (Drive compartilhado, conta de serviço, acesso só pela aplicação, hash conferido) — ADR 0010, guia docs/23 | phase3b (API simulada) | Implementado · Testado com simulação · **ligação real Dependente de configuração (P-03)** |
+| §21 Antivírus dos anexos | `antivirus.ts` (ClamAV/clamd), falha fechada em produção | phase3b com ClamAV real | Implementado · Testado |
 | §14–16 Tarefas, processos, financeiro | — | — | Planejado (Fase 4) |
 | §17 Qualidade e conformidade | — | — | Planejado (Fase 5) |
 | §18 Calendar, Chat, Gmail | notificações internas | — | Planejado (Fase 4) |

@@ -163,12 +163,22 @@ try {
   await page.click('button:has-text("Salvar rascunho")');
   await page.waitForSelector('text=Rascunho salvo', { timeout: 10000 });
   check('Rascunho com arquivo anexado', await page.locator('a:has-text("ata.txt")').isVisible());
+  check('Anexo verificado pelo antivírus (ClamAV)', await page.locator('text=Verificado pelo antivírus').first().isVisible());
+  await page.setInputFiles('#d-file', { name: 'leia-me.txt', mimeType: 'text/plain', buffer: Buffer.from('X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*') });
+  await page.click('button:has-text("Salvar rascunho")');
+  await page.waitForSelector('text=conteúdo malicioso', { timeout: 15000 }).catch(() => undefined);
+  check('Arquivo de teste EICAR bloqueado pelo antivírus na interface', await page.locator('text=conteúdo malicioso').isVisible());
+  await page.screenshot({ path: `${SHOTS}/16-antivirus-bloqueio.png`, fullPage: true });
   const dl = await page.request.get(new URL(await page.locator('a:has-text("ata.txt")').getAttribute('href'), BASE).toString());
   check('Download autorizado como anexo, sem interpretação', dl.status() === 200 && /attachment/.test(dl.headers()['content-disposition'] ?? '') && dl.headers()['x-content-type-options'] === 'nosniff');
   page.once('dialog', (d) => d.accept());
   await page.click('button:has-text("Submeter à aprovação")');
   await page.waitForSelector('text=aguardando aprovação', { timeout: 10000 });
   check('Autor não decide a própria versão (segregação)', await page.locator('text=segregação de funções').isVisible());
+
+  await page.goto(`${BASE}/configuracoes?aba=integracoes`);
+  check('Integrações: antivírus ativo e armazenamento informado', await page.locator('tr:has-text("Antivírus") >> text=Ativa').isVisible() && await page.locator('text=Armazenamento dos arquivos').isVisible());
+  await page.screenshot({ path: `${SHOTS}/17-integracoes.png`, fullPage: true });
 
   // 7. Colaborador: marcação e restrições
   await page.context().close();

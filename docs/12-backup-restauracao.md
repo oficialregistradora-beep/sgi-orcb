@@ -17,3 +17,6 @@ Chaves de criptografia de campo (Secret Manager) devem ter cópia sob custódia 
 
 ## Teste executado (22/10/2026, ambiente local, dados fictícios)
 `scripts/backup-restore-test.sh` → dump com hash SHA-256, restauração em banco temporário, **contagens idênticas em 33 tabelas** (Fase 1; 50 tabelas na Fase 3, incluindo os arquivos documentais em bytea) e **cadeia de auditoria íntegra** no banco restaurado. O teste em infraestrutura de nuvem está pendente (depende de P-02).
+
+## Arquivos no Google Drive (se `DOCUMENT_STORAGE=drive`)
+Os arquivos gravados no Drive compartilhado **não** fazem parte do dump do banco (o banco guarda o registro, o id no Drive e o SHA-256). A política de backup deve incluir o Drive compartilhado (retenção no Google Vault ou exportação periódica) — decisão pendente da Oficial. Na restauração, os hashes do banco permitem conferir cada arquivo recuperado.

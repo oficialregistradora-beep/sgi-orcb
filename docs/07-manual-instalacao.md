@@ -28,9 +28,11 @@ Com `APP_ENV=homologacao` e `AUTH_DEV_LOGIN=true`, a tela de login oferece usuá
 9. Cadastrar a Oficial (único `is_owner`), uma vez, via SQL administrativo auditado:
    `INSERT INTO users (email, display_name, is_owner) VALUES ('<email>', '<nome>', true);` e o cadastro funcional correspondente. Os demais cadastros são feitos pela interface.
 10. Admin Console do Workspace: exigir verificação em duas etapas (recomendado).
+10a. **Antivírus (obrigatório):** contêiner auxiliar `clamav/clamav:1.4` no mesmo serviço do Cloud Run; `CLAMAV_HOST=127.0.0.1`. Sem ele, o envio de anexos fica bloqueado em produção. Detalhes e custo: `23-guia-integracoes-google-antivirus.md`.
+10b. **Google Drive (opcional):** passos B1–B3 do mesmo guia.
 11. Cloud Monitoring: verificação de disponibilidade em `/api/v1/health` com alerta por e-mail.
 
 ## Variante VM / instalação local (Alternativas C e "custo mínimo")
-`docker compose up -d` (arquivo `docker-compose.yml`), atrás de proxy reverso com TLS (Caddy ou Nginx), com backups conforme `12-backup-restauracao.md`. A aplicação **não deve** ser exposta sem HTTPS.
+`docker compose up -d` (arquivo `docker-compose.yml`, que já inclui o antivírus ClamAV), atrás de proxy reverso com TLS (Caddy ou Nginx), com backups conforme `12-backup-restauracao.md`. A aplicação **não deve** ser exposta sem HTTPS.
 
 > Status: build de produção e execução local **testados**; imagem Docker e implantação no GCP **não executadas** neste ambiente (dependem de credenciais e autorização).

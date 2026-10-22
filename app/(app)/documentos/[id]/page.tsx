@@ -21,6 +21,11 @@ const EVENT_LABELS: Record<string, string> = {
   AVISO_REVISAO: 'Aviso de revisão enviado',
 };
 
+function ScanTag({ s }: { s: string | null }) {
+  return s === 'LIMPO' ? <span className="tag tag-ok">Verificado pelo antivírus</span>
+    : <span className="tag tag-warn" title="Enviado sem antivírus configurado; será verificado antes do download e da aprovação.">Não verificado pelo antivírus</span>;
+}
+
 function kb(n: number) {
   return n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
 }
@@ -80,6 +85,7 @@ export default async function DocumentoPage({ params }: { params: Promise<{ id: 
               <div className="row">
                 {current.file_purged ? <span className="tag">Arquivo descartado após retenção</span>
                   : <a className="btn btn-sm btn-primary" href={`/api/v1/documentos/${doc.id}/arquivo/${current.id}`}>Baixar {current.content.arquivo.nome}</a>}
+                {current.file_purged ? null : <ScanTag s={current.file_scan} />}
                 <span className="small muted">{kb(current.content.arquivo.bytes)} · SHA-256 <span className="mono hash">{current.content.arquivo.sha256}</span></span>
               </div>
             ) : null}
@@ -94,7 +100,7 @@ export default async function DocumentoPage({ params }: { params: Promise<{ id: 
           <div className="card-body stack">
             {pending.content.notaVersao ? <p className="small"><strong>Nota da versão:</strong> {pending.content.notaVersao}</p> : null}
             {pending.content.texto ? <div className="doc" style={{ whiteSpace: 'pre-wrap' }}>{pending.content.texto}</div> : null}
-            {pending.content.arquivo ? <a className="btn btn-sm" href={`/api/v1/documentos/${doc.id}/arquivo/${pending.id}`}>Baixar {pending.content.arquivo.nome}</a> : null}
+            {pending.content.arquivo ? <div className="row"><a className="btn btn-sm" href={`/api/v1/documentos/${doc.id}/arquivo/${pending.id}`}>Baixar {pending.content.arquivo.nome}</a><ScanTag s={pending.file_scan} /></div> : null}
             <p className="small muted">Hash (SHA-256): <span className="mono hash">{pending.content_sha256}</span></p>
             {canDecide ? (
               <div className="grid grid-2">
@@ -134,7 +140,7 @@ export default async function DocumentoPage({ params }: { params: Promise<{ id: 
               </div>
               {draftFile ? (
                 <div className="row small" style={{ marginTop: 8 }}>
-                  <a href={`/api/v1/documentos/${doc.id}/arquivo/rascunho`}>{draftFile.filename}</a><span className="muted">{kb(draftFile.size_bytes)}</span>
+                  <a href={`/api/v1/documentos/${doc.id}/arquivo/rascunho`}>{draftFile.filename}</a><span className="muted">{kb(draftFile.size_bytes)}</span><ScanTag s={draftFile.scan_status} />
                   <label className="check"><input type="checkbox" name="removeFile" /> Remover arquivo</label>
                 </div>
               ) : null}

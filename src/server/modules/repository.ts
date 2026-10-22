@@ -9,6 +9,7 @@ import { getNumberSetting } from '../settings.ts';
 import { checkFile } from '../files.ts';
 import { addDays, addMonths, todayLocal } from '../../domain/time.ts';
 import { recordSignature } from './documents.ts';
+import { discardUnsaved, insertStoredFile, loadStoredFile, prepareFile, purgeStoredFile, readStoredFile, rescan, type PreparedFile } from './fileStore.ts';
 import { notifyUsers, usersWithPermission } from './notifications.ts';
 
 // Repositório institucional de documentos (Fase 3).
@@ -300,6 +301,13 @@ export async function saveDraft(
   const d = draftSchema.parse(input);
   const db = getPool();
   const checked = file && file.bytes.byteLength ? checkFile(file.name, file.bytes, await maxFileBytes(db)) : null;
+  let prepared: PreparedFile | null = null;
+  if (checked) {
+    // Autorização antes de gastar antivírus e armazenamento externo; repetida dentro da transação.
+    const pre = await loadWith(db, ctx, id, 'edit');
+    if (pre.d.pending_version_id) throw new AppError('Há versão aguardando aprovação. Aguarde a decisão para editar o rascunho.');
+    prepared = await prepareFile(ctx, checked, file!.bytes);
+  }
   await tx(async (c) => {
     const { d: doc } = await loadWith(c, ctx, id, 'edit', true);
     if (doc.pending_version_id) throw new AppError('Há versão aguardando aprovação. Aguarde a decisão para editar o rascunho.');
@@ -308,15 +316,17 @@ export async function saveDraft(
       ? (await queryOne<{ file_id: string | null }>(c, 'SELECT file_id FROM document_version_reviews WHERE version_id = $1', [doc.current_version_id]))?.file_id ?? null
       : null;
     let arquivoId = d.removeFile ? null : doc.draft ? doc.draft.arquivoId : inherited;
-    if (checked) {
-      const f = await queryOne<{ id: string }>(
-        c, 'INSERT INTO document_files (filename, mime_type, size_bytes, sha256, data, created_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
-        [checked.filename, checked.mime, checked.size, sha256Hex(Buffer.from(file!.bytes)), Buffer.from(file!.bytes), ctx.principal.userId]);
-      arquivoId = f!.id;
-    }
+    if (prepared) arquivoId = await insertStoredFile(c, ctx, prepared);
     const draft: Draft = { texto: d.texto.replace(/\r\n/g, '\n'), notaVersao: d.notaVersao, arquivoId };
     await query(c, 'UPDATE documents SET draft=$2, draft_updated_by=$3, draft_updated_at=now(), updated_at=now() WHERE id=$1', [id, JSON.stringify(draft), ctx.principal.userId]);
-    await event(c, ctx, id, 'RASCUNHO_SALVO', { caracteres: draft.texto.length, arquivo: checked ? { nome: checked.filename, bytes: checked.size } : d.removeFile ? 'removido' : undefined });
+    await event(c, ctx, id, 'RASCUNHO_SALVO', {
+      caracteres: draft.texto.length,
+      arquivo: prepared ? { nome: prepared.checked.filename, bytes: prepared.checked.size, antivirus: prepared.scan.status, armazenamento: prepared.driveId ? 'DRIVE' : 'BANCO' }
+        : d.removeFile ? 'removido' : undefined,
+    });
+  }).catch(async (err) => {
+    await discardUnsaved(prepared);
+    throw err;
   });
 }
 
@@ -413,9 +423,12 @@ export async function decideVersion(ctx: Ctx, id: string, input: z.input<typeof 
     if (sha256Hex(canonicalJson(v.content)) !== v.content_sha256) {
       throw new AppError('Falha de integridade: o conteúdo não corresponde ao hash registrado. Operação bloqueada.', 500, 'INTEGRIDADE');
     }
-    if (v.content.arquivo) {
-      const f = await queryOne<{ ok: boolean }>(c, 'SELECT data IS NOT NULL AND sha256 = encode(sha256(data), \'hex\') AS ok FROM document_files WHERE id = $1', [v.content.arquivo.id]);
-      if (!f?.ok) throw new AppError('Falha de integridade do arquivo anexado. Operação bloqueada.', 500, 'INTEGRIDADE');
+    if (v.content.arquivo && d.decision === 'APROVADA') {
+      // Integridade (hash) e nova verificação antivírus, com as assinaturas atualizadas, antes de a versão vigorar.
+      const f = await loadStoredFile(c, v.content.arquivo.id);
+      const bytes = f ? await readStoredFile(f).catch(() => null) : null;
+      if (!f || !bytes || f.sha256 !== v.content.arquivo.sha256) throw new AppError('Falha de integridade do arquivo anexado. Operação bloqueada.', 500, 'INTEGRIDADE');
+      await rescan(ctx, f, bytes, 'aprovação', true);
     }
     if (d.decision === 'REJEITADA') {
       await query(c, "UPDATE document_version_reviews SET decision='REJEITADA', decided_by=$2, decided_at=now(), decision_notes=$3 WHERE version_id=$1",
@@ -547,15 +560,13 @@ export async function purgeFiles(ctx: Ctx, id: string, reason: string): Promise<
     if (d.status !== 'ARQUIVADO' && d.status !== 'OBSOLETO') throw new AppError('Somente documentos obsoletos ou arquivados podem ter conteúdo descartado.');
     if (!d.retention_until) throw new AppError('Prazo de retenção não definido para este documento: descarte bloqueado.');
     if (d.retention_until > todayLocal()) throw new AppError(`Prazo de retenção vigente até ${d.retention_until}.`);
-    const files = await query<{ id: string }>(
+    const files = await query<{ id: string; storage: string; drive_file_id: string | null }>(
       c,
-      `SELECT DISTINCT f.id FROM document_files f
+      `SELECT DISTINCT f.id, f.storage, f.drive_file_id FROM document_files f
         WHERE f.purged_at IS NULL AND (f.id IN (SELECT r.file_id FROM document_version_reviews r JOIN document_versions v ON v.id = r.version_id WHERE v.document_id = $1)
                                        OR f.id::text = $2)`,
       [id, d.draft?.arquivoId ?? '']);
-    for (const f of files) {
-      await query(c, 'UPDATE document_files SET data=NULL, purged_at=now(), purged_by=$2, purge_reason=$3 WHERE id=$1', [f.id, ctx.principal.userId, reason.trim()]);
-    }
+    for (const f of files) await purgeStoredFile(c, ctx, f, reason.trim());
     await event(c, ctx, id, 'DESCARTE', { arquivos: files.length, fundamento: reason.trim() });
     await audit(c, ctx, { action: 'DOC_DESCARTE', entityType: 'document', entityId: id, summary: `Descarte do conteúdo de ${files.length} arquivo(s) de "${d.title}"` });
     return files.length;
@@ -645,7 +656,7 @@ export async function listPendingDocApprovals(ctx: Ctx) {
 export type VersionRow = {
   id: string; version_number: number; content: VersionContent; content_sha256: string; created_at: Date; submitted_by_name: string;
   decision: string | null; decided_by_name: string | null; decided_at: Date | null; decision_notes: string | null; superseded_at: Date | null;
-  acks: number; file_purged: boolean;
+  acks: number; file_purged: boolean; file_scan: 'LIMPO' | 'NAO_VERIFICADO' | null;
 };
 
 export async function getDocument(ctx: Ctx, id: string) {
@@ -656,7 +667,8 @@ export async function getDocument(ctx: Ctx, id: string) {
     `SELECT v.id, v.version_number, v.content, v.content_sha256, v.created_at, su.display_name AS submitted_by_name, r.decision,
             du.display_name AS decided_by_name, r.decided_at, r.decision_notes, r.superseded_at,
             (SELECT count(*)::int FROM signatures g WHERE g.document_version_id = v.id AND g.act = 'CIENCIA') AS acks,
-            coalesce((SELECT f.purged_at IS NOT NULL FROM document_files f WHERE f.id = r.file_id), false) AS file_purged
+            coalesce((SELECT f.purged_at IS NOT NULL FROM document_files f WHERE f.id = r.file_id), false) AS file_purged,
+            (SELECT f.scan_status FROM document_files f WHERE f.id = r.file_id) AS file_scan
        FROM document_versions v JOIN document_version_reviews r ON r.version_id = v.id
        JOIN users su ON su.id = r.submitted_by LEFT JOIN users du ON du.id = r.decided_by
       WHERE v.document_id = $1 ORDER BY v.version_number DESC`,
@@ -668,7 +680,7 @@ export async function getDocument(ctx: Ctx, id: string) {
               WHERE e.document_id = $1 ORDER BY e.created_at DESC LIMIT 200`, [id])
     : [];
   const draftFile = a.history && d.draft?.arquivoId
-    ? await queryOne<{ id: string; filename: string; size_bytes: number; sha256: string }>(db, 'SELECT id, filename, size_bytes, sha256 FROM document_files WHERE id = $1', [d.draft.arquivoId])
+    ? await queryOne<{ id: string; filename: string; size_bytes: number; sha256: string; scan_status: string }>(db, 'SELECT id, filename, size_bytes, sha256, scan_status FROM document_files WHERE id = $1', [d.draft.arquivoId])
     : null;
   const myAck = d.current_version_id
     ? await queryOne<{ signed_at: Date }>(db, "SELECT signed_at FROM signatures WHERE document_version_id = $1 AND signer_user_id = $2 AND act = 'CIENCIA'", [d.current_version_id, ctx.principal.userId])
@@ -698,13 +710,14 @@ export async function fileForDownload(ctx: Ctx, documentId: string, which: strin
     fileId = r?.file_id ?? null;
   }
   if (!fileId) throw new NotFoundError('Arquivo não encontrado.');
-  const f = await queryOne<{ id: string; filename: string; mime_type: string; size_bytes: number; sha256: string; data: Buffer | null }>(
-    db, 'SELECT id, filename, mime_type, size_bytes, sha256, data FROM document_files WHERE id = $1', [fileId]);
+  const f = await loadStoredFile(db, fileId);
   if (!f) throw new NotFoundError('Arquivo não encontrado.');
-  if (!f.data) throw new AppError('O conteúdo deste arquivo foi descartado após o prazo de retenção (metadados e hash preservados).', 410, 'DESCARTADO');
-  if (sha256Hex(f.data) !== f.sha256) throw new AppError('Falha de integridade do arquivo. Download bloqueado.', 500, 'INTEGRIDADE');
+  const bytes = await readStoredFile(f);
+  if (!bytes) throw new AppError('O conteúdo deste arquivo foi descartado após o prazo de retenção (metadados e hash preservados).', 410, 'DESCARTADO');
+  // Arquivo nunca verificado (enviado sem antivírus configurado) é verificado antes de ser entregue.
+  await rescan(ctx, f, bytes, 'download', false);
   await audit(db, ctx, { action: 'DOC_DOWNLOAD', entityType: 'document', entityId: documentId, summary: `Download de "${f.filename}" (${d.title})` });
-  return f;
+  return { id: f.id, filename: f.filename, mime_type: f.mime_type, size_bytes: f.size_bytes, sha256: f.sha256, data: Buffer.from(bytes) };
 }
 
 /** Pacote de exportação de uma versão: metadados, conteúdo, hashes e assinaturas com verificação recalculada. */
@@ -719,9 +732,13 @@ export async function exportVersion(ctx: Ctx, documentId: string, versionId: str
   const sigs = await query<{ act: string; signer: string; signed_at: Date; statement: string; comment: string | null; content_sha256: string; evidence_sha256: string; auth_method: string }>(
     db, `SELECT g.act, u.display_name AS signer, g.signed_at, g.statement, g.comment, g.content_sha256, g.evidence_sha256, g.auth_method
            FROM signatures g JOIN users u ON u.id = g.signer_user_id WHERE g.document_version_id = $1 ORDER BY g.signed_at`, [versionId]);
-  const file = v.content.arquivo
-    ? await queryOne<{ ok: boolean | null; purged: boolean }>(db, "SELECT CASE WHEN data IS NULL THEN NULL ELSE sha256 = encode(sha256(data),'hex') END AS ok, purged_at IS NOT NULL AS purged FROM document_files WHERE id = $1", [v.content.arquivo.id])
-    : null;
+  let fileStatus = 'sem arquivo';
+  if (v.content.arquivo) {
+    const f = await loadStoredFile(db, v.content.arquivo.id);
+    fileStatus = !f || f.sha256 !== v.content.arquivo.sha256 ? 'DIVERGENTE'
+      : f.purged_at ? 'descartado após retenção (hash preservado)'
+      : await readStoredFile(f).then(() => 'íntegro', (e: AppError) => (e.code === 'INTEGRIDADE' ? 'DIVERGENTE' : 'não verificado (armazenamento indisponível)'));
+  }
   await audit(db, ctx, { action: 'DOC_EXPORTADO', entityType: 'document_version', entityId: versionId, summary: `Exportação de "${d.title}" v${v.version_number}` });
   return {
     geradoEm: new Date().toISOString(),
@@ -730,7 +747,7 @@ export async function exportVersion(ctx: Ctx, documentId: string, versionId: str
     versao: { id: v.id, numero: v.version_number, criadaEm: v.created_at, vigente: v.id === d.current_version_id, sha256: v.content_sha256, conteudo: v.content },
     verificacao: {
       conteudoIntegro: sha256Hex(canonicalJson(v.content)) === v.content_sha256,
-      arquivo: file ? (file.purged ? 'descartado após retenção (hash preservado)' : file.ok ? 'íntegro' : 'DIVERGENTE') : 'sem arquivo',
+      arquivo: fileStatus,
     },
     assinaturas: sigs.map((s) => ({ ...s, vinculadaAEstaVersao: s.content_sha256 === v.content_sha256 })),
   };

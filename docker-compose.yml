@@ -13,7 +13,14 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgres://sgi:${POSTGRES_PASSWORD}@db:5432/sgi
+      CLAMAV_HOST: clamav
     ports: ["127.0.0.1:8080:8080"]
-    depends_on: { db: { condition: service_healthy } }
+    depends_on: { db: { condition: service_healthy }, clamav: { condition: service_healthy } }
+  # Antivírus dos anexos. Atualiza as assinaturas sozinho (freshclam). Sem porta exposta ao host.
+  clamav:
+    image: clamav/clamav:1.4
+    volumes: [clamdb:/var/lib/clamav]
+    healthcheck: { test: ["CMD", "clamdcheck.sh"], interval: 30s, retries: 20, start_period: 300s }
 volumes:
   pgdata:
+  clamdb:

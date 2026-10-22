@@ -18,9 +18,10 @@
 | Segregação de ambientes | `APP_ENV`; login de teste e seed proibidos em produção | `config.ts`, `seed.ts` |
 | Segredos | Somente variáveis de ambiente / Secret Manager; `.env` fora do Git | `.gitignore` |
 | Documentos | Acesso por público e confidencialidade verificado no servidor; resposta "não encontrado" sem revelar existência; arquivos só pela rota autorizada (anexo, `nosniff`, CSP `sandbox`); formatos em lista fechada conferidos pelo conteúdo; hash conferido na aprovação e no download; downloads e exportações auditados | `repository.ts`, `files.ts` |
+| Antivírus | ClamAV (clamd) no envio, na aprovação e no primeiro download de arquivo não verificado; falha fechada; bloqueios auditados | `antivirus.ts`, `fileStore.ts` |
 | Privilégio no banco | Aplicação com papel `sgi_app` (não dono; sem UPDATE/DELETE nas tabelas imutáveis) | `db/roles.sql` |
 
-**Limitações conhecidas:** limitação de taxa em memória (multiplica-se pelo número de instâncias); rotação da chave de campo exige script de recifragem (o formato `v1.` já prevê versionamento — Pendente); cadastro de dispositivos autorizados não implementado (avaliar o Endpoint Management do Workspace); anexos documentais sem verificação antivírus (Pendente).
+**Limitações conhecidas:** limitação de taxa em memória (multiplica-se pelo número de instâncias); rotação da chave de campo exige script de recifragem (o formato `v1.` já prevê versionamento — Pendente); cadastro de dispositivos autorizados não implementado (avaliar o Endpoint Management do Workspace); antivírus dos anexos depende do serviço ClamAV estar ativo (em produção, sem ele o envio de arquivos é bloqueado); a base oficial de assinaturas não pôde ser baixada no ambiente de desenvolvimento (testes com base local).
 
 ## LGPD — inventário inicial (dependente de validação do encarregado — P-06)
 | Dado | Finalidade | Base legal provável (validar) | Acesso | Proteção |

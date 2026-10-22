@@ -19,4 +19,4 @@ Rascunho (editável) → submissão (gera versão **imutável** com hash) → ap
 Nenhum prazo de retenção foi presumido. Sem prazo registrado (com fundamento) na categoria, o descarte fica **bloqueado**. O descarte elimina apenas o **conteúdo dos arquivos**; metadados, hashes, versões, assinaturas e histórico permanecem. O texto digitado nas versões não é descartável (faz parte da trilha imutável): conteúdo sujeito a descarte deve ser anexado como arquivo.
 
 ## Limitações registradas
-Sem verificação antivírus dos anexos (os formatos são restritos por lista fechada e conferidos pelo conteúdo; download sempre como anexo, com `nosniff` e CSP `sandbox`). Sem pré-visualização de PDF no navegador. Vigência futura (aprovar hoje para valer depois) não implementada: a versão aprovada vigora na data da aprovação.
+*Atualização (Fase 3b, ADR 0010): antivírus implementado; Google Drive disponível como armazenamento opcional.* Sem pré-visualização de PDF no navegador. Vigência futura (aprovar hoje para valer depois) não implementada: a versão aprovada vigora na data da aprovação.
