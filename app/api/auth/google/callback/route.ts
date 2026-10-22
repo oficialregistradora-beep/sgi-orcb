@@ -5,6 +5,7 @@ import { safeEqual, verifySignedValue } from '@/server/crypto.ts';
 import { exchangeCode, loginWithGoogleIdentity, verifyIdToken } from '@/server/auth/google.ts';
 import { AppError } from '@/server/errors.ts';
 import { sessionCookieName, sessionCookieOptions } from '@/server/web/session.ts';
+import { clientIp, rateLimit } from '@/server/ratelimit.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,7 @@ export async function GET(req: NextRequest) {
     r.cookies.delete({ name: 'sgi_oauth', path: '/api/auth/google' });
     return r;
   };
+  if (!rateLimit(`login:${clientIp(req)}`, 20, 60_000)) return fail('falha');
   const url = req.nextUrl;
   if (url.searchParams.get('error')) return fail('cancelado');
   const raw = req.cookies.get('sgi_oauth')?.value;

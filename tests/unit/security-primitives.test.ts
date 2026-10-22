@@ -97,3 +97,35 @@ describe('tempo — America/Sao_Paulo', () => {
     expect(formatDuration(0, true)).toBe('00:00');
   });
 });
+
+import { rateLimit } from '../../src/server/ratelimit.ts';
+import { getConfig, resetConfigCache } from '../../src/server/config.ts';
+
+describe('limitação de taxa', () => {
+  it('bloqueia acima do limite e libera após a janela', () => {
+    const t0 = 1_000_000;
+    for (let i = 0; i < 3; i++) expect(rateLimit('k', 3, 1000, t0 + i)).toBe(true);
+    expect(rateLimit('k', 3, 1000, t0 + 10)).toBe(false);
+    expect(rateLimit('k', 3, 1000, t0 + 1500)).toBe(true);
+  });
+});
+
+describe('configuração segura', () => {
+  it('recusa login de desenvolvimento em produção (inclusive por padrão em build de produção)', () => {
+    const env = process.env as Record<string, string | undefined>;
+    const saved = { ...env };
+    try {
+      Object.assign(env, { NODE_ENV: 'production', APP_ENV: undefined, AUTH_DEV_LOGIN: 'true', APP_URL: 'https://sgi.exemplo' });
+      delete env.APP_ENV;
+      resetConfigCache();
+      expect(() => getConfig()).toThrow('AUTH_DEV_LOGIN');
+      Object.assign(env, { AUTH_DEV_LOGIN: 'false', APP_URL: 'http://inseguro.exemplo' });
+      resetConfigCache();
+      expect(() => getConfig()).toThrow('HTTPS');
+    } finally {
+      for (const k of Object.keys(env)) if (!(k in saved)) delete env[k];
+      Object.assign(env, saved);
+      resetConfigCache();
+    }
+  });
+});

@@ -3,6 +3,7 @@ import { getConfig } from '@/server/config.ts';
 import { getPool } from '@/server/db.ts';
 import { loginDev } from '@/server/auth/google.ts';
 import { sameOrigin, sessionCookieName, sessionCookieOptions } from '@/server/web/session.ts';
+import { clientIp, rateLimit } from '@/server/ratelimit.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,7 @@ export async function POST(req: NextRequest) {
   const cfg = getConfig();
   if (!cfg.devLogin) return new NextResponse('Não encontrado', { status: 404 });
   if (!sameOrigin(req)) return new NextResponse('Origem inválida', { status: 403 });
+  if (!rateLimit(`login:${clientIp(req)}`, 20, 60_000)) return new NextResponse('Muitas tentativas.', { status: 429 });
   const form = await req.formData();
   const userId = String(form.get('userId') ?? '');
   try {

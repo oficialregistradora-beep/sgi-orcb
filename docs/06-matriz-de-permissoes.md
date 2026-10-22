@@ -1,0 +1,33 @@
+# Matriz de permissões (configuração inicial)
+
+Configurável em **Usuários e permissões → Matriz** sem alterar código. A Oficial (`is_owner`) possui todas as permissões. Escopos: **T** todos · **S** setor coordenado (ou de lotação) · **P** próprio · — nenhum.
+
+| Permissão | Oficial | Substituta Legal | Coordenação de setor | Colaborador |
+|---|:-:|:-:|:-:|:-:|
+| usuarios.gerenciar ★ | T | — | — | — |
+| permissoes.gerenciar ★ | T | — | — | — |
+| auditoria.ver ★ | T | — | — | — |
+| configuracoes.gerenciar | T | T | — | — |
+| pessoas.ver | T | T | S | P |
+| pessoas.editar | T | T | — | — |
+| pessoas.sensiveis.ver / editar ★ | T | — | — | — |
+| pessoas.salario.ver / editar ★ | T | — | — | — |
+| jornada.registrar | T | T | — | P |
+| jornada.ver | T | T | S | P |
+| jornada.ausencias.gerenciar | T | T | — | — |
+| jornada.escalas.gerenciar | T | T | — | — |
+| solicitacoes.criar | T | T | — | P |
+| solicitacoes.correcao.aprovar | T | T | S | — |
+| solicitacoes.compensacao.aprovar | T | T | — | — |
+| solicitacoes.extra.aprovar | T | T | S | — |
+| banco.ver | T | T | S | P |
+| banco.ocorrencias.tratar | T | T | — | — |
+| banco.acordos.gerenciar ★ | T | — | — | — |
+| banco.pagamentos.registrar ★ | T | — | — | — |
+| banco.periodo.fechar ★ | T | — | — | — |
+| banco.custos.ver ★ | T | — | — | — |
+| espelho.aprovar | T | T | S | — |
+
+★ permissão sensível. Papéis se acumulam: a Escrevente Substituta recebe *Coordenação de setor* e *Colaborador*.
+
+**Regras adicionais (codificadas, não configuráveis):** ninguém decide a própria solicitação nem analisa a própria ocorrência; ninguém atribui papel a si mesmo; o funcionário não aprova o próprio espelho; a aprovação de espelho exige a manifestação prévia do titular (dupla conferência); operações ★ e assinaturas exigem reautenticação. A Oficial pode decidir pedidos próprios, e isso fica registrado expressamente na auditoria.

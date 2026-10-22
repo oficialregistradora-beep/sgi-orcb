@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { Ctx } from '../context.ts';
 import { AppError, publicMessage } from '../errors.ts';
 import { getSessionState, sameOrigin } from './session.ts';
+import { rateLimit } from '../ratelimit.ts';
 
 /** Envoltório das rotas /api/v1: sessão com MFA, verificação de origem em escrita e erros padronizados. */
 export async function apiHandler(req: Request, fn: (ctx: Ctx) => Promise<unknown>): Promise<NextResponse> {
@@ -11,6 +12,9 @@ export async function apiHandler(req: Request, fn: (ctx: Ctx) => Promise<unknown
   const st = await getSessionState();
   if (st.status !== 'AUTENTICADO') {
     return NextResponse.json({ erro: 'NAO_AUTENTICADO', mensagem: 'Autenticação necessária.' }, { status: 401 });
+  }
+  if (!rateLimit(`api:${st.ctx.principal.userId}`, 120, 60_000)) {
+    return NextResponse.json({ erro: 'LIMITE', mensagem: 'Muitas requisições. Aguarde um minuto.' }, { status: 429 });
   }
   try {
     const data = await fn(st.ctx);
