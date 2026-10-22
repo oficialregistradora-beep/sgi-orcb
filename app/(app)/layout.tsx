@@ -26,6 +26,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           { href: '/documentos-pessoais', label: 'Meus documentos', icon: <I.IconDoc /> },
         ] : []),
         { href: '/solicitacoes', label: 'Solicitações', icon: <I.IconInbox /> },
+        ...(p.employeeId || can(p, 'ferias.aprovar') ? [{ href: '/ferias', label: 'Férias', icon: <I.IconCalendar /> }] : []),
+        ...(can(p, 'plantoes.ver') ? [{ href: '/plantoes', label: 'Plantões RCPN', icon: <I.IconClock /> }] : []),
       ],
     },
     {
@@ -34,7 +36,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ...(can(p, 'banco.ocorrencias.tratar') ? [{ href: '/ocorrencias', label: 'Ocorrências', icon: <I.IconAlert /> }] : []),
         ...(teamScope && (teamScope.all || teamScope.sectorIds.length) ? [{ href: '/equipe', label: 'Equipe', icon: <I.IconUsers /> }] : []),
         ...(can(p, 'banco.ocorrencias.tratar') ? [{ href: '/relatorios', label: 'Relatórios', icon: <I.IconChart /> }] : []),
-        { href: '#plantoes', label: 'Plantões RCPN', icon: <I.IconCalendar />, planned: 'Fase 2b' },
         { href: '#documental', label: 'Gestão documental', icon: <I.IconFolder />, planned: 'Fase 3' },
         { href: '#projetos', label: 'Tarefas e projetos', icon: <I.IconKanban />, planned: 'Fase 4' },
         { href: '#financeiro', label: 'Financeiro', icon: <I.IconWallet />, planned: 'Fase 4' },

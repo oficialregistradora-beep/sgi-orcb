@@ -1,4 +1,4 @@
-# Especificação funcional — Fases 1 e 2 (implementadas)
+# Especificação funcional — Fases 1, 2 e 2b (implementadas)
 
 ## F1. Acesso
 - F1.1 Login exclusivo com conta do domínio institucional. Somente usuários pré-cadastrados e ativos entram; tentativas negadas são auditadas.
@@ -37,5 +37,26 @@ Admissão (cadastro + usuário + papel básico + jornada + histórico, numa tran
 ## F6. Administração
 Setores, cargos, jornadas, feriados, parâmetros, papéis, matriz de permissões, atribuições com vigência, usuários (criar, suspender, revogar, redefinir MFA) e auditoria com verificação da cadeia.
 
-## Pendentes nas Fases 1–2
-Checklists digitais de admissão e desligamento (uniformes, equipamentos, termos), fluxo de solicitação de férias pelo funcionário, plantões e sobreaviso RCPN (Fase 2b), avaliações e treinamentos (Fase 5).
+## F7. Plantões e sobreaviso RCPN (Fase 2b)
+- F7.1 Escala de sábados, domingos e feriados (08h–18h, parametrizável), gerada em rodízio entre os participantes escolhidos. A geração pula férias e afastamentos, define substituto distinto do responsável e não sobrescreve plantões existentes. Também há plantão avulso.
+- F7.2 Substituição e reatribuição com motivo (auditadas e notificadas). Cancelamento só sem chamados; plantões nunca são excluídos.
+- F7.3 Registro de chamados pelo plantonista, pelo substituto ou pela gestão: horário do chamado, da resposta e do comparecimento, e descrição do serviço **sem dados pessoais dos usuários**. Registro equivocado é anulado com motivo e preservado.
+- F7.4 Fechamento pela gestão (nunca pelo próprio plantonista): o **sobreaviso** (duração menos o efetivo dentro da janela) e o **trabalho efetivo** (união dos comparecimentos, inclusive após o horário) são congelados. O efetivo vai para o banco de horas (crédito único, com acordo vigente) ou para pagamento. Plantão fechado é imutável.
+- F7.5 O dia de plantão do plantonista não gera hora extra na apuração comum (alerta "dia de plantão"), o que evita dupla contagem.
+- F7.6 Relatório mensal com sobreaviso, efetivo no banco e efetivo pago em colunas **separadas**. Valores estimados (1/3 da hora no sobreaviso; adicional no efetivo pago) aparecem apenas com permissão de custos. Gratificações nunca compensam o sobreaviso automaticamente.
+- Limitação: o efetivo é creditado ao responsável do plantão. Se o substituto atender, a gestão deve reatribuir antes do fechamento.
+
+## F8. Férias (Fase 2b)
+- F8.1 Períodos aquisitivo e concessivo calculados desde a admissão; saldo por período; situação (em aquisição, disponível, a vencer em 60 dias, vencidas — dobra do art. 137, quitado).
+- F8.2 Pedido pelo funcionário com as regras do art. 134: mínimo de 5 dias; até 3 períodos, um deles com 14 dias ou mais; o terceiro período esgota o saldo; saldo restante não pode ficar entre 1 e 4 dias; início vedado nos 2 dias anteriores a domingo ou feriado; abono pecuniário de até 10 dias, uma vez por período. Só se usa período aquisitivo **completo**, sempre o mais antigo com saldo. Pedidos pendentes reservam saldo.
+- F8.3 Avisos (não bloqueiam): comunicação com menos de 30 dias (art. 135), gozo após o período concessivo (dobra) e conferência manual de faltas do art. 130.
+- F8.4 A aprovação (por quem tem `ferias.aprovar`, nunca o próprio funcionário) revalida tudo, lança a ausência abonada e registra o consumo do período. O cancelamento só é possível antes do início, e restitui o saldo.
+- F8.5 Painel da equipe com programação e alertas de vencimento.
+
+## F9. Checklists e itens entregues (Fase 2b)
+- F9.1 A admissão e o desligamento abrem automaticamente checklists a partir de modelos, com prazos relativos à data do evento. Itens verificáveis são concluídos pelo sistema (jornada definida, acordo cadastrado, autenticador ativo, acessos revogados, itens devolvidos). "Não se aplica" exige justificativa.
+- F9.2 Itens entregues (uniforme, equipamento, crachá, chave) geram um **termo de entrega** com hash para ciência eletrônica do funcionário. A devolução atualiza o checklist de desligamento.
+- F9.3 A exigência da segunda etapa (aprovação) é configurável por tipo documental em Configurações → Parâmetros (`documentos.aprovacao.*`).
+
+## Pendentes
+Modelos de checklist editáveis pela interface (hoje vêm da migration), avaliações de desempenho e treinamentos (Fase 5), redução automática de férias pelo art. 130 (depende de J-13).

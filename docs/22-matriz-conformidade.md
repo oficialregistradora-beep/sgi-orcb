@@ -9,6 +9,8 @@
 | CLT arts. 66 e 71 | Interjornada e intrajornada | Alertas, sem bloqueio | Dependente de validação jurídica (J-12) |
 | CLT art. 74 §2º; Portaria MTP 671/2021 | Controle de jornada | Controle administrativo interno; não é REP-P | Dependente de validação jurídica (J-01) |
 | CCT da categoria (SC) | Adicionais, banco coletivo, sobreaviso | Parâmetros configuráveis; nenhum valor presumido | Pendente (P-04) |
+| CLT art. 244 §2º (analogia); Súmula 428 TST; CCT | Sobreaviso em plantões | Cálculos separados de sobreaviso (1/3, parametrizável), efetivo e banco; gratificação não compensa automaticamente | Dependente de validação jurídica (J-07) |
+| CLT arts. 129–145 | Férias | Períodos, fracionamento, abono, vedação de início, avisos de 30 dias e de dobra | Implementado; redução do art. 130 manual (J-13); regras de CCT (J-14) |
 | Lei 14.063/2020, art. 4º | Assinatura eletrônica simples | Atos administrativos internos, com evidências e hash | Dependente de validação jurídica (J-08) |
 | Lei 13.709/2018 (LGPD) | Dados de funcionários | Minimização, controle de acesso, cifragem, auditoria de consulta, inventário inicial | Pendente: RIPD, bases legais, encarregado (J-10, P-06) |
 | Lei 8.935/1994; Lei 6.015/1973 | Atos registrais | Fora do escopo: o sistema não pratica atos nem qualifica títulos | Atendido por exclusão de escopo |

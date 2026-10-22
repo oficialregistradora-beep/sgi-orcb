@@ -8,6 +8,7 @@ import { fmtDate, fmtDateTime } from '@/ui/format.ts';
 import { PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { holidayAction, jobTitleAction, removeHolidayAction, scheduleAction, sectorAction, settingAction } from '../../actions/admin.ts';
+import { booleanSettingAction } from '../../actions/phase2b.ts';
 import { closePeriodAction, reopenPeriodAction } from '../../actions/bank.ts';
 
 export const dynamic = 'force-dynamic';
@@ -176,6 +177,11 @@ async function Params({ ctx }: { ctx: Awaited<ReturnType<typeof requirePageCtx>>
                 <ActionForm action={settingAction} submitLabel="Salvar" submitClass="btn btn-sm" inline>
                   <input type="hidden" name="key" value={r.key} />
                   <input type="number" name="value" defaultValue={r.value} className="input" style={{ width: 110 }} aria-label={r.key} />
+                </ActionForm>
+              ) : typeof r.value === 'boolean' ? (
+                <ActionForm action={booleanSettingAction} submitLabel="Salvar" submitClass="btn btn-sm" inline>
+                  <input type="hidden" name="key" value={r.key} />
+                  <select name="value" className="input" defaultValue={String(r.value)} aria-label={r.key} style={{ width: 110 }}><option value="true">Sim</option><option value="false">Não</option></select>
                 </ActionForm>
               ) : <span className="small">{String(r.value)}</span>}</td>
               <td className="small muted">{fmtDateTime(r.updated_at)}</td>

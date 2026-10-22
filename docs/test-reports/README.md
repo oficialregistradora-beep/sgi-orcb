@@ -48,3 +48,41 @@ Observação metodológica: nos primeiros testes de imutabilidade da auditoria, 
 - [Rodada 2 — Segurança e integração](rodada-2-seguranca.md)
 - [Rodada 3 — Simulação operacional](rodada-3-simulacao.md) · métricas: [rodada3-metricas.json](rodada3-metricas.json)
 - Capturas de tela da execução ponta a ponta: [telas/](telas/)
+
+
+---
+
+# Fase 2b — execução de 22/10/2026 (branch `fase-2b`)
+
+| Conjunto | Resultado |
+|---|---|
+| Unitário (inclui 18 casos novos de férias, plantão e rodízio) | 72/72 |
+| Rodada 1 — Funcional (inclui `phase2b.test.ts`, 13 casos) | 43/43 |
+| Rodada 2 — Segurança (inclui `phase2b-security.test.ts`, 5 casos) | 30/30 · backup/restauração: contagens idênticas em 41 tabelas, cadeia íntegra |
+| Rodada 3 — Simulação (inclui `phase2b-cycle.test.ts`: 55 plantões e 60 chamados em 6 meses + 2 anos de férias) | 10/10 · métricas em [rodada3-fase2b-metricas.json](rodada3-fase2b-metricas.json) |
+| Ponta a ponta (Next.js 16.4.2) | 26/26 |
+| **Total automatizado** | **155/155 + 26/26** |
+
+```
+✓ tests/simulation/six-months.test.ts (7 tests) 5317ms
+ ✓ tests/integration/round1/journey-bank.test.ts (18 tests) 1170ms
+ ✓ tests/integration/round1/phase2b.test.ts (13 tests) 1052ms
+ ✓ tests/simulation/phase2b-cycle.test.ts (3 tests) 1209ms
+ ✓ tests/integration/round2/security.test.ts (25 tests) 766ms
+ ✓ tests/integration/round2/phase2b-security.test.ts (5 tests) 543ms
+ ✓ tests/integration/round1/auth-users.test.ts (12 tests) 525ms
+ ✓ tests/unit/security-primitives.test.ts (17 tests) 18ms
+ ✓ tests/unit/vacation-oncall.test.ts (18 tests) 16ms
+ ✓ tests/unit/journey.test.ts (22 tests) 10ms
+ ✓ tests/unit/hourBank.test.ts (15 tests) 9ms
+ Test Files  11 passed (11)
+      Tests  155 passed (155)
+```
+
+## Defeitos encontrados e corrigidos na Fase 2b
+| # | Origem | Defeito | Correção |
+|---|---|---|---|
+| D10 | Unit | O rodízio podia designar a mesma pessoa como responsável e substituta (cursor alterado durante a busca) | Função reescrita sem mutação durante a busca; invariante testada |
+| D11 | Unit | Um terceiro período de férias podia deixar saldo impossível de gozar | Regra: o terceiro período deve esgotar o saldo |
+| D12 | Revisão de teste | O caso "plantões preservados" era tautológico e apagava dados; revelou que plantões e chamados não tinham proteção no banco | Triggers: plantão fechado imutável, exclusões bloqueadas, chamados só anuláveis; teste significativo |
+| D13 | Build | Next.js 16.4.0 com vulnerabilidades críticas publicadas | Atualizado para 16.4.2; `npm audit`: 0 vulnerabilidades; reteste completo |

@@ -14,6 +14,8 @@ import {
   absenceAction, agreementAction, assignScheduleAction, cancelAbsenceAction, revokeAgreementAction, salaryAction, sensitiveAction,
   terminateAction, updateEmployeeAction,
 } from '../../../actions/people.ts';
+import { checklistItemAction, deliverItemAction, returnItemAction } from '../../../actions/phase2b.ts';
+import { listChecklists, listEmployeeItems } from '@/server/modules/checklists.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Funcionário' };
@@ -36,6 +38,8 @@ export default async function FuncionarioPage({ params, searchParams }: { params
   const sensitive = sp.sensiveis === '1' && can(p, 'pessoas.sensiveis.ver', res) ? await getSensitiveData(ctx, id) : null;
   const salaries = sp.salario === '1' && can(p, 'pessoas.salario.ver', res) ? await listSalaryHistory(ctx, id) : null;
   const today = todayLocal();
+  const [checklists, items] = await Promise.all([listChecklists(ctx, id), listEmployeeItems(ctx, id)]);
+  const canEditPeople = can(p, 'pessoas.editar', res);
 
   return (
     <div className="stack">
@@ -181,6 +185,70 @@ export default async function FuncionarioPage({ params, searchParams }: { params
               <label className="check" style={{ marginTop: 10 }}><input type="checkbox" name="countsAsWorked" defaultChecked /> Ausência abonada (sem diferença negativa)</label>
             </ActionForm>
           ) : null}
+        </div>
+      </div>
+
+      <div className="grid grid-2">
+        <div className="card">
+          <div className="card-head"><h2>Checklists</h2><p>Admissão e desligamento, com prazos</p></div>
+          <div className="card-body stack">
+            {checklists.length ? checklists.map((cl) => (
+              <details key={cl.id} className="disclosure" open={cl.status === 'ABERTO'}>
+                <summary className="row-between"><strong>{label(cl.kind)} — {fmtDate(cl.reference_date)}</strong><span className={statusTone(cl.status)}>{label(cl.status)} · {cl.items.filter((i) => i.status !== 'PENDENTE').length}/{cl.items.length}</span></summary>
+                <table className="table"><tbody>{cl.items.map((it) => (
+                  <tr key={it.id} className={it.status !== 'PENDENTE' ? 'row-muted' : undefined}>
+                    <td className="small">
+                      <strong>{it.title}</strong>{it.description ? <div className="muted">{it.description}</div> : null}
+                      {it.notes ? <div>{it.notes}</div> : null}
+                      {it.done_at ? <div className="muted">{label(it.status)} {it.done_by_name ? `por ${it.done_by_name}` : 'pelo sistema'} em {fmtDateTime(it.done_at)}</div> : null}
+                    </td>
+                    <td className={`small nowrap ${it.overdue ? 'neg' : ''}`}>{it.due_date ? `até ${fmtDate(it.due_date)}` : ''}</td>
+                    <td style={{ minWidth: 180 }}>{canEditPeople ? (
+                      <ActionForm action={checklistItemAction} submitLabel="OK" submitClass="btn btn-sm" inline>
+                        <input type="hidden" name="employeeId" value={id} /><input type="hidden" name="itemId" value={it.id} />
+                        <select name="status" className="input" defaultValue={it.status} aria-label="Situação" style={{ width: 130 }}>
+                          <option value="PENDENTE">Pendente</option><option value="CONCLUIDO">Concluído</option><option value="NAO_APLICAVEL">Não se aplica</option>
+                        </select>
+                        <input name="notes" className="input" placeholder="Obs." aria-label="Observação" style={{ width: 110 }} />
+                      </ActionForm>
+                    ) : <span className={statusTone(it.status)}>{label(it.status)}</span>}</td>
+                  </tr>
+                ))}</tbody></table>
+              </details>
+            )) : <Empty>Nenhum checklist (cadastros anteriores à Fase 2b não têm checklist de admissão).</Empty>}
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-head"><h2>Itens entregues</h2><p>Uniformes, equipamentos, crachás e chaves — com termo de entrega</p></div>
+          <div className="card-body stack">
+            {items.length ? (
+              <table className="table"><thead><tr><th>Item</th><th>Entrega</th><th>Devolução</th></tr></thead>
+                <tbody>{items.map((it) => (
+                  <tr key={it.id} className={it.returned_at ? 'row-muted' : undefined}>
+                    <td className="small">{label(it.kind)}: {it.quantity}× {it.description}</td>
+                    <td className="small nowrap">{fmtDate(it.delivered_at)}</td>
+                    <td className="small">{it.returned_at ? fmtDate(it.returned_at) : canEditPeople ? (
+                      <ActionForm action={returnItemAction} submitLabel="Devolvido" submitClass="btn btn-sm" inline>
+                        <input type="hidden" name="employeeId" value={id} /><input type="hidden" name="itemId" value={it.id} />
+                        <input type="date" name="returnedAt" className="input" defaultValue={today} aria-label="Data da devolução" />
+                      </ActionForm>
+                    ) : 'Em posse'}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            ) : <Empty>Nenhum item entregue.</Empty>}
+            {active && canEditPeople ? (
+              <ActionForm action={deliverItemAction} submitLabel="Registrar entrega" resetOnSuccess>
+                <input type="hidden" name="employeeId" value={id} />
+                <div className="form-grid">
+                  <div className="field"><label htmlFor="it-k">Tipo</label><select id="it-k" name="kind" className="input">{['UNIFORME', 'EQUIPAMENTO', 'CRACHA', 'CHAVE', 'OUTRO'].map((k) => <option key={k} value={k}>{label(k)}</option>)}</select></div>
+                  <div className="field"><label htmlFor="it-d">Descrição</label><input id="it-d" name="description" className="input" required /></div>
+                  <div className="field"><label htmlFor="it-q">Quantidade</label><input id="it-q" name="quantity" type="number" min="1" defaultValue="1" className="input" /></div>
+                  <div className="field"><label htmlFor="it-e">Data</label><input id="it-e" name="deliveredAt" type="date" className="input" defaultValue={today} max={today} /></div>
+                </div>
+              </ActionForm>
+            ) : null}
+          </div>
         </div>
       </div>
 

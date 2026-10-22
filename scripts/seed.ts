@@ -95,6 +95,31 @@ for (const p of people) {
   console.log(`✓ ${p.name} (${p.local}@${cfg.workspaceDomain})`);
 }
 
+// Plantões RCPN fictícios das últimas 6 semanas (rodízio), com alguns chamados — deixados abertos para o roteiro de fechamento.
+const rotation = await query<{ id: string }>(db, `SELECT e.id FROM employees e JOIN users u ON u.id = e.user_id
+  WHERE split_part(u.email, '@', 1) IN ('eduarda.lima', 'diego.alves', 'fabio.nunes') ORDER BY e.full_name`);
+let k = 0;
+for (let d = addDays(today, -42); d < today; d = addDays(d, 1)) {
+  const wd = weekdayOf(d);
+  if (wd !== 0 && wd !== 6 && !holidays.has(d)) continue;
+  const resp = rotation[k % rotation.length]!.id;
+  const sub = rotation[(k + 1) % rotation.length]!.id;
+  k++;
+  const shift = await id(`INSERT INTO oncall_shifts (shift_date, starts_at, ends_at, employee_id, substitute_employee_id, created_by)
+                          VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`, [d, localToInstant(d, '08:00'), localToInstant(d, '18:00'), resp, sub, ownerId]);
+  if (rand() < 0.5) {
+    const h = 9 + Math.floor(rand() * 6);
+    const attended = rand() < 0.6;
+    await query(db, `INSERT INTO oncall_calls (shift_id, called_at, responded_at, attended, arrival_at, departure_at, description, registered_by)
+                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [
+      shift, localToInstant(d, formatHHMM(h * 60)), localToInstant(d, formatHHMM(h * 60 + 5)), attended,
+      attended ? localToInstant(d, formatHHMM(h * 60 + 30)) : null, attended ? localToInstant(d, formatHHMM(h * 60 + 90)) : null,
+      attended ? 'Registro de óbito (fictício)' : 'Orientação por telefone (fictício)', ownerId,
+    ]);
+  }
+}
+console.log(`✓ ${k} plantões RCPN fictícios`);
+
 await query(db, `INSERT INTO audit_log (actor_user_id, action, entity_type, summary, prev_hash, hash) VALUES ($1,'CARGA_HOMOLOGACAO','sistema','Carga de dados fictícios de homologação','','')`, [ownerId]);
 console.log('Apurando jornadas…');
 await ensureProcessedAll();

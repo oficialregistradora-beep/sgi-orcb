@@ -1,0 +1,130 @@
+import Link from 'next/link';
+import { requirePageCtx } from '@/server/web/session.ts';
+import { getVacationOverview, teamVacations } from '@/server/modules/vacation.ts';
+import { describePayload } from '@/server/modules/requests.ts';
+import { addDays, todayLocal } from '@/domain/time.ts';
+import { fmtDate, fmtDateTime, label, statusTone } from '@/ui/format.ts';
+import { Empty, PageHead } from '@/ui/Stat.tsx';
+import { ActionForm } from '@/ui/ActionForm.tsx';
+import { cancelVacationAction, requestVacationAction } from '../../actions/phase2b.ts';
+
+export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Férias' };
+
+export default async function FeriasPage({ searchParams }: { searchParams: Promise<{ funcionario?: string }> }) {
+  const ctx = await requirePageCtx();
+  const sp = await searchParams;
+  const employeeId = sp.funcionario ?? ctx.principal.employeeId;
+  const own = employeeId === ctx.principal.employeeId;
+  const overview = employeeId ? await getVacationOverview(ctx, employeeId) : null;
+  const team = await teamVacations(ctx);
+  const today = todayLocal();
+
+  return (
+    <div className="stack">
+      <PageHead
+        title={own ? 'Minhas férias' : `Férias — ${overview?.employee.full_name ?? ''}`}
+        subtitle="Períodos aquisitivo e concessivo, fracionamento (até 3 períodos, um com 14 dias ou mais) e abono pecuniário — CLT arts. 129 a 145."
+      />
+
+      {overview ? (
+        <div className="grid grid-2">
+          <div className="card">
+            <div className="card-head"><h2>Períodos aquisitivos</h2><p>Admissão em {fmtDate(overview.employee.admission_date)}</p></div>
+            <div className="card-body flush table-wrap">
+              <table className="table">
+                <thead><tr><th>#</th><th>Aquisição</th><th>Gozar até</th><th className="num">Gozados</th><th className="num">Abono</th><th className="num">Saldo</th><th>Situação</th></tr></thead>
+                <tbody>{overview.periods.map((p) => (
+                  <tr key={p.start}>
+                    <td>{p.index}</td>
+                    <td className="small nowrap">{fmtDate(p.start)} – {fmtDate(p.end)}</td>
+                    <td className="small nowrap">{fmtDate(p.concessiveEnd)}</td>
+                    <td className="num">{p.enjoyed}</td><td className="num">{p.sold}</td><td className="num">{p.remaining}</td>
+                    <td><span className={statusTone(p.status)}>{label(p.status)}</span></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+            <div className="card-foot small muted">Faltas injustificadas no período aquisitivo podem reduzir a duração das férias (art. 130): conferência manual (J-13).</div>
+          </div>
+          <div className="card">
+            <div className="card-head"><h2>Solicitar férias</h2><p>Comunicação com 30 dias de antecedência (art. 135)</p></div>
+            <div className="card-body">
+              <ActionForm action={requestVacationAction} submitLabel="Enviar solicitação" resetOnSuccess>
+                {!own ? <input type="hidden" name="employeeId" value={employeeId!} /> : null}
+                <div className="form-grid">
+                  <div className="field"><label htmlFor="fv-s">Início</label><input id="fv-s" name="start" type="date" className="input" min={addDays(today, 1)} required /></div>
+                  <div className="field"><label htmlFor="fv-e">Fim</label><input id="fv-e" name="end" type="date" className="input" min={addDays(today, 1)} required /></div>
+                  <div className="field"><label htmlFor="fv-a">Abono pecuniário (dias)</label><input id="fv-a" name="soldDays" type="number" min="0" max="10" defaultValue="0" className="input" /></div>
+                </div>
+                <div className="field" style={{ marginTop: 10 }}><label htmlFor="fv-n">Observação</label><input id="fv-n" name="notes" className="input" /></div>
+                <p className="small muted" style={{ marginTop: 8 }}>Não é permitido iniciar nos dois dias que antecedem feriado ou domingo. O saldo restante não pode ficar abaixo de 5 dias.</p>
+              </ActionForm>
+            </div>
+          </div>
+        </div>
+      ) : <div className="alert alert-info">Seu usuário não está vinculado a um cadastro funcional.</div>}
+
+      {overview ? (
+        <div className="card">
+          <div className="card-head"><h2>Solicitações</h2></div>
+          <div className="card-body flush table-wrap">
+            {overview.requests.length ? (
+              <table className="table">
+                <thead><tr><th>Pedido em</th><th>Período</th><th>Situação</th><th>Observação</th></tr></thead>
+                <tbody>{overview.requests.map((r) => (
+                  <tr key={r.id}>
+                    <td className="small">{fmtDateTime(r.created_at)}</td>
+                    <td className="small">{describePayload('FERIAS', r.payload)}</td>
+                    <td><span className={statusTone(r.cancelled ? 'CANCELADA' : r.status)}>{label(r.cancelled ? 'CANCELADA' : r.status)}</span></td>
+                    <td className="small">{r.decision_notes ?? ((r.payload.warnings as string[] | undefined)?.filter((w) => !w.includes('art. 130')).join(' ') || '—')}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            ) : <Empty>Nenhuma solicitação de férias.</Empty>}
+          </div>
+        </div>
+      ) : null}
+
+      {team ? (
+        <div className="grid grid-2">
+          <div className="card">
+            <div className="card-head"><h2>Alertas de vencimento</h2><p>Saldos a gozar perto do fim do período concessivo ou vencidos</p></div>
+            <div className="card-body flush table-wrap">
+              {team.alerts.length ? (
+                <table className="table"><thead><tr><th>Funcionário</th><th>Período</th><th className="num">Saldo</th><th>Gozar até</th><th>Situação</th></tr></thead>
+                  <tbody>{team.alerts.map((a) => (
+                    <tr key={`${a.employeeId}${a.period}`}><td><Link href={`/ferias?funcionario=${a.employeeId}`}>{a.name}</Link></td><td>{a.period}</td><td className="num">{a.remaining}</td><td>{fmtDate(a.concessiveEnd)}</td><td><span className={statusTone(a.status)}>{label(a.status)}</span></td></tr>
+                  ))}</tbody>
+                </table>
+              ) : <Empty>Nenhum período a vencer.</Empty>}
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-head"><h2>Programação de férias</h2></div>
+            <div className="card-body flush table-wrap">
+              {team.scheduled.length ? (
+                <table className="table"><thead><tr><th>Funcionário</th><th>Período</th><th className="num">Dias</th>{team.canApprove ? <th></th> : null}</tr></thead>
+                  <tbody>{team.scheduled.map((s) => (
+                    <tr key={s.request_id}>
+                      <td>{s.full_name}</td><td className="nowrap small">{fmtDate(s.start_date)} – {fmtDate(s.end_date)}</td><td className="num">{s.enjoyed_days}{s.sold_days ? ` + ${s.sold_days} abono` : ''}</td>
+                      {team.canApprove ? <td>{s.start_date > today ? (
+                        <details className="disclosure small"><summary><a>Cancelar</a></summary>
+                          <ActionForm action={cancelVacationAction} submitLabel="Confirmar cancelamento" submitClass="btn btn-sm btn-danger">
+                            <input type="hidden" name="requestId" value={s.request_id} />
+                            <input name="reason" className="input" placeholder="Motivo" aria-label="Motivo" required minLength={5} />
+                          </ActionForm>
+                        </details>
+                      ) : null}</td> : null}
+                    </tr>
+                  ))}</tbody>
+                </table>
+              ) : <Empty>Nenhuma férias programada.</Empty>}
+            </div>
+            <div className="card-foot small">Aprovações em <Link href="/solicitacoes?aba=aprovar">Solicitações → Para decidir</Link>.</div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}

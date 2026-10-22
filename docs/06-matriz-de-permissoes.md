@@ -27,6 +27,12 @@ Configurável em **Usuários e permissões → Matriz** sem alterar código. A O
 | banco.periodo.fechar ★ | T | — | — | — |
 | banco.custos.ver ★ | T | — | — | — |
 | espelho.aprovar | T | T | S | — |
+| plantoes.ver | T | T | S | P (responsável ou substituto) |
+| plantoes.registrar | T | T | — | P |
+| plantoes.gerenciar | T | T | — | — |
+| plantoes.fechar | T | T | — | — |
+| ferias.ver | T | T | S | P |
+| ferias.aprovar | T | T | — | — |
 
 ★ permissão sensível. Papéis se acumulam: a Escrevente Substituta recebe *Coordenação de setor* e *Colaborador*.
 

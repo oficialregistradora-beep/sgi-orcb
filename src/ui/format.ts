@@ -57,6 +57,10 @@ export const LABELS: Record<string, string> = {
   PROPRIO: 'Próprio', SETOR: 'Setor', TODOS: 'Todos',
   INDIVIDUAL_ESCRITO: 'Acordo individual escrito', COLETIVO: 'Acordo/convenção coletiva',
   CORRECAO_PONTO: 'Correção de marcação', COMPENSACAO: 'Compensação', AUTORIZACAO_EXTRA: 'Autorização de hora extra',
+  PLANEJADO: 'Planejado', REALIZADO: 'Realizado', BANCO: 'Banco de horas',
+  EM_AQUISICAO: 'Em aquisição', QUITADO: 'Quitado', VENCIDAS: 'Vencidas — pagamento em dobro (art. 137)', ABERTO: 'Aberto', CONCLUIDO: 'Concluído', NAO_APLICAVEL: 'Não se aplica',
+  UNIFORME: 'Uniforme', EQUIPAMENTO: 'Equipamento', CRACHA: 'Crachá', CHAVE: 'Chave', ADMISSAO: 'Admissão', DESLIGAMENTO: 'Desligamento',
+  TERMO_ENTREGA: 'Termo de entrega', ESPELHO: 'Espelho de frequência', EXTRATO_BANCO: 'Extrato do banco',
   FOLGA_INTEGRAL: 'Folga integral', COMPENSACAO_PARCIAL: 'Compensação parcial', ENTRADA_POSTERIOR: 'Entrada posterior', SAIDA_ANTECIPADA: 'Saída antecipada',
 };
 
@@ -66,8 +70,8 @@ export function label(code: string | null | undefined): string {
 }
 
 export function statusTone(code: string): string {
-  if (['APROVADA', 'RESOLVIDA', 'ATIVO', 'DISPONIVEL', 'CIENCIA', 'APROVACAO', 'CONCORDANCIA'].includes(code)) return 'tag tag-ok';
-  if (['PENDENTE', 'A_VENCER', 'AFASTADO', 'SUSPENSO'].includes(code)) return 'tag tag-warn';
-  if (['REJEITADA', 'VENCIDO', 'DESLIGADO', 'REVOGADO', 'CONTESTACAO'].includes(code)) return 'tag tag-danger';
+  if (['APROVADA', 'RESOLVIDA', 'ATIVO', 'DISPONIVEL', 'CIENCIA', 'APROVACAO', 'CONCORDANCIA', 'REALIZADO', 'QUITADO', 'CONCLUIDO'].includes(code)) return 'tag tag-ok';
+  if (['PENDENTE', 'A_VENCER', 'AFASTADO', 'SUSPENSO', 'PLANEJADO', 'ABERTO'].includes(code)) return 'tag tag-warn';
+  if (['REJEITADA', 'VENCIDO', 'VENCIDAS', 'DESLIGADO', 'REVOGADO', 'CONTESTACAO', 'CANCELADO'].includes(code)) return 'tag tag-danger';
   return 'tag';
 }

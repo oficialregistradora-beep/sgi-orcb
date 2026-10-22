@@ -62,6 +62,24 @@ function EspelhoView({ c }: { c: Espelho }) {
   );
 }
 
+type Termo = {
+  funcionario: Espelho['funcionario']; declaracao: string;
+  item: { tipo: string; descricao: string; quantidade: number; dataEntrega: string; observacao: string | null };
+};
+
+function TermoView({ c }: { c: Termo }) {
+  return (
+    <div className="doc">
+      <header className="stack" style={{ gap: 4 }}>
+        <strong>{c.funcionario.nome}</strong>
+        <span className="small muted">Matrícula {c.funcionario.matricula} · {c.funcionario.cargo} · {c.funcionario.setor}</span>
+      </header>
+      <p>{label(c.item.tipo)}: <strong>{c.item.quantidade}× {c.item.descricao}</strong>, entregue em {fmtDate(c.item.dataEntrega)}{c.item.observacao ? ` (${c.item.observacao})` : ''}.</p>
+      <p className="small" style={{ marginTop: 8 }}>{c.declaracao}</p>
+    </div>
+  );
+}
+
 function ExtratoView({ c }: { c: Extrato }) {
   const p = c.posicaoAoFinalDaCompetencia;
   return (
@@ -119,7 +137,9 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
             <span className={integrity?.contentOk ? 'tag tag-ok' : 'tag tag-danger'}>{integrity?.contentOk ? 'Integridade verificada' : 'FALHA DE INTEGRIDADE'}</span>
           </div>
           <div className="card-body stack">
-            {version.kind === 'ESPELHO' ? <EspelhoView c={version.content as unknown as Espelho} /> : <ExtratoView c={version.content as unknown as Extrato} />}
+            {version.kind === 'ESPELHO' ? <EspelhoView c={version.content as unknown as Espelho} />
+              : version.kind === 'EXTRATO_BANCO' ? <ExtratoView c={version.content as unknown as Extrato} />
+              : <TermoView c={version.content as unknown as Termo} />}
             <div className="small muted">SHA-256: <span className="mono hash">{version.contentSha256}</span></div>
             <div>
               <h3>Manifestações</h3>
@@ -150,7 +170,7 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
                 </ActionForm>
               </div></div>
             ) : null}
-            {version.isLatest && !isOwnerOfDoc && ownerAck && !approved && can(ctx.principal, 'espelho.aprovar', { employeeId: version.ownerEmployeeId, sectorId: version.sectorId }) ? (
+            {version.requiresApproval && version.isLatest && !isOwnerOfDoc && ownerAck && !approved && can(ctx.principal, 'espelho.aprovar', { employeeId: version.ownerEmployeeId, sectorId: version.sectorId }) ? (
               <div className="card"><div className="card-body">
                 <ActionForm action={signAction} submitLabel="Aprovar conferência">
                   <input type="hidden" name="versionId" value={version.versionId} />
@@ -179,7 +199,7 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
                         <td><Link href={`/documentos-pessoais?doc=${d.version_id}`}>{d.title}</Link></td>
                         <td>v{d.version_number}</td>
                         <td>{d.employee_ack ? <span className={statusTone(d.employee_ack)}>{label(d.employee_ack)}</span> : <span className="tag tag-warn">Pendente</span>}</td>
-                        <td>{d.approved ? <span className="tag tag-ok">Aprovado</span> : <span className="tag">Aguardando</span>}</td>
+                        <td>{d.reference_type === 'TERMO_ENTREGA' && !d.approved ? <span className="tag">Não exigida</span> : d.approved ? <span className="tag tag-ok">Aprovado</span> : <span className="tag">Aguardando</span>}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -194,7 +214,7 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
                 <ActionForm action={prepareDocumentAction} submitLabel="Gerar">
                   <div className="form-grid">
                     <div className="field"><label htmlFor="pd-k">Tipo</label>
-                      <select id="pd-k" name="kind" className="input">{Object.entries(DOC_KINDS).map(([k, v]) => <option key={k} value={k}>{v.title}</option>)}</select>
+                      <select id="pd-k" name="kind" className="input">{Object.entries(DOC_KINDS).filter(([k]) => k !== 'TERMO_ENTREGA').map(([k, v]) => <option key={k} value={k}>{v.title}</option>)}</select>
                     </div>
                     <div className="field"><label htmlFor="pd-p">Competência</label><input id="pd-p" name="period" type="month" className="input" defaultValue={lastMonth} max={lastMonth} required /></div>
                   </div>

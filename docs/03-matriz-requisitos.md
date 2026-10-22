@@ -12,7 +12,7 @@
 | §6 Reautenticação em operações críticas | `requireStepUp` | "operações críticas exigem reautenticação" | Implementado · Testado |
 | §7 Painéis por perfil | `dashboard.ts`, `/painel` | E2E | Implementado · Testado (E2E) |
 | §8.1 Cadastro funcional e sensíveis | `people.ts` | rodadas 1 e 2 | Implementado · Testado |
-| §8.2 Admissão / desligamento | `createEmployee`, `terminateEmployee` | rodadas 1, 2, 3 | Implementado (checklists: Pendente) |
+| §8.2 Admissão / desligamento com checklists, uniformes e equipamentos | `people.ts`, `checklists.ts` | phase2b (rodadas 1 e 2) | Implementado · Testado |
 | §8.3–8.4 Avaliações e treinamentos | — | — | Planejado (Fase 5) |
 | §9 Marcação com horário do servidor | trigger `fn_punch_before_insert` | rodada 2 | Implementado · Testado |
 | §9 Correção preservando o original | `requests.ts`, `punch_annulments` | rodada 1 | Implementado · Testado |
@@ -23,7 +23,9 @@
 | §11 Banco de horas completo | `hourbank.ts`, `ledger.ts`, `domain/hourBank.ts` | unit + rodadas 1–3 | Implementado · Testado · parâmetros dependentes de validação jurídica |
 | §11.5 Custo estimado | `estimateCost` | unit | Implementado · Testado |
 | §11.6 Fechamento e rescisão | `closePeriod`, `terminateEmployee` | rodadas 1 e 3 | Implementado · Testado |
-| §12 Plantões RCPN | — | — | Planejado (Fase 2b) |
+| §12 Plantões RCPN (escala, substituto, chamados, comparecimento, sobreaviso × efetivo × banco separados) | `oncall.ts`, `domain/oncall.ts` | unit + phase2b + rodada 3 (6 meses) | Implementado · Testado · valores dependentes de validação (J-07) |
+| §10.2 Termo de entrega de uniforme; segunda etapa configurável por tipo | `checklists.ts`, `documents.ts` | phase2b | Implementado · Testado |
+| Férias (solicitação, fracionamento, abono, alertas) | `vacation.ts`, `domain/vacation.ts` | unit + phase2b + rodada 3 | Implementado · Testado (art. 130: J-13) |
 | §13 Gestão documental + Drive | base de versões/assinaturas | — | Planejado (Fase 3) |
 | §14–16 Tarefas, processos, financeiro | — | — | Planejado (Fase 4) |
 | §17 Qualidade e conformidade | — | — | Planejado (Fase 5) |

@@ -89,6 +89,29 @@ try {
   await page.waitForURL(/sensiveis=1/);
   check('Dados sensíveis exibidos somente sob ação explícita', await page.locator('input[name=cpf]').isVisible());
 
+  // 6b. Fase 2b — plantões, checklists e férias (visão da Oficial)
+  await page.goto(`${BASE}/plantoes?mes=${new Date().toISOString().slice(0, 7)}`);
+  check('Plantões: escala da competência exibida', (await page.locator('table >> tbody tr').count()) > 0);
+  const pastLink = page.locator('tbody tr td a').first();
+  await pastLink.click();
+  await page.waitForURL(/plantao=/);
+  check('Plantões: detalhe com sobreaviso e trabalho efetivo', await page.locator('text=Sobreaviso').first().isVisible());
+  await page.screenshot({ path: `${SHOTS}/10-plantao-detalhe.png`, fullPage: true });
+  if (await page.locator('button:has-text("Fechar plantão")').count()) {
+    page.once('dialog', (d) => d.accept());
+    await page.selectOption('select[name=destination]', { index: 1 }).catch(() => undefined);
+    await page.click('button:has-text("Fechar plantão")');
+    await page.waitForSelector('text=Plantão fechado', { timeout: 10000 }).catch(() => undefined);
+    check('Plantões: fechamento pela interface', await page.locator('text=Fechado por').count() > 0 || await page.locator('text=Plantão fechado').count() > 0);
+  }
+  await page.goto(`${BASE}/ferias`);
+  check('Férias: programação da equipe e alertas', await page.locator('h2:has-text("Programação de férias")').isVisible());
+  await page.screenshot({ path: `${SHOTS}/11-ferias.png`, fullPage: true });
+  await page.goto(`${BASE}/equipe`);
+  await page.locator('tbody tr a').nth(2).click();
+  await page.waitForURL(/\/equipe\/[0-9a-f-]+$/);
+  check('Ficha: checklists e itens entregues', await page.locator('h2:has-text("Itens entregues")').isVisible());
+
   // 7. Colaborador: marcação e restrições
   await page.context().close();
   page = await newPage();
@@ -104,6 +127,11 @@ try {
   check('Banco de horas do colaborador', await page.locator('text=Créditos por vencimento').isVisible());
   await page.goto(`${BASE}/auditoria`);
   check('Colaborador bloqueado na auditoria', await page.locator('text=Não foi possível exibir esta página').isVisible());
+  await page.goto(`${BASE}/plantoes?mes=${new Date().toISOString().slice(0, 7)}`);
+  const rows = await page.locator('tbody tr').allTextContents();
+  check('Colaborador vê somente plantões em que é responsável ou substituto', rows.every((r) => r.includes('Diego') || r.includes('Nenhum')), `${rows.length} linha(s)`);
+  await page.goto(`${BASE}/ferias`);
+  check('Colaborador vê seus períodos aquisitivos', await page.locator('h2:has-text("Períodos aquisitivos")').isVisible());
   const other = await page.request.get(`${BASE}/api/v1/banco-de-horas?funcionario=00000000-0000-4000-8000-000000000000`);
   check('API recusa consulta a outro funcionário', [403, 404].includes(other.status()), `HTTP ${other.status()}`);
   const forged = await page.request.post(`${BASE}/api/v1/ponto`, { headers: { origin: 'https://atacante.example' } });
