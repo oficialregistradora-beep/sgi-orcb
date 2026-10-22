@@ -12,6 +12,8 @@ import { computeRange, recomputeDays } from './timeclock.ts';
 import { findEmployee } from './people.ts';
 import { notifyEmployee, notifyUsers, usersWithPermission } from './notifications.ts';
 import { applyVacationApproval } from './vacation.ts';
+import { getRule } from './legalRules.ts';
+import { formatHHMM } from '../../domain/time.ts';
 
 export const REQUEST_TYPES = {
   CORRECAO_PONTO: { label: 'Correção de marcação', approve: 'solicitacoes.correcao.aprovar' },
@@ -76,6 +78,14 @@ export async function createRequest(ctx: Ctx, input: z.input<typeof createSchema
     if (!minutes || minutes > expected) throw new AppError(`Informe a quantidade de minutos (máximo ${expected}).`);
     const agreement = await activeAgreement(getPool(), employeeId, d.referenceDate);
     if (!agreement) throw new AppError('Não há acordo de banco de horas vigente na data.');
+    const notice = await getRule(getPool(), 'BANCO_COMUNICACAO_MINIMA', d.referenceDate, { allowPending: false });
+    if (notice) {
+      const [day] = await computeRange(getPool(), employeeId, d.referenceDate, d.referenceDate);
+      const startsAt = localToInstant(d.referenceDate, formatHHMM(day?.schedule?.start ?? 0));
+      if (startsAt.getTime() - Date.now() < notice.value.horas * 3600_000) {
+        throw new AppError(`A folga deve ser comunicada com ${notice.value.horas} horas de antecedência (${notice.legalBasis}).`);
+      }
+    }
     payload = { mode: p.mode, minutes };
   } else {
     const p = extraPayload.parse(d.payload);

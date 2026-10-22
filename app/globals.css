@@ -234,7 +234,7 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .tag-danger { color: var(--danger); background: var(--danger-soft); border-color: transparent; }
 .tag-info { color: var(--info); background: var(--info-soft); border-color: transparent; }
 
-.alert { display: flex; gap: 10px; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-2); font-size: 13px; }
+.alert { display: block; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-2); font-size: 13px; }
 .alert-ok { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
 .alert-warn { background: var(--warn-soft); border-color: transparent; color: var(--warn); }
 .alert-danger { background: var(--danger-soft); border-color: transparent; color: var(--danger); }

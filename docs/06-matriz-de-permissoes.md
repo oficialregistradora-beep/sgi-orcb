@@ -32,7 +32,10 @@ Configurável em **Usuários e permissões → Matriz** sem alterar código. A O
 | plantoes.gerenciar | T | T | — | — |
 | plantoes.fechar | T | T | — | — |
 | ferias.ver | T | T | S | P |
-| ferias.aprovar | T | T | — | — |
+| ferias.aprovar (inclui a conferência de faltas) | T | T | — | — |
+| regras.juridicas.gerenciar ★ | T | — | — | — |
+| checklists.modelos.editar | T | T | — | — |
+| checklists.modelos.publicar ★ | T | — | — | — |
 
 ★ permissão sensível. Papéis se acumulam: a Escrevente Substituta recebe *Coordenação de setor* e *Colaborador*.
 

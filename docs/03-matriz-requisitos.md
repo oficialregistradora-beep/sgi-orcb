@@ -36,3 +36,6 @@
 | §22 Notificações | `notifications.ts` | — | Implementado (internas) |
 | §24 Três rodadas | `tests/` | relatórios | Executadas para as Fases 1–2 |
 | §29 Autonomia da Oficial | telas de Configurações e Permissões | E2E | Implementado para os módulos existentes |
+| Validação jurídica J-13 (art. 130) | `vacation.ts` (classificação, conferência), `domain/vacation.ts` | unit (faixas) + phase2c + rodada 3 (5 faixas em 1 ano) | Implementado · Testado |
+| Validação jurídica J-07/J-14 (regras por vigência) | `legalRules.ts`, migration 0005 | phase2c + phase2c-security | Implementado · Testado · cláusulas da CCT vigente pendentes |
+| Modelos de checklist editáveis e versionados | `checklistTemplates.ts` | phase2c + phase2c-security | Implementado · Testado |

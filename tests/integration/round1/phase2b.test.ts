@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { getPool, query, queryOne } from '../../../src/server/db.ts';
 import type { Ctx } from '../../../src/server/context.ts';
 import { assignShift, closeShift, generateSchedule, getShift, listShifts, oncallReport, registerCall, voidCall } from '../../../src/server/modules/oncall.ts';
-import { cancelApprovedVacation, getVacationOverview, requestVacation } from '../../../src/server/modules/vacation.ts';
+import { cancelApprovedVacation, getVacationOverview, requestVacation, reviewVacationPeriod } from '../../../src/server/modules/vacation.ts';
 import { decideRequest } from '../../../src/server/modules/requests.ts';
 import { createEmployee, terminateEmployee, addSalary } from '../../../src/server/modules/people.ts';
 import { deliverItem, listChecklists, returnItem, setChecklistItem } from '../../../src/server/modules/checklists.ts';
@@ -152,13 +152,16 @@ describe('Fase 2b — férias', () => {
   it('solicitação válida, reserva de saldo, aprovação gera ausência e consumo do período aquisitivo', async () => {
     const start = await vacationMonday(45);
     const r = await requestVacation(ctxRc3, { start, end: addDays(start, 19), soldDays: 10 });
-    expect(r.warnings.some((w) => w.includes('art. 130'))).toBe(true);
+    expect(r.warnings.some((w) => w.includes('art. 130'))).toBe(false); // sem faltas: direito integral
     // segundo pedido que, somado ao pendente, excederia o saldo do período mais antigo → usa o próximo período
     const start2 = await vacationMonday(90);
     const r2 = await requestVacation(ctxRc3, { start: start2, end: addDays(start2, 29), soldDays: 0 });
     const payload2 = (await queryOne<{ payload: { periodIndex: number } }>(getPool(), 'SELECT payload FROM requests WHERE id = $1', [r2.id]))!.payload;
     expect(payload2.periodIndex).toBe(2);
     await expect(decideRequest(ctxRc3, { requestId: r.id, approve: true })).rejects.toThrow();
+    await expect(decideRequest(ctxSubst, { requestId: r.id, approve: true })).rejects.toThrow('Conferência das faltas');
+    const periodStart = (await getVacationOverview(ctxRc3, rc3.employeeId)).periods[0]!.start;
+    await reviewVacationPeriod(ctxSubst, { employeeId: rc3.employeeId, periodStart });
     await decideRequest(ctxSubst, { requestId: r.id, approve: true });
     const abs = await queryOne<{ type: string; counts_as_worked: boolean }>(getPool(), 'SELECT type, counts_as_worked FROM absences WHERE request_id = $1', [r.id]);
     expect(abs).toEqual({ type: 'FERIAS', counts_as_worked: true });
@@ -176,6 +179,7 @@ describe('Fase 2b — férias', () => {
     await expect(getVacationOverview(ctxRc1, rc2.employeeId)).rejects.toThrow('permissão');
     const start = await vacationMonday(60);
     const r = await requestVacation(ctxRc2, { start, end: addDays(start, 14), soldDays: 0 });
+    await reviewVacationPeriod(ctxOwner, { employeeId: rc2.employeeId, periodStart: (await getVacationOverview(ctxOwner, rc2.employeeId)).periods[0]!.start });
     await decideRequest(ctxOwner, { requestId: r.id, approve: true });
     await cancelApprovedVacation(ctxSubst, r.id, 'Necessidade do serviço, com concordância');
     const abs = await queryOne<{ status: string }>(getPool(), 'SELECT status FROM absences WHERE request_id = $1', [r.id]);

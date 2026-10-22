@@ -21,3 +21,9 @@
 - Afastamento ou desligamento: suspender o usuário ou registrar o desligamento (revoga sessões na hora).
 - Mensalmente: **Auditoria → Verificar integridade da cadeia**. Qualquer alerta aciona o plano de resposta a incidentes.
 - Parâmetros (inatividade, reautenticação, alertas, divisor e adicional) ficam em **Configurações → Parâmetros**.
+
+## Fase 2c — rotinas novas
+- **Férias:** antes de aprovar, abra *Férias* do funcionário → *Conferência das faltas do período aquisitivo*. Faltas integrais ainda sem decisão bloqueiam a conferência; decida-as antes em *Ocorrências*. A conferência registra a faixa do art. 130 e a memória de cálculo.
+- **Regras jurídicas** (*Configurações → Regras jurídicas*): após a leitura da CCT vigente, cadastre cada regra com fundamento e fonte. Ao registrar a validação (nome e OAB do responsável), a regra passa a valer. Regras históricas nunca valem.
+- **Modelos de checklist** (*Configurações → Modelos de checklist*): *Editar (nova versão)* → ajustar itens → *Publicar*. Checklists já abertos não mudam.
+- **Plantões:** se o substituto atendeu, troque o responsável antes de fechar. O sistema avisa quando há chamado registrado pelo substituto.

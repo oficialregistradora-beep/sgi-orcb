@@ -86,3 +86,45 @@ Observação metodológica: nos primeiros testes de imutabilidade da auditoria, 
 | D11 | Unit | Um terceiro período de férias podia deixar saldo impossível de gozar | Regra: o terceiro período deve esgotar o saldo |
 | D12 | Revisão de teste | O caso "plantões preservados" era tautológico e apagava dados; revelou que plantões e chamados não tinham proteção no banco | Triggers: plantão fechado imutável, exclusões bloqueadas, chamados só anuláveis; teste significativo |
 | D13 | Build | Next.js 16.4.0 com vulnerabilidades críticas publicadas | Atualizado para 16.4.2; `npm audit`: 0 vulnerabilidades; reteste completo |
+
+
+---
+
+# Fase 2c — execução de 22/10/2026 (branch `fase-2c`)
+
+| Conjunto | Resultado |
+|---|---|
+| Unitário (inclui 18 casos: faixas do art. 130 nos limites exatos, direito reduzido, prazo e conversão por regra) | 90/90 |
+| Rodada 1 — Funcional (inclui `phase2c.test.ts`, 11 casos) | 54/54 |
+| Rodada 2 — Segurança (inclui `phase2c-security.test.ts`: concorrência em conferências, rascunhos e validações) | 33/33 |
+| Rodada 3 — Simulação (inclui `phase2c-cycle.test.ts`: 1 ano, 5 funcionários, uma faixa do art. 130 cada) | 11/11 · [métricas](rodada3-fase2c-metricas.json) |
+| Ponta a ponta | 31/31 |
+| **Total automatizado** | **188/188 + 31/31** |
+
+```
+✓ tests/simulation/six-months.test.ts (7 tests) 5791ms
+ ✓ tests/simulation/phase2c-cycle.test.ts (1 test) 4711ms
+ ✓ tests/integration/round1/phase2b.test.ts (13 tests) 1694ms
+ ✓ tests/integration/round1/phase2c.test.ts (11 tests) 1382ms
+ ✓ tests/integration/round1/journey-bank.test.ts (18 tests) 1209ms
+ ✓ tests/simulation/phase2b-cycle.test.ts (3 tests) 1200ms
+ ✓ tests/integration/round2/phase2c-security.test.ts (3 tests) 822ms
+ ✓ tests/integration/round2/security.test.ts (25 tests) 979ms
+ ✓ tests/integration/round2/phase2b-security.test.ts (5 tests) 592ms
+ ✓ tests/integration/round1/auth-users.test.ts (12 tests) 563ms
+ ✓ tests/unit/security-primitives.test.ts (17 tests) 25ms
+ ✓ tests/unit/vacation-oncall.test.ts (18 tests) 22ms
+ ✓ tests/unit/hourBank.test.ts (15 tests) 10ms
+ ✓ tests/unit/journey.test.ts (22 tests) 10ms
+ ✓ tests/unit/phase2c.test.ts (18 tests) 10ms
+ Test Files  15 passed (15)
+      Tests  188 passed (188)
+```
+
+## Defeitos encontrados e corrigidos na Fase 2c
+| # | Origem | Defeito | Correção |
+|---|---|---|---|
+| D14 | Unit | A exigência de um período com 14 dias ou mais era aplicada sem fracionamento, o que recusava férias legítimas em período único (ex.: 18 dias = 12 de gozo + 6 de abono) | A regra só se aplica quando há fracionamento (art. 134, §1º) |
+| D15 | Rodada 2 (concorrência) | Duas validações simultâneas de regras com vigências sobrepostas eram aceitas | Restrição de exclusão no banco: uma regra validada por tipo em cada data |
+| D16 | E2E (inspeção visual) | Avisos com texto em negrito eram exibidos picados em colunas | Caixa de alerta passou a ser bloco (design system) |
+| — | Revisão dos próprios testes | Três casos estavam fracos (um retornava sem testar, um comparava data de forma aproximada, um usava valor inválido com desvio) | Reescritos com afirmações exatas |

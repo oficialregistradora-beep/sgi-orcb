@@ -9,17 +9,26 @@ import { PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { holidayAction, jobTitleAction, removeHolidayAction, scheduleAction, sectorAction, settingAction } from '../../actions/admin.ts';
 import { booleanSettingAction } from '../../actions/phase2b.ts';
+import { RegrasJuridicas } from './RegrasJuridicas.tsx';
+import { ModelosChecklist } from './ModelosChecklist.tsx';
 import { closePeriodAction, reopenPeriodAction } from '../../actions/bank.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Configurações' };
 
-const TABS = { setores: 'Setores e cargos', jornadas: 'Jornadas', feriados: 'Feriados', parametros: 'Parâmetros', competencias: 'Competências' } as const;
+const TABS = {
+  setores: 'Setores e cargos', jornadas: 'Jornadas', feriados: 'Feriados', parametros: 'Parâmetros', competencias: 'Competências',
+  regras: 'Regras jurídicas', checklists: 'Modelos de checklist',
+} as const;
 
-export default async function ConfigPage({ searchParams }: { searchParams: Promise<{ aba?: string; ano?: string }> }) {
+export default async function ConfigPage({ searchParams }: { searchParams: Promise<{ aba?: string; ano?: string; modelo?: string }> }) {
   const ctx = await requirePageCtx();
-  requirePermission(ctx, 'configuracoes.gerenciar');
-  const sp = await searchParams;
+  const sp0 = await searchParams;
+  // Modelos de checklist e regras jurídicas têm permissões próprias (podem ser delegadas sem acesso às demais configurações).
+  const special = (sp0.aba === 'checklists' && (can(ctx.principal, 'checklists.modelos.editar') || can(ctx.principal, 'checklists.modelos.publicar')))
+    || (sp0.aba === 'regras' && can(ctx.principal, 'regras.juridicas.gerenciar'));
+  if (!special) requirePermission(ctx, 'configuracoes.gerenciar');
+  const sp = sp0;
   const tab = (sp.aba && sp.aba in TABS ? sp.aba : 'setores') as keyof typeof TABS;
   const year = Number(sp.ano) || Number(todayLocal().slice(0, 4));
   return (
@@ -31,6 +40,8 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
       {tab === 'feriados' ? <Holidays year={year} /> : null}
       {tab === 'parametros' ? <Params ctx={ctx} /> : null}
       {tab === 'competencias' ? <Closings canClose={can(ctx.principal, 'banco.periodo.fechar')} /> : null}
+      {tab === 'regras' ? <RegrasJuridicas ctx={ctx} /> : null}
+      {tab === 'checklists' ? <ModelosChecklist ctx={ctx} modelo={sp.modelo} /> : null}
     </div>
   );
 }

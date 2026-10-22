@@ -47,6 +47,7 @@ export default async function PlantoesPage({ searchParams }: { searchParams: Pro
             <span className={statusTone(detail.shift.status)}>{label(detail.shift.status)}</span>
           </div>
           <div className="card-body stack">
+            {detail.warnings.map((w) => <div key={w} className="alert alert-warn small">{w}</div>)}
             <div className="grid grid-3">
               <div><div className="stat-label">Sobreaviso</div><div className="stat-value">{fmtMin(detail.shift.status === 'REALIZADO' ? detail.shift.standby_minutes! : detail.totals.standbyMinutes)}</div></div>
               <div><div className="stat-label">Trabalho efetivo</div><div className="stat-value">{fmtMin(detail.shift.status === 'REALIZADO' ? detail.shift.effective_minutes! : detail.totals.effectiveMinutes)}</div></div>

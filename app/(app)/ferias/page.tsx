@@ -7,6 +7,8 @@ import { fmtDate, fmtDateTime, label, statusTone } from '@/ui/format.ts';
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { cancelVacationAction, requestVacationAction } from '../../actions/phase2b.ts';
+import { reviewPeriodAction } from '../../actions/phase2c.ts';
+import { ART130_BANDS } from '@/domain/vacation.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Férias' };
@@ -33,19 +35,34 @@ export default async function FeriasPage({ searchParams }: { searchParams: Promi
             <div className="card-head"><h2>Períodos aquisitivos</h2><p>Admissão em {fmtDate(overview.employee.admission_date)}</p></div>
             <div className="card-body flush table-wrap">
               <table className="table">
-                <thead><tr><th>#</th><th>Aquisição</th><th>Gozar até</th><th className="num">Gozados</th><th className="num">Abono</th><th className="num">Saldo</th><th>Situação</th></tr></thead>
-                <tbody>{overview.periods.map((p) => (
-                  <tr key={p.start}>
-                    <td>{p.index}</td>
-                    <td className="small nowrap">{fmtDate(p.start)} – {fmtDate(p.end)}</td>
-                    <td className="small nowrap">{fmtDate(p.concessiveEnd)}</td>
-                    <td className="num">{p.enjoyed}</td><td className="num">{p.sold}</td><td className="num">{p.remaining}</td>
-                    <td><span className={statusTone(p.status)}>{label(p.status)}</span></td>
-                  </tr>
-                ))}</tbody>
+                <thead><tr><th>#</th><th>Aquisição</th><th>Gozar até</th><th className="num">Direito</th><th className="num">Gozados</th><th className="num">Abono</th><th className="num">Saldo</th><th>Faltas (art. 130)</th><th>Situação</th></tr></thead>
+                <tbody>{overview.periods.map((p) => {
+                  const a = overview.absences.get(p.start)!;
+                  const rv = overview.reviews.get(p.start);
+                  return (
+                    <tr key={p.start}>
+                      <td>{p.index}</td>
+                      <td className="small nowrap">{fmtDate(p.start)} – {fmtDate(p.end)}</td>
+                      <td className="small nowrap">{fmtDate(p.concessiveEnd)}</td>
+                      <td className="num">{p.entitlement}</td>
+                      <td className="num">{p.enjoyed}</td><td className="num">{p.sold}</td><td className="num">{p.remaining}</td>
+                      <td className="small">
+                        {a.unjustified.length} injustificada(s){a.pending.length ? <span className="neg"> · {a.pending.length} pendente(s)</span> : null}
+                        {a.justified.length ? <div className="muted">{a.justified.length} abonada(s)/compensada(s) — não contam</div> : null}
+                        {a.partialNotCounted ? <div className="muted">{a.partialNotCounted} atraso(s)/saída(s) — não convertidos em falta</div> : null}
+                        {rv ? <div className="pos">Conferido por {rv.reviewer} em {fmtDateTime(rv.reviewed_at)}{rv.art133_loss ? ' — perda (art. 133)' : ''}</div>
+                          : p.end < today ? <div className="neg">Conferência pendente</div> : null}
+                      </td>
+                      <td><span className={statusTone(p.status)}>{label(p.status)}</span></td>
+                    </tr>
+                  );
+                })}</tbody>
               </table>
             </div>
-            <div className="card-foot small muted">Faltas injustificadas no período aquisitivo podem reduzir a duração das férias (art. 130): conferência manual (J-13).</div>
+            <div className="card-foot small muted">
+              Art. 130: {ART130_BANDS.map((b) => `${b.faixa} → ${b.dias ? `${b.dias} dias` : 'perda'}`).join(' · ')}. Contam somente faltas integrais injustificadas
+              confirmadas; atrasos e saídas antecipadas não são convertidos em faltas. A aprovação exige conferência atualizada.
+            </div>
           </div>
           <div className="card">
             <div className="card-head"><h2>Solicitar férias</h2><p>Comunicação com 30 dias de antecedência (art. 135)</p></div>
@@ -64,6 +81,36 @@ export default async function FeriasPage({ searchParams }: { searchParams: Promi
           </div>
         </div>
       ) : <div className="alert alert-info">Seu usuário não está vinculado a um cadastro funcional.</div>}
+
+      {overview?.canReview ? (
+        <div className="card">
+          <div className="card-head"><h2>Conferência das faltas do período aquisitivo</h2><p>Registra a faixa do art. 130 e a memória de cálculo · exige reautenticação</p></div>
+          <div className="card-body">
+            <ActionForm action={reviewPeriodAction} submitLabel="Registrar conferência">
+              <input type="hidden" name="employeeId" value={overview.employee.id} />
+              <div className="form-grid">
+                <div className="field"><label htmlFor="rv-p">Período aquisitivo</label>
+                  <select id="rv-p" name="periodStart" className="input">
+                    {overview.periods.filter((p) => p.end < today).map((p) => <option key={p.start} value={p.start}>{p.index}: {fmtDate(p.start)} – {fmtDate(p.end)}</option>)}
+                  </select>
+                </div>
+                <div className="field"><label htmlFor="rv-n">Observação</label><input id="rv-n" name="notes" className="input" /></div>
+              </div>
+              <details className="disclosure small" style={{ marginTop: 10 }}>
+                <summary><a>Perda do direito (art. 133) — tratamento manual</a></summary>
+                <label className="check"><input type="checkbox" name="art133Loss" /> Registrar perda do direito neste período</label>
+                <input name="art133Reason" className="input" placeholder="Fundamento (inciso do art. 133 e fatos)" aria-label="Fundamento" style={{ marginTop: 6 }} />
+              </details>
+            </ActionForm>
+            {[...overview.reviews.values()].map((rv) => (
+              <details key={rv.id} className="disclosure small" style={{ marginTop: 10 }}>
+                <summary><a>Memória de cálculo — período iniciado em {fmtDate(rv.period_start)}</a></summary>
+                <pre className="mono" style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(rv.calculation, null, 2)}</pre>
+              </details>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {overview ? (
         <div className="card">

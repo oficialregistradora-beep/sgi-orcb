@@ -1,4 +1,4 @@
-# Especificação funcional — Fases 1, 2 e 2b (implementadas)
+# Especificação funcional — Fases 1, 2, 2b e 2c (implementadas)
 
 ## F1. Acesso
 - F1.1 Login exclusivo com conta do domínio institucional. Somente usuários pré-cadastrados e ativos entram; tentativas negadas são auditadas.
@@ -58,5 +58,18 @@ Setores, cargos, jornadas, feriados, parâmetros, papéis, matriz de permissões
 - F9.2 Itens entregues (uniforme, equipamento, crachá, chave) geram um **termo de entrega** com hash para ciência eletrônica do funcionário. A devolução atualiza o checklist de desligamento.
 - F9.3 A exigência da segunda etapa (aprovação) é configurável por tipo documental em Configurações → Parâmetros (`documentos.aprovacao.*`).
 
+## F10. Faltas e duração das férias — art. 130 (Fase 2c)
+- F10.1 Classificação por período aquisitivo. **Contam** só faltas integrais (dia com jornada prevista e nenhum trabalho) decididas como "falta não justificada". **Não contam** as abonadas ou compensadas (art. 131) nem atrasos e saídas antecipadas, que **nunca são convertidos em dias de falta**. Faltas ainda sem decisão ficam **pendentes**.
+- F10.2 Faixas: até 5 faltas → 30 dias; 6–14 → 24; 15–23 → 18; 24–32 → 12; mais de 32 → perda do direito naquele período.
+- F10.3 **Conferência obrigatória** antes da aprovação: só é possível sem faltas pendentes. Registra a faixa e a memória de cálculo (datas, abonos, atrasos não convertidos). É feita por quem aprova férias, nunca pelo próprio funcionário, e exige reautenticação. A aprovação é bloqueada se a conferência estiver desatualizada.
+- F10.4 Com direito reduzido: abono limitado a 1/3 do direito; direito abaixo de 14 dias só pode ser gozado em período único. A regra dos 14 dias se aplica apenas quando há fracionamento.
+- F10.5 Art. 133 (perda do direito e reinício do período): perda registrada manualmente, com fundamentação. O **reinício automático do período aquisitivo não está implementado** (tratamento manual).
+
+## F11. Regras jurídicas por vigência (Fase 2c)
+Cadastro de instrumentos (lei, CCT, súmula) e de regras com fundamento, fonte, vigência, situação e responsável pela validação (ver ADR 0008). Regras com efeito real só se aplicam quando validadas. As estimativas exibem a base usada e se ela está pendente de validação.
+
+## F12. Modelos de checklist editáveis (Fase 2c)
+Criar, editar (nova versão em rascunho), duplicar, ordenar, remover itens, publicar e inativar. Cada item define prazo, obrigatoriedade (não admite "não se aplica"), exigência de evidência, papel responsável e verificação automática. Editar e publicar são permissões distintas, e a publicação exige reautenticação. Versões publicadas são imutáveis (garantido no banco). Checklists já iniciados preservam a versão usada.
+
 ## Pendentes
-Modelos de checklist editáveis pela interface (hoje vêm da migration), avaliações de desempenho e treinamentos (Fase 5), redução automática de férias pelo art. 130 (depende de J-13).
+Avaliações de desempenho e treinamentos (Fase 5); reinício automático do período aquisitivo (art. 133); leitura integral da CCT 2026/2027 e cadastro das regras validadas correspondentes (J-14).

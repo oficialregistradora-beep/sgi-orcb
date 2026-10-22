@@ -112,6 +112,22 @@ try {
   await page.waitForURL(/\/equipe\/[0-9a-f-]+$/);
   check('Ficha: checklists e itens entregues', await page.locator('h2:has-text("Itens entregues")').isVisible());
 
+  // 6c. Fase 2c — regras jurídicas, modelos de checklist e conferência de faltas
+  await page.goto(`${BASE}/configuracoes?aba=regras`);
+  check('Regras jurídicas: CCT vigente com leitura pendente', await page.locator('text=SC000957/2026').first().isVisible());
+  check('Regras jurídicas: regras históricas sinalizadas como não aplicáveis', (await page.locator('text=Histórico — não aplicar').count()) >= 4);
+  await page.screenshot({ path: `${SHOTS}/12-regras-juridicas.png`, fullPage: true });
+  await page.goto(`${BASE}/configuracoes?aba=checklists`);
+  await page.locator('tbody tr a').first().click();
+  await page.waitForURL(/modelo=/);
+  check('Modelos de checklist: versão publicada somente leitura', await page.locator('text=somente leitura').isVisible());
+  await page.click('button:has-text("Editar (nova versão)")');
+  await page.waitForSelector('text=Rascunho da nova versão criado', { timeout: 10000 });
+  check('Modelos de checklist: nova versão em rascunho', true);
+  await page.screenshot({ path: `${SHOTS}/13-modelo-checklist.png`, fullPage: true });
+  await page.goto(`${BASE}/ferias`);
+  check('Férias: coluna de faltas do art. 130', await page.locator('th:has-text("Faltas (art. 130)")').isVisible());
+
   // 7. Colaborador: marcação e restrições
   await page.context().close();
   page = await newPage();

@@ -49,17 +49,20 @@ function divRound(num: bigint, den: bigint): bigint {
   return (num * 2n + den) / (den * 2n);
 }
 
-/** Valores estimados (informativos): sobreaviso = hora ÷ divisor; efetivo = hora × (1 + adicional%) se pago. */
+/** Valores estimados (informativos): sobreaviso = hora × fração; efetivo pago = hora × (1 + adicional%). */
 export function oncallValues(
   standbyMinutes: number,
   effectiveMinutes: number,
   monthlySalary: string,
   divisorHours: number,
-  standbyDivisor: number,
+  standbyFraction: { numerador: number; denominador: number },
   premiumPercent: number,
 ): { standby: string; effectiveIfPaid: string } {
   const salary = toCents(monthlySalary);
-  const standby = divRound(salary * BigInt(standbyMinutes), BigInt(divisorHours) * 60n * BigInt(standbyDivisor));
+  const standby = divRound(
+    salary * BigInt(standbyMinutes) * BigInt(standbyFraction.numerador),
+    BigInt(divisorHours) * 60n * BigInt(standbyFraction.denominador),
+  );
   const effective = divRound(salary * BigInt(100 + premiumPercent) * BigInt(effectiveMinutes), BigInt(divisorHours) * 60n * 100n);
   return { standby: fmtCents(standby), effectiveIfPaid: fmtCents(effective) };
 }

@@ -58,6 +58,9 @@ export const LABELS: Record<string, string> = {
   INDIVIDUAL_ESCRITO: 'Acordo individual escrito', COLETIVO: 'Acordo/convenção coletiva',
   CORRECAO_PONTO: 'Correção de marcação', COMPENSACAO: 'Compensação', AUTORIZACAO_EXTRA: 'Autorização de hora extra',
   PLANEJADO: 'Planejado', REALIZADO: 'Realizado', BANCO: 'Banco de horas',
+  PERDIDO: 'Direito perdido (art. 133 / faltas)', VALIDADO: 'Validado', PENDENTE_VALIDACAO: 'Pendente de validação', HISTORICO_NAO_APLICAR: 'Histórico — não aplicar',
+  VIGENTE_LEITURA_PENDENTE: 'Vigente — leitura das cláusulas pendente', VIGENTE_VALIDADO: 'Vigente — validado', HISTORICO: 'Histórico',
+  RASCUNHO: 'Rascunho', PUBLICADO: 'Publicado', INATIVO: 'Inativo',
   EM_AQUISICAO: 'Em aquisição', QUITADO: 'Quitado', VENCIDAS: 'Vencidas — pagamento em dobro (art. 137)', ABERTO: 'Aberto', CONCLUIDO: 'Concluído', NAO_APLICAVEL: 'Não se aplica',
   UNIFORME: 'Uniforme', EQUIPAMENTO: 'Equipamento', CRACHA: 'Crachá', CHAVE: 'Chave', ADMISSAO: 'Admissão', DESLIGAMENTO: 'Desligamento',
   TERMO_ENTREGA: 'Termo de entrega', ESPELHO: 'Espelho de frequência', EXTRATO_BANCO: 'Extrato do banco',
@@ -70,8 +73,8 @@ export function label(code: string | null | undefined): string {
 }
 
 export function statusTone(code: string): string {
-  if (['APROVADA', 'RESOLVIDA', 'ATIVO', 'DISPONIVEL', 'CIENCIA', 'APROVACAO', 'CONCORDANCIA', 'REALIZADO', 'QUITADO', 'CONCLUIDO'].includes(code)) return 'tag tag-ok';
-  if (['PENDENTE', 'A_VENCER', 'AFASTADO', 'SUSPENSO', 'PLANEJADO', 'ABERTO'].includes(code)) return 'tag tag-warn';
-  if (['REJEITADA', 'VENCIDO', 'VENCIDAS', 'DESLIGADO', 'REVOGADO', 'CONTESTACAO', 'CANCELADO'].includes(code)) return 'tag tag-danger';
+  if (['APROVADA', 'RESOLVIDA', 'ATIVO', 'DISPONIVEL', 'CIENCIA', 'APROVACAO', 'CONCORDANCIA', 'REALIZADO', 'QUITADO', 'CONCLUIDO', 'VALIDADO', 'VIGENTE_VALIDADO', 'PUBLICADO'].includes(code)) return 'tag tag-ok';
+  if (['PENDENTE', 'A_VENCER', 'AFASTADO', 'SUSPENSO', 'PLANEJADO', 'ABERTO', 'PENDENTE_VALIDACAO', 'VIGENTE_LEITURA_PENDENTE', 'RASCUNHO'].includes(code)) return 'tag tag-warn';
+  if (['REJEITADA', 'VENCIDO', 'VENCIDAS', 'DESLIGADO', 'REVOGADO', 'CONTESTACAO', 'CANCELADO', 'PERDIDO', 'HISTORICO_NAO_APLICAR'].includes(code)) return 'tag tag-danger';
   return 'tag';
 }

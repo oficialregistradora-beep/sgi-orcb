@@ -1,0 +1,21 @@
+{
+  "executadoEm": "2026-10-22T20:05:19.370Z",
+  "metricas": {
+    "dias_uteis_por_pessoa": 256,
+    "Faixa 30_faltas_integrais": 7,
+    "Faixa 30_atrasos": 8,
+    "Faixa 30_direito": 30,
+    "Faixa 24_faltas_integrais": 13,
+    "Faixa 24_atrasos": 8,
+    "Faixa 24_direito": 24,
+    "Faixa 18_faltas_integrais": 23,
+    "Faixa 18_atrasos": 8,
+    "Faixa 18_direito": 18,
+    "Faixa 12_faltas_integrais": 31,
+    "Faixa 12_atrasos": 8,
+    "Faixa 12_direito": 12,
+    "Perda_faltas_integrais": 38,
+    "Perda_atrasos": 8,
+    "Perda_direito": 0
+  }
+}

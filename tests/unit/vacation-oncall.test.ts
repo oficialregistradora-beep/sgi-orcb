@@ -94,7 +94,7 @@ describe('plantão — sobreaviso x trabalho efetivo', () => {
   });
   it('valores estimados em centavos: 1/3 da hora no sobreaviso; efetivo com adicional', () => {
     // R$ 3.000 / 200 h = R$ 15/h; sobreaviso 600 min = 10 h × 15 / 3 = R$ 50; efetivo 60 min × 15 × 2 = R$ 30
-    expect(oncallValues(600, 60, '3000.00', 200, 3, 100)).toEqual({ standby: '50.00', effectiveIfPaid: '30.00' });
+    expect(oncallValues(600, 60, '3000.00', 200, { numerador: 1, denominador: 3 }, 100)).toEqual({ standby: '50.00', effectiveIfPaid: '30.00' });
   });
   it('dia de plantão não gera ocorrência de hora extra na apuração comum', () => {
     const r = computeDay({

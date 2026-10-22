@@ -5,9 +5,15 @@ import { can, requirePermission, scopeFilter, scopeSql } from '../authz.ts';
 import { audit } from '../audit.ts';
 import { AppError, ForbiddenError, NotFoundError } from '../errors.ts';
 import { getNumberSetting } from '../settings.ts';
-import { acquisitivePeriods, balances, validateVacation, VacationRuleError, type Allocation, type VacationCheck } from '../../domain/vacation.ts';
+import {
+  acquisitivePeriods, ART130_BANDS, balances, entitlementForAbsences, validateVacation, VacationRuleError,
+  type AcqPeriod, type Allocation, type VacationCheck,
+} from '../../domain/vacation.ts';
 import { todayLocal } from '../../domain/time.ts';
 import { findEmployee, getEmployeeFor } from './people.ts';
+import { ensureProcessed } from './timeclock.ts';
+import { getRule } from './legalRules.ts';
+import { requireStepUp } from '../authz.ts';
 import { notifyEmployee, notifyUsers, usersWithPermission } from './notifications.ts';
 
 // Férias: o funcionário solicita; quem tem "ferias.aprovar" decide pela tela de Solicitações.
@@ -21,6 +27,112 @@ export async function loadAllocations(db: Db, employeeId: string): Promise<Alloc
 
 async function holidaySet(db: Db): Promise<Set<string>> {
   return new Set((await query<{ date: string }>(db, 'SELECT date FROM holidays WHERE is_day_off')).map((h) => h.date));
+}
+
+// ---------------------------------------------------------------------------
+// J-13 — classificação das faltas do período aquisitivo (CLT arts. 130, 131 e 133)
+// ---------------------------------------------------------------------------
+export type AbsenceClassification = {
+  unjustified: string[]; // faltas integrais confirmadas como injustificadas (contam para o art. 130)
+  pending: string[]; // faltas integrais ainda sem decisão (impedem a conferência)
+  justified: { date: string; reason: string }[]; // abonadas/compensadas (art. 131) — não contam
+  partialNotCounted: number; // atrasos e saídas antecipadas: NÃO convertidos em dias de falta
+};
+
+/** Somente dias sem nenhum trabalho, com jornada prevista, contam como falta; a decisão da ocorrência classifica. */
+export async function classifyAbsences(db: Db, employeeId: string, period: AcqPeriod): Promise<AbsenceClassification> {
+  const rows = await query<{ work_date: string; status: string; resolution: string | null; worked_minutes: number }>(
+    db,
+    `SELECT o.work_date, o.status, o.resolution, dr.worked_minutes
+       FROM daily_occurrences o JOIN daily_records dr ON dr.employee_id = o.employee_id AND dr.work_date = o.work_date
+      WHERE o.employee_id = $1 AND o.type = 'DIFERENCA_NEGATIVA' AND o.status <> 'SUPERADA'
+        AND o.work_date BETWEEN $2 AND $3 AND dr.expected_minutes > 0
+      ORDER BY o.work_date`,
+    [employeeId, period.start, period.end],
+  );
+  const out: AbsenceClassification = { unjustified: [], pending: [], justified: [], partialNotCounted: 0 };
+  for (const r of rows) {
+    if (r.worked_minutes > 0) { out.partialNotCounted++; continue; }
+    if (r.status === 'PENDENTE') out.pending.push(r.work_date);
+    else if (r.resolution === 'FALTA_NAO_JUSTIFICADA') out.unjustified.push(r.work_date);
+    else out.justified.push({ date: r.work_date, reason: r.resolution === 'ABONO' ? 'Abonada (art. 131)' : 'Compensada com banco de horas' });
+  }
+  return out;
+}
+
+type ReviewRow = { id: string; period_start: string; unjustified_days: number; entitlement_days: number; art133_loss: boolean; art133_reason: string | null; reviewed_at: Date; reviewer: string; notes: string | null; calculation: Record<string, unknown> };
+
+async function currentReviews(db: Db, employeeId: string): Promise<Map<string, ReviewRow>> {
+  const rows = await query<ReviewRow>(
+    db,
+    `SELECT r.id, r.period_start, r.unjustified_days, r.entitlement_days, r.art133_loss, r.art133_reason, r.reviewed_at, u.display_name AS reviewer, r.notes, r.calculation
+       FROM vacation_period_reviews r JOIN users u ON u.id = r.reviewed_by WHERE r.employee_id = $1 AND r.superseded_at IS NULL`,
+    [employeeId],
+  );
+  return new Map(rows.map((r) => [r.period_start, r]));
+}
+
+/** Direito por período: conferido (quando houver) ou preliminar pelas faltas já confirmadas. */
+async function entitlementMap(db: Db, employeeId: string, periods: AcqPeriod[]): Promise<Map<string, number>> {
+  const reviews = await currentReviews(db, employeeId);
+  const map = new Map<string, number>();
+  for (const p of periods) {
+    const rv = reviews.get(p.start);
+    if (rv) map.set(p.start, rv.entitlement_days);
+    else if (p.end < todayLocal()) map.set(p.start, entitlementForAbsences((await classifyAbsences(db, employeeId, p)).unjustified.length));
+  }
+  return map;
+}
+
+const reviewSchema = z.object({
+  employeeId: z.uuid(),
+  periodStart: z.iso.date(),
+  art133Loss: z.boolean().default(false),
+  art133Reason: z.string().trim().max(1000).optional(),
+  notes: z.string().trim().max(1000).optional(),
+});
+
+/**
+ * Conferência das faltas do período aquisitivo, exigida antes da aprovação das férias. Não há faltas pendentes de
+ * classificação; registra a faixa do art. 130 e a memória de cálculo. A perda do direito do art. 133 é manual e fundamentada.
+ */
+export async function reviewVacationPeriod(ctx: Ctx, input: z.input<typeof reviewSchema>): Promise<{ entitlement: number }> {
+  const d = reviewSchema.parse(input);
+  const e = await getEmployeeFor(ctx, 'ferias.aprovar', d.employeeId);
+  if (e.user_id === ctx.principal.userId && !ctx.principal.isOwner) throw new ForbiddenError('Não é permitido conferir o próprio período (segregação de funções).');
+  if (d.art133Loss && (!d.art133Reason || d.art133Reason.length < 5)) throw new AppError('Fundamente a perda do direito (art. 133).');
+  await requireStepUp(getPool(), ctx);
+  await ensureProcessed(d.employeeId);
+  const period = acquisitivePeriods(e.admission_date, todayLocal()).find((p) => p.start === d.periodStart);
+  if (!period) throw new NotFoundError('Período aquisitivo inexistente.');
+  if (period.end >= todayLocal()) throw new AppError('O período aquisitivo ainda não terminou.');
+  return tx(async (c) => {
+    const cls = await classifyAbsences(c, d.employeeId, period);
+    if (cls.pending.length) {
+      throw new AppError(`Há ${cls.pending.length} falta(s) sem classificação no período (${cls.pending.slice(0, 5).join(', ')}${cls.pending.length > 5 ? '…' : ''}). Analise-as em Ocorrências antes da conferência.`);
+    }
+    const entitlement = d.art133Loss ? 0 : entitlementForAbsences(cls.unjustified.length);
+    const used = (await loadAllocations(c, d.employeeId)).filter((a) => a.periodStart === period.start).reduce((s, a) => s + a.enjoyedDays + a.soldDays, 0);
+    if (used > entitlement) throw new AppError(`Já foram concedidos ${used} dias neste período, acima do direito apurado (${entitlement}). Revise as férias concedidas.`);
+    const band = ART130_BANDS.find((b) => b.dias === entitlementForAbsences(cls.unjustified.length))!;
+    const calculation = {
+      periodo: { inicio: period.start, fim: period.end }, faltasInjustificadas: cls.unjustified, faltasNaoComputadas: cls.justified,
+      atrasosESaidasNaoConvertidos: cls.partialNotCounted, faixaArt130: band.faixa, diasPelaFaixa: band.dias,
+      art133: d.art133Loss ? { perda: true, fundamento: d.art133Reason } : null, direitoFinal: entitlement,
+    };
+    await query(c, 'UPDATE vacation_period_reviews SET superseded_at = now() WHERE employee_id = $1 AND period_start = $2 AND superseded_at IS NULL', [d.employeeId, period.start]);
+    await query(
+      c,
+      `INSERT INTO vacation_period_reviews (employee_id, period_start, unjustified_days, entitlement_days, art133_loss, art133_reason, calculation, notes, reviewed_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [d.employeeId, period.start, cls.unjustified.length, entitlement, d.art133Loss, d.art133Reason ?? null, JSON.stringify(calculation), d.notes ?? null, ctx.principal.userId],
+    );
+    await audit(c, ctx, {
+      action: 'FERIAS_CONFERENCIA_FALTAS', entityType: 'employee', entityId: d.employeeId,
+      summary: `Conferência do período ${period.index} de ${e.full_name}: ${cls.unjustified.length} falta(s) injustificada(s) → ${entitlement} dias${d.art133Loss ? ' (perda — art. 133)' : ''}`,
+    });
+    return { entitlement };
+  });
 }
 
 export async function checkVacation(
@@ -42,10 +154,14 @@ export async function checkVacation(
     [employeeId, start, end],
   );
   if (overlap) throw new AppError('Já existe ausência lançada no período solicitado.');
+  const periods = acquisitivePeriods(e.admission_date, start);
+  const blockRule = await getRule(db, 'FERIAS_VEDAR_INICIO_FDS_FERIADO', start, { allowPending: false });
   try {
     return validateVacation({
       admission: e.admission_date, today: todayLocal(), start, end, soldDays, allocations, holidays: await holidaySet(db),
       minNoticeDays: await getNumberSetting(db, 'ferias.aviso_minimo_dias', 30),
+      entitlements: await entitlementMap(db, employeeId, periods),
+      blockWeekendHolidayStart: blockRule?.value.ativo === true,
     });
   } catch (err) {
     if (err instanceof VacationRuleError) throw new AppError(err.message);
@@ -93,6 +209,13 @@ export async function applyVacationApproval(
   await query(c, "SELECT pg_advisory_xact_lock(hashtext('ferias:' || $1))", [r.employee_id]);
   // Revalida desconsiderando o próprio pedido (que reservava saldo enquanto pendente).
   const check = await checkVacation(c, r.employee_id, p.start, p.end, p.soldDays, r.id);
+  // J-13: a aprovação exige a conferência das faltas do período, ainda atual.
+  const review = (await currentReviews(c, r.employee_id)).get(check.period.start);
+  if (!review) throw new AppError(`Conferência das faltas do período aquisitivo ${check.period.index} pendente (art. 130). Realize-a em Férias antes de aprovar.`);
+  const cls = await classifyAbsences(c, r.employee_id, check.period);
+  if (cls.pending.length || cls.unjustified.length !== review.unjustified_days) {
+    throw new AppError('A conferência das faltas está desatualizada (houve novas decisões de ocorrências). Refaça a conferência.');
+  }
   await query(
     c,
     `INSERT INTO absences (employee_id, type, start_date, end_date, counts_as_worked, notes, created_by, request_id)
@@ -131,7 +254,12 @@ export async function getVacationOverview(ctx: Ctx, employeeId: string) {
   const e = await getEmployeeFor(ctx, 'ferias.ver', employeeId);
   const db = getPool();
   const today = todayLocal();
-  const periods = balances(acquisitivePeriods(e.admission_date, today), await loadAllocations(db, employeeId), today);
+  await ensureProcessed(employeeId);
+  const acq = acquisitivePeriods(e.admission_date, today);
+  const periods = balances(acq, await loadAllocations(db, employeeId), today, 60, await entitlementMap(db, employeeId, acq));
+  const reviews = await currentReviews(db, employeeId);
+  const absences = new Map<string, AbsenceClassification>();
+  for (const p of acq) absences.set(p.start, await classifyAbsences(db, employeeId, p));
   const requests = await query<{ id: string; status: string; payload: Record<string, unknown>; created_at: Date; decision_notes: string | null; cancelled: boolean }>(
     db,
     `SELECT r.id, r.status, r.payload, r.created_at, r.decision_notes,
@@ -139,7 +267,7 @@ export async function getVacationOverview(ctx: Ctx, employeeId: string) {
        FROM requests r WHERE r.employee_id = $1 AND r.type = 'FERIAS' ORDER BY r.reference_date DESC`,
     [employeeId],
   );
-  return { employee: e, periods, requests };
+  return { employee: e, periods, requests, reviews, absences, canReview: can(ctx.principal, 'ferias.aprovar', { employeeId, sectorId: e.sector_id }) && e.user_id !== ctx.principal.userId };
 }
 
 /** Programação de férias e alertas (períodos a vencer ou vencidos) das pessoas sob a visão do usuário. */
@@ -154,7 +282,8 @@ export async function teamVacations(ctx: Ctx) {
   const today = todayLocal();
   const alerts: { employeeId: string; name: string; period: number; status: string; remaining: number; concessiveEnd: string }[] = [];
   for (const e of employees) {
-    for (const p of balances(acquisitivePeriods(e.admission_date, today), await loadAllocations(db, e.id), today)) {
+    const acq = acquisitivePeriods(e.admission_date, today);
+    for (const p of balances(acq, await loadAllocations(db, e.id), today, 60, await entitlementMap(db, e.id, acq))) {
       if (p.status === 'A_VENCER' || p.status === 'VENCIDAS') alerts.push({ employeeId: e.id, name: e.full_name, period: p.index, status: p.status, remaining: p.remaining, concessiveEnd: p.concessiveEnd });
     }
   }

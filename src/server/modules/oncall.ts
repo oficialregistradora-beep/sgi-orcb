@@ -10,6 +10,7 @@ import { formatHHMM, localToInstant, monthRange, todayLocal, weekdayOf } from '.
 import { activeAgreement, assertPeriodOpen, insertCredit } from './ledger.ts';
 import { findEmployee, currentSalary } from './people.ts';
 import { notifyEmployee } from './notifications.ts';
+import { basisText, getRule } from './legalRules.ts';
 import { recomputeDays } from './timeclock.ts';
 
 // Plantões de Registro Civil das Pessoas Naturais (sábados, domingos e feriados, 08h–18h por padrão).
@@ -73,7 +74,17 @@ export async function getShift(ctx: Ctx, id: string) {
   const totals = computeOncall(s.starts_at, s.ends_at, calls.map((c) => ({
     attended: c.attended, arrival: c.arrival_at, departure: c.departure_at, voided: !!c.voided_at,
   })));
-  return { shift: s, calls, totals };
+  // Regra determinada pela Oficial: o trabalho é creditado ao RESPONSÁVEL. Se o substituto atendeu,
+  // a gestão troca o responsável antes do fechamento (não há rateio por chamado).
+  const warnings: string[] = [];
+  if (s.substitute_employee_id && s.status === 'PLANEJADO') {
+    const sub = await queryOne<{ user_id: string | null }>(db, 'SELECT user_id FROM employees WHERE id = $1', [s.substitute_employee_id]);
+    const bySub = await queryOne<{ n: number }>(db, 'SELECT count(*)::int AS n FROM oncall_calls WHERE shift_id = $1 AND voided_at IS NULL AND registered_by = $2', [id, sub?.user_id ?? null]);
+    if (bySub && bySub.n > 0) {
+      warnings.push(`${bySub.n} chamado(s) registrado(s) pelo substituto. O trabalho é creditado ao responsável: se o substituto atendeu, troque o responsável antes de fechar.`);
+    }
+  }
+  return { shift: s, calls, totals, warnings };
 }
 
 /** Datas de plantão de uma competência: sábados, domingos e feriados com dispensa. */
@@ -300,12 +311,35 @@ export async function closeShift(ctx: Ctx, input: z.input<typeof closeSchema>): 
   });
 }
 
+export type OncallBasis = { divisor: string; standby: string; premium: string };
+
 export type OncallReportRow = {
   employee_id: string; full_name: string; shifts: number; standby_minutes: number; effective_bank: number; effective_paid: number;
   standby_value: string | null; effective_paid_value: string | null;
 };
 
 /** Relatório mensal: sobreaviso e trabalho efetivo SEPARADOS; valores estimados apenas com permissão de custos. */
+export async function oncallReportBasis(period: string): Promise<OncallBasis & { values: { divisor: number; fraction: { numerador: number; denominador: number }; premium: number } }> {
+  const db = getPool();
+  const { to } = monthRange(period);
+  const div = await getRule(db, 'DIVISOR_SALARIO_HORAS', to, { allowPending: true });
+  const frac = await getRule(db, 'SOBREAVISO_FRACAO', to, { allowPending: true });
+  const prem = await getRule(db, 'EFETIVO_DSR_FERIADO_ADICIONAL', to, { allowPending: true });
+  const fallbackDiv = await getNumberSetting(db, 'banco.divisor_salario_horas', 200);
+  const fallbackStandby = await getNumberSetting(db, 'plantao.sobreaviso_divisor', 3);
+  const fallbackPremium = await getNumberSetting(db, 'plantao.adicional_efetivo_percentual', 100);
+  return {
+    divisor: basisText(div, `${fallbackDiv} horas`),
+    standby: basisText(frac, `1/${fallbackStandby}`),
+    premium: basisText(prem, `${fallbackPremium}%`),
+    values: {
+      divisor: div?.value.horas ?? fallbackDiv,
+      fraction: frac?.value ?? { numerador: 1, denominador: fallbackStandby },
+      premium: prem?.value.percentual ?? fallbackPremium,
+    },
+  };
+}
+
 export async function oncallReport(ctx: Ctx, period: string): Promise<OncallReportRow[]> {
   const f = scopeFilter(ctx.principal, 'plantoes.fechar');
   if (!f) throw new ForbiddenError();
@@ -321,9 +355,7 @@ export async function oncallReport(ctx: Ctx, period: string): Promise<OncallRepo
       GROUP BY e.id ORDER BY e.full_name`,
     [from, to],
   );
-  const divisor = await getNumberSetting(db, 'banco.divisor_salario_horas', 200);
-  const standbyDiv = await getNumberSetting(db, 'plantao.sobreaviso_divisor', 3);
-  const premium = await getNumberSetting(db, 'plantao.adicional_efetivo_percentual', 100);
+  const { values } = await oncallReportBasis(period);
   const out: OncallReportRow[] = [];
   for (const r of rows) {
     const res = { employeeId: r.employee_id, sectorId: r.sector_id };
@@ -333,7 +365,7 @@ export async function oncallReport(ctx: Ctx, period: string): Promise<OncallRepo
     if (can(ctx.principal, 'banco.custos.ver', res)) {
       const salary = await currentSalary(db, r.employee_id, to);
       if (salary) {
-        const v = oncallValues(r.standby_minutes, r.effective_paid, salary, divisor, standbyDiv, premium);
+        const v = oncallValues(r.standby_minutes, r.effective_paid, salary, values.divisor, values.fraction, values.premium);
         standby_value = v.standby;
         effective_paid_value = v.effectiveIfPaid;
       }

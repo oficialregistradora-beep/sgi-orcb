@@ -11,6 +11,7 @@ import { activeAgreement, assertPeriodOpen, insertCredit, insertDebit, loadLedge
 import { currentSalary, getEmployeeFor } from './people.ts';
 import { ensureProcessed } from './timeclock.ts';
 import { notifyEmployee } from './notifications.ts';
+import { basisText, getRule } from './legalRules.ts';
 
 export type LedgerLine = {
   id: string; entry_date: string; kind: string; minutes: number; expires_on: string | null; notes: string | null;
@@ -51,12 +52,14 @@ export async function getBankOverview(ctx: Ctx, employeeId: string): Promise<Ban
   if (can(ctx.principal, 'banco.custos.ver', { employeeId, sectorId: e.sector_id })) {
     const salary = await currentSalary(db, employeeId, today);
     if (salary) {
-      const divisor = await getNumberSetting(db, 'banco.divisor_salario_horas', 200);
-      const pct = await getNumberSetting(db, 'banco.adicional_extra_percentual', 50);
+      const divRule = await getRule(db, 'DIVISOR_SALARIO_HORAS', today, { allowPending: true });
+      const pctRule = await getRule(db, 'ADICIONAL_HORA_EXTRA', today, { allowPending: true });
+      const divisor = divRule?.value.horas ?? (await getNumberSetting(db, 'banco.divisor_salario_horas', 200));
+      const pct = pctRule?.value.percentual ?? (await getNumberSetting(db, 'banco.adicional_extra_percentual', 50));
       cost = {
         available: estimateCost(summary.available, salary, divisor, pct),
         expired: estimateCost(summary.expired, salary, divisor, pct),
-        basis: `Salário vigente ÷ ${divisor} h × (1 + ${pct}%) — estimativa informativa, não é valor devido`,
+        basis: `Estimativa informativa, não é valor devido. Divisor: ${basisText(divRule, `${divisor} h`)}. Adicional: ${basisText(pctRule, `${pct}%`)}`,
       };
     }
   }

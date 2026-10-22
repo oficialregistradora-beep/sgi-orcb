@@ -1,10 +1,26 @@
-// Férias — regras puras (CLT arts. 129 a 145). Dependentes de validação jurídica: J-13 (redução do art. 130
-// por faltas injustificadas não é aplicada automaticamente) e J-14 (regras de convenção coletiva).
+// Férias — regras puras (CLT arts. 129 a 145). J-13: a duração segue as faixas do art. 130 conforme as faltas
+// injustificadas CONFIRMADAS em conferência; atrasos e saídas antecipadas não viram dias de falta.
+// J-14: regras de convenção coletiva só são aplicadas quando cadastradas e validadas.
 
 import { addDays, addMonths, diffDays, weekdayOf } from './time.ts';
 
 export const ENTITLEMENT_DAYS = 30;
 export const MAX_SOLD_DAYS = 10; // abono pecuniário: 1/3 (art. 143)
+
+/** CLT art. 130: duração das férias conforme as faltas injustificadas no período aquisitivo. */
+export function entitlementForAbsences(unjustifiedDays: number): number {
+  if (!Number.isInteger(unjustifiedDays) || unjustifiedDays < 0) throw new Error('Quantidade de faltas inválida');
+  if (unjustifiedDays <= 5) return 30;
+  if (unjustifiedDays <= 14) return 24;
+  if (unjustifiedDays <= 23) return 18;
+  if (unjustifiedDays <= 32) return 12;
+  return 0; // perda do direito naquele período
+}
+
+export const ART130_BANDS = [
+  { faixa: 'Até 5 faltas', dias: 30 }, { faixa: 'De 6 a 14', dias: 24 }, { faixa: 'De 15 a 23', dias: 18 },
+  { faixa: 'De 24 a 32', dias: 12 }, { faixa: 'Mais de 32', dias: 0 },
+] as const;
 
 export type AcqPeriod = {
   index: number;
@@ -32,28 +48,34 @@ export function acquisitivePeriods(admission: string, until: string): AcqPeriod[
 export type Allocation = { periodStart: string; enjoyedDays: number; soldDays: number; startDate: string };
 
 export type PeriodBalance = AcqPeriod & {
+  entitlement: number;
   enjoyed: number;
   sold: number;
   remaining: number;
   fractions: number;
   hasFraction14: boolean;
-  status: 'EM_AQUISICAO' | 'DISPONIVEL' | 'A_VENCER' | 'VENCIDAS' | 'QUITADO';
+  status: 'EM_AQUISICAO' | 'DISPONIVEL' | 'A_VENCER' | 'VENCIDAS' | 'QUITADO' | 'PERDIDO';
 };
 
-export function balances(periods: AcqPeriod[], allocations: Allocation[], today: string, alertDays = 60): PeriodBalance[] {
+/** `entitlements`: direito apurado por período (início → dias); ausente = 30 dias. */
+export function balances(
+  periods: AcqPeriod[], allocations: Allocation[], today: string, alertDays = 60, entitlements: Map<string, number> = new Map(),
+): PeriodBalance[] {
   return periods.map((p) => {
     const mine = allocations.filter((a) => a.periodStart === p.start);
     const enjoyed = mine.reduce((s, a) => s + a.enjoyedDays, 0);
     const sold = mine.reduce((s, a) => s + a.soldDays, 0);
-    const remaining = ENTITLEMENT_DAYS - enjoyed - sold;
+    const entitlement = entitlements.get(p.start) ?? ENTITLEMENT_DAYS;
+    const remaining = entitlement - enjoyed - sold;
     let status: PeriodBalance['status'];
     if (p.end >= today) status = 'EM_AQUISICAO';
+    else if (entitlement === 0) status = 'PERDIDO';
     else if (remaining <= 0) status = 'QUITADO';
     else if (p.concessiveEnd < today) status = 'VENCIDAS';
     else if (diffDays(today, p.concessiveEnd) <= alertDays) status = 'A_VENCER';
     else status = 'DISPONIVEL';
     return {
-      ...p, enjoyed, sold, remaining, fractions: mine.filter((a) => a.enjoyedDays > 0).length,
+      ...p, entitlement, enjoyed, sold, remaining, fractions: mine.filter((a) => a.enjoyedDays > 0).length,
       hasFraction14: mine.some((a) => a.enjoyedDays >= 14), status,
     };
   });
@@ -68,6 +90,8 @@ export type VacationInput = {
   allocations: Allocation[];
   holidays: Set<string>;
   minNoticeDays: number;
+  entitlements?: Map<string, number>;
+  blockWeekendHolidayStart?: boolean; // regra coletiva, somente quando validada (J-14)
 };
 
 export type VacationCheck = { period: PeriodBalance; days: number; warnings: string[] };
@@ -82,20 +106,29 @@ export function validateVacation(i: VacationInput): VacationCheck {
   if (i.end < i.start) fail('A data final é anterior à inicial.');
   if (i.start <= i.today) fail('As férias devem começar em data futura.');
   if (!Number.isInteger(i.soldDays) || i.soldDays < 0 || i.soldDays > MAX_SOLD_DAYS) fail('Abono pecuniário: de 0 a 10 dias (art. 143).');
+  if (i.blockWeekendHolidayStart && (weekdayOf(i.start) === 0 || weekdayOf(i.start) === 6 || i.holidays.has(i.start))) {
+    fail('Pela convenção coletiva validada, as férias não podem iniciar em sábado, domingo ou feriado.');
+  }
   const days = diffDays(i.start, i.end) + 1;
   if (days < 5) fail('Cada período de férias deve ter no mínimo 5 dias corridos (art. 134, §1º).');
 
-  const all = balances(acquisitivePeriods(i.admission, i.start), i.allocations, i.today);
+  const all = balances(acquisitivePeriods(i.admission, i.start), i.allocations, i.today, 60, i.entitlements);
   const period = all.find((p) => p.end < i.start && p.remaining > 0);
   if (!period) fail('Não há período aquisitivo completo com saldo de férias.');
   const p = period!;
   if (i.soldDays > 0 && p.sold > 0) fail('O abono pecuniário já foi utilizado neste período aquisitivo.');
+  if (i.soldDays > Math.floor(p.entitlement / 3)) fail(`Abono pecuniário limitado a 1/3 do direito do período (${Math.floor(p.entitlement / 3)} dias — art. 143).`);
+  if (p.entitlement < 14 && (p.fractions > 0 || days + i.soldDays !== p.remaining)) {
+    fail(`Com direito reduzido a ${p.entitlement} dias (art. 130), as férias devem ser gozadas em um único período, esgotando o saldo.`);
+  }
   const after = p.remaining - days - i.soldDays;
   if (after < 0) fail(`Saldo insuficiente no período aquisitivo ${p.index}: restam ${p.remaining} dia(s).`);
   if (p.fractions + 1 > 3) fail('As férias podem ser fracionadas em no máximo 3 períodos (art. 134, §1º).');
   if (p.fractions + 1 === 3 && after > 0) fail('O terceiro período de férias deve esgotar o saldo do período aquisitivo (máximo de 3 períodos).');
   if (after > 0 && after < 5) fail(`O saldo restante (${after} dia(s)) ficaria inferior a 5 dias, o que impede novo período.`);
-  if (!p.hasFraction14 && days < 14 && (after < 14 || p.fractions + 1 === 3)) {
+  // A exigência de um período com 14 dias ou mais só se aplica quando há fracionamento (art. 134, §1º).
+  const fractioned = p.fractions > 0 || after > 0;
+  if (fractioned && !p.hasFraction14 && days < 14 && (after < 14 || p.fractions + 1 === 3)) {
     fail('Um dos períodos de férias deve ter no mínimo 14 dias corridos (art. 134, §1º).');
   }
   // Art. 134, §3º: vedado o início nos dois dias que antecedem feriado ou repouso semanal (domingo).
@@ -111,6 +144,6 @@ export function validateVacation(i: VacationInput): VacationCheck {
   if (i.end > p.concessiveEnd) {
     warnings.push(`Parte do gozo ocorre após o período concessivo (${p.concessiveEnd}): devido o pagamento em dobro (art. 137).`);
   }
-  warnings.push('Verifique faltas injustificadas no período aquisitivo, que podem reduzir a duração das férias (art. 130).');
+  if (p.entitlement < ENTITLEMENT_DAYS) warnings.push(`Direito reduzido a ${p.entitlement} dias pelas faltas injustificadas (art. 130).`);
   return { period: p, days, warnings };
 }

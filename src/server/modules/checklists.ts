@@ -17,7 +17,8 @@ export type ChecklistKind = 'ADMISSAO' | 'DESLIGAMENTO' | 'OUTRO';
 export async function createChecklistFromTemplate(
   c: Db, actorUserId: string, employeeId: string, kind: ChecklistKind, referenceDate: string,
 ): Promise<string | null> {
-  const t = await queryOne<{ id: string; name: string }>(c, 'SELECT id, name FROM checklist_templates WHERE kind = $1 AND active ORDER BY created_at LIMIT 1', [kind]);
+  const t = await queryOne<{ id: string; name: string }>(
+    c, "SELECT id, name FROM checklist_templates WHERE kind = $1 AND status = 'PUBLICADO' ORDER BY published_at DESC LIMIT 1", [kind]);
   if (!t) return null;
   const cl = await queryOne<{ id: string }>(
     c,
@@ -26,8 +27,9 @@ export async function createChecklistFromTemplate(
   );
   await query(
     c,
-    `INSERT INTO checklist_items (checklist_id, position, title, description, due_date, auto_code)
-     SELECT $1, position, title, description, $2::date + due_offset_days, auto_code FROM checklist_template_items WHERE template_id = $3`,
+    `INSERT INTO checklist_items (checklist_id, position, title, description, due_date, auto_code, required, evidence_required, responsible_role_id)
+     SELECT $1, position, title, description, $2::date + due_offset_days, auto_code, required, evidence_required, responsible_role_id
+       FROM checklist_template_items WHERE template_id = $3`,
     [cl!.id, referenceDate, t.id],
   );
   await refreshAutoItems(c, cl!.id);
@@ -69,21 +71,33 @@ async function syncChecklistStatus(c: Db, checklistId: string): Promise<void> {
 
 export type ChecklistView = {
   id: string; kind: ChecklistKind; title: string; reference_date: string; status: string;
-  items: { id: string; position: number; title: string; description: string | null; due_date: string | null; status: string; done_at: Date | null; done_by_name: string | null; notes: string | null; overdue: boolean }[];
+  items: {
+    id: string; position: number; title: string; description: string | null; due_date: string | null; status: string; done_at: Date | null;
+    done_by_name: string | null; notes: string | null; overdue: boolean; required: boolean; evidence_required: boolean; evidence: string | null;
+    responsible_role_name: string | null;
+  }[];
+  template_version: number | null;
 };
 
 export async function listChecklists(ctx: Ctx, employeeId: string): Promise<ChecklistView[]> {
   await getEmployeeFor(ctx, 'pessoas.ver', employeeId);
   const db = getPool();
-  const lists = await query<Omit<ChecklistView, 'items'>>(db, 'SELECT id, kind, title, reference_date, status FROM checklists WHERE employee_id = $1 ORDER BY created_at DESC', [employeeId]);
+  const lists = await query<{ id: string; status: string }>(db, 'SELECT id, status FROM checklists WHERE employee_id = $1', [employeeId]);
   await tx(async (c) => { for (const l of lists) if (l.status === 'ABERTO') await refreshAutoItems(c, l.id); });
   const today = todayLocal();
   const out: ChecklistView[] = [];
-  for (const l of await query<Omit<ChecklistView, 'items'>>(db, 'SELECT id, kind, title, reference_date, status FROM checklists WHERE employee_id = $1 ORDER BY created_at DESC', [employeeId])) {
+  for (const l of await query<Omit<ChecklistView, 'items'>>(
+    db,
+    `SELECT c.id, c.kind, c.title, c.reference_date, c.status, t.version AS template_version
+       FROM checklists c LEFT JOIN checklist_templates t ON t.id = c.template_id WHERE c.employee_id = $1 ORDER BY c.created_at DESC`,
+    [employeeId],
+  )) {
     const items = await query<Omit<ChecklistView['items'][number], 'overdue'>>(
       db,
-      `SELECT i.id, i.position, i.title, i.description, i.due_date, i.status, i.done_at, u.display_name AS done_by_name, i.notes
-         FROM checklist_items i LEFT JOIN users u ON u.id = i.done_by WHERE i.checklist_id = $1 ORDER BY i.position`,
+      `SELECT i.id, i.position, i.title, i.description, i.due_date, i.status, i.done_at, u.display_name AS done_by_name, i.notes,
+              i.required, i.evidence_required, i.evidence, r.name AS responsible_role_name
+         FROM checklist_items i LEFT JOIN users u ON u.id = i.done_by LEFT JOIN roles r ON r.id = i.responsible_role_id
+        WHERE i.checklist_id = $1 ORDER BY i.position`,
       [l.id],
     );
     out.push({ ...l, items: items.map((i) => ({ ...i, overdue: i.status === 'PENDENTE' && !!i.due_date && i.due_date < today })) });
@@ -95,23 +109,26 @@ const itemSchema = z.object({
   itemId: z.uuid(),
   status: z.enum(['PENDENTE', 'CONCLUIDO', 'NAO_APLICAVEL']),
   notes: z.string().trim().max(500).optional(),
+  evidence: z.string().trim().max(500).optional(), // descrição/localização da evidência (documento, protocolo, link)
 });
 
 export async function setChecklistItem(ctx: Ctx, input: z.input<typeof itemSchema>): Promise<void> {
   const d = itemSchema.parse(input);
   if (d.status === 'NAO_APLICAVEL' && !d.notes) throw new AppError('Justifique por que o item não se aplica.');
   await tx(async (c) => {
-    const it = await queryOne<{ checklist_id: string; employee_id: string; title: string }>(
-      c, 'SELECT i.checklist_id, cl.employee_id, i.title FROM checklist_items i JOIN checklists cl ON cl.id = i.checklist_id WHERE i.id = $1 FOR UPDATE OF i', [d.itemId]);
+    const it = await queryOne<{ checklist_id: string; employee_id: string; title: string; required: boolean; evidence_required: boolean }>(
+      c, 'SELECT i.checklist_id, cl.employee_id, i.title, i.required, i.evidence_required FROM checklist_items i JOIN checklists cl ON cl.id = i.checklist_id WHERE i.id = $1 FOR UPDATE OF i', [d.itemId]);
     if (!it) throw new NotFoundError();
+    if (it.required && d.status === 'NAO_APLICAVEL') throw new AppError('Item obrigatório: não pode ser marcado como "não se aplica".');
+    if (it.evidence_required && d.status === 'CONCLUIDO' && (!d.evidence || d.evidence.length < 3)) throw new AppError('Este item exige a indicação da evidência (documento, protocolo ou local de arquivamento).');
     const e = await findEmployee(c, it.employee_id);
     requirePermission(ctx, 'pessoas.editar', { employeeId: e.id, sectorId: e.sector_id });
     await query(
       c,
-      `UPDATE checklist_items SET status = $2, notes = $3,
+      `UPDATE checklist_items SET status = $2, notes = $3, evidence = CASE WHEN $2 = 'PENDENTE' THEN NULL ELSE $5 END,
               done_at = CASE WHEN $2 = 'PENDENTE' THEN NULL ELSE now() END,
               done_by = CASE WHEN $2 = 'PENDENTE' THEN NULL ELSE $4::uuid END WHERE id = $1`,
-      [d.itemId, d.status, d.notes ?? null, ctx.principal.userId],
+      [d.itemId, d.status, d.notes ?? null, ctx.principal.userId, d.evidence ?? null],
     );
     await syncChecklistStatus(c, it.checklist_id);
     await audit(c, ctx, { action: 'CHECKLIST_ITEM', entityType: 'employee', entityId: it.employee_id, summary: `Checklist de ${e.full_name}: "${it.title}" → ${d.status}`, data: { notes: d.notes ?? null } });

@@ -76,7 +76,7 @@ export async function cancelVacationAction(_p: ActionState, fd: FormData): Promi
 export async function checklistItemAction(_p: ActionState, fd: FormData): Promise<ActionState> {
   const id = str(fd, 'employeeId');
   return runAction(async (ctx) => {
-    await setChecklistItem(ctx, { itemId: str(fd, 'itemId'), status: str(fd, 'status') as 'CONCLUIDO', notes: optStr(fd, 'notes') });
+    await setChecklistItem(ctx, { itemId: str(fd, 'itemId'), status: str(fd, 'status') as 'CONCLUIDO', notes: optStr(fd, 'notes'), evidence: optStr(fd, 'evidence') });
     return 'Item atualizado.';
   }, `/equipe/${id}`);
 }

@@ -4,12 +4,13 @@ Ofício de Registros de Capivari de Baixo/SC — software **privado e de uso int
 
 > Não substitui livros, protocolos, centrais ou sistemas registrais oficiais. O controle de jornada é **administrativo interno** (não é REP — Portaria MTP 671/2021).
 
-## Situação (22/10/2026 — Fase 2b no branch `fase-2b`)
+## Situação (22/10/2026 — Fases 2b e 2c nos branches `fase-2b` e `fase-2c`)
 | Fase | Situação |
 |---|---|
 | 1 — Fundação (autenticação Google + TOTP, sessões, permissões, auditoria encadeada, design system) | Implementado · Testado |
 | 2 — Pessoas, jornada, banco de horas, solicitações, espelho/extrato assinados | Implementado · Testado |
 | 2b — Plantões e sobreaviso RCPN, férias, checklists de admissão/desligamento, itens entregues com termo | Implementado · Testado |
+| 2c — Validação jurídica: art. 130 (faltas × férias), regras jurídicas por vigência, modelos de checklist editáveis | Implementado · Testado |
 | 3–5 — Documental, tarefas/projetos/processos, financeiro, qualidade, BI | Planejado |
 | Homologação pela serventia · validação jurídica · produção | **Pendentes** |
 

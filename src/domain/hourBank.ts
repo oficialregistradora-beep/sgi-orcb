@@ -31,6 +31,18 @@ export function creditExpiry(entryDate: string, compensationMonths: number): str
   return addMonths(entryDate, compensationMonths);
 }
 
+/** Prazo por regra coletiva: em meses a partir da data, ou em dias após o fim do mês da acumulação. */
+export function expiryByRule(entryDate: string, rule: { modo: 'MESES' | 'DIAS_APOS_MES'; quantidade: number }): string {
+  if (rule.modo === 'MESES') return addMonths(entryDate, rule.quantidade);
+  const lastOfMonth = addDays(addMonths(`${entryDate.slice(0, 7)}-01`, 1), -1);
+  return addDays(lastOfMonth, rule.quantidade);
+}
+
+/** Conversão coletiva (ex.: 1 h trabalhada = 1h30 de folga). Arredondamento ao minuto mais próximo. */
+export function convertCreditMinutes(minutes: number, minutesOffPerHour: number): number {
+  return Math.round((minutes * minutesOffPerHour) / 60);
+}
+
 export function buildLots(entries: LedgerEntry[], allocations: Allocation[], today: string, alertDays: number): CreditLot[] {
   const reversed = new Set(entries.filter((e) => e.kind === 'ESTORNO' && e.reversesEntryId).map((e) => e.reversesEntryId));
   const consumed = new Map<string, number>();

@@ -194,11 +194,14 @@ export default async function FuncionarioPage({ params, searchParams }: { params
           <div className="card-body stack">
             {checklists.length ? checklists.map((cl) => (
               <details key={cl.id} className="disclosure" open={cl.status === 'ABERTO'}>
-                <summary className="row-between"><strong>{label(cl.kind)} — {fmtDate(cl.reference_date)}</strong><span className={statusTone(cl.status)}>{label(cl.status)} · {cl.items.filter((i) => i.status !== 'PENDENTE').length}/{cl.items.length}</span></summary>
+                <summary className="row-between"><strong>{label(cl.kind)} — {fmtDate(cl.reference_date)}{cl.template_version ? <span className="muted small"> (modelo v{cl.template_version})</span> : null}</strong><span className={statusTone(cl.status)}>{label(cl.status)} · {cl.items.filter((i) => i.status !== 'PENDENTE').length}/{cl.items.length}</span></summary>
                 <table className="table"><tbody>{cl.items.map((it) => (
                   <tr key={it.id} className={it.status !== 'PENDENTE' ? 'row-muted' : undefined}>
                     <td className="small">
-                      <strong>{it.title}</strong>{it.description ? <div className="muted">{it.description}</div> : null}
+                      <strong>{it.title}</strong> {it.required ? <span className="tag tag-warn">obrigatório</span> : null} {it.evidence_required ? <span className="tag tag-info">evidência</span> : null}
+                      {it.description ? <div className="muted">{it.description}</div> : null}
+                      {it.responsible_role_name ? <div className="muted">Responsável: {it.responsible_role_name}</div> : null}
+                      {it.evidence ? <div>Evidência: {it.evidence}</div> : null}
                       {it.notes ? <div>{it.notes}</div> : null}
                       {it.done_at ? <div className="muted">{label(it.status)} {it.done_by_name ? `por ${it.done_by_name}` : 'pelo sistema'} em {fmtDateTime(it.done_at)}</div> : null}
                     </td>
@@ -207,8 +210,9 @@ export default async function FuncionarioPage({ params, searchParams }: { params
                       <ActionForm action={checklistItemAction} submitLabel="OK" submitClass="btn btn-sm" inline>
                         <input type="hidden" name="employeeId" value={id} /><input type="hidden" name="itemId" value={it.id} />
                         <select name="status" className="input" defaultValue={it.status} aria-label="Situação" style={{ width: 130 }}>
-                          <option value="PENDENTE">Pendente</option><option value="CONCLUIDO">Concluído</option><option value="NAO_APLICAVEL">Não se aplica</option>
+                          <option value="PENDENTE">Pendente</option><option value="CONCLUIDO">Concluído</option>{it.required ? null : <option value="NAO_APLICAVEL">Não se aplica</option>}
                         </select>
+                        {it.evidence_required ? <input name="evidence" className="input" placeholder="Evidência" aria-label="Evidência" style={{ width: 130 }} /> : null}
                         <input name="notes" className="input" placeholder="Obs." aria-label="Observação" style={{ width: 110 }} />
                       </ActionForm>
                     ) : <span className={statusTone(it.status)}>{label(it.status)}</span>}</td>

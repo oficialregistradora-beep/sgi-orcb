@@ -261,13 +261,13 @@ A matriz completa, com status, está em `docs/22-matriz-conformidade.md`. Pontos
 | J-04 | Tolerância de 5 min por marcação, limitada a 10 min diários (CLT art. 58 §1º; Súmula 366 TST) | Implementado como parâmetro ativo, que pode ser desligado | Dependente de validação jurídica |
 | J-05 | Horas não compensadas no prazo (CLT art. 59 §3º) | O sistema **não** apaga créditos vencidos: marca-os "vencido — requer pagamento/análise" | Dependente de validação jurídica |
 | J-06 | Saldos negativos | **Nunca** são debitados automaticamente; viram ocorrência para análise | Dependente de validação jurídica |
-| J-07 | Sobreaviso no RCPN (CLT art. 244 §2º por analogia; Súmula 428 TST) e gratificações | Cálculos de sobreaviso, trabalho efetivo e banco de horas mantidos separados | Pendente (Fase 2.b) |
+| J-07 | Sobreaviso no RCPN (CLT art. 244 §2º por analogia; Súmula 428 TST) e gratificações | Cálculos separados; parâmetros em regras com vigência (Fase 2c) | Fundamento geral confirmado; parâmetros dependem da CCT |
 | J-08 | Assinatura eletrônica simples (Lei 14.063/2020, art. 4º, I) nos documentos administrativos listados | Usada apenas em atos internos; assinatura avançada ou qualificada não é substituída | Dependente de validação jurídica |
 | J-09 | Prazos de retenção (trabalhista, previdenciário, LGPD) | Retenção configurável por tipo; padrão provisório de 5 anos após o desligamento, sem expurgo automático | Dependente de validação jurídica |
 | J-10 | Bases legais LGPD e RIPD para dados de funcionários | Inventário de dados em `docs/10-manual-seguranca.md` | Pendente (encarregado/DPO) |
 | J-11 | Provimento CNJ nº 74/2018 e normativos posteriores; Código de Normas da CGJ/SC | Funcionalidades de apoio (Fase 5); nenhuma conformidade é declarada | Pendente de consulta às versões oficiais vigentes |
-| J-13 | Redução de férias por faltas injustificadas (CLT art. 130) | Aviso no pedido; conferência manual | Dependente de validação jurídica |
-| J-14 | Regras de férias e de plantão previstas na CCT | Nenhuma presumida | Pendente (P-04) |
+| J-13 | Redução de férias por faltas injustificadas (CLT art. 130) | Faixas implementadas com conferência obrigatória (Fase 2c) | Base legal identificada (22/10/2026); art. 133 manual |
+| J-14 | Regras de férias e de plantão previstas na CCT | CCT SC000957/2026 cadastrada; regras da CCT anterior como histórico, sem aplicação | Instrumento identificado; leitura das cláusulas pendente |
 | J-12 | Intervalos (CLT arts. 66 e 71) e limite de 2 h extras diárias (art. 59) | O sistema gera **alertas**, sem bloquear o registro | Dependente de validação jurídica |
 
 ---

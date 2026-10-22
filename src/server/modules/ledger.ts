@@ -1,9 +1,12 @@
 import { type Db, query, queryOne } from '../db.ts';
 import { AppError } from '../errors.ts';
+import { getRule } from './legalRules.ts';
 import {
   allocateFifo,
   buildLots,
+  convertCreditMinutes,
   creditExpiry,
+  expiryByRule,
   type Allocation,
   type EntryKind,
   type LedgerEntry,
@@ -67,13 +70,20 @@ export async function insertCredit(
 ): Promise<string> {
   if (!Number.isInteger(p.minutes) || p.minutes <= 0) throw new AppError('Crédito inválido.');
   await lockBank(db, p.employeeId);
+  // Regras coletivas só alteram o banco quando VALIDADAS (J-14); sem elas vale o acordo (CLT art. 59).
+  const factor = await getRule(db, 'BANCO_FATOR_CONVERSAO', p.date, { allowPending: false });
+  const term = await getRule(db, 'BANCO_PRAZO', p.date, { allowPending: false });
+  const minutes = factor ? convertCreditMinutes(p.minutes, factor.value.minutosFolgaPorHora) : p.minutes;
+  const expiresOn = term ? expiryByRule(p.date, term.value) : creditExpiry(p.date, p.agreement.compensation_months);
+  const notes = [p.notes, factor ? `conversão ${p.minutes}→${minutes} min (${factor.legalBasis})` : null, term ? `prazo: ${term.legalBasis}` : null]
+    .filter(Boolean).join(' · ');
   const r = await queryOne<{ id: string }>(
     db,
     `INSERT INTO hour_bank_entries (employee_id, agreement_id, entry_date, kind, minutes, expires_on, occurrence_id, request_id,
                                     oncall_shift_id, notes, created_by)
      VALUES ($1,$2,$3,'CREDITO',$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
-    [p.employeeId, p.agreement.id, p.date, p.minutes, creditExpiry(p.date, p.agreement.compensation_months),
-      p.occurrenceId ?? null, p.requestId ?? null, p.oncallShiftId ?? null, p.notes, p.userId],
+    [p.employeeId, p.agreement.id, p.date, minutes, expiresOn,
+      p.occurrenceId ?? null, p.requestId ?? null, p.oncallShiftId ?? null, notes, p.userId],
   );
   return r!.id;
 }

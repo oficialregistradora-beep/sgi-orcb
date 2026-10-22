@@ -42,11 +42,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         { href: '#qualidade', label: 'Qualidade', icon: <I.IconCheck />, planned: 'Fase 5' },
       ],
     },
-    ...((can(p, 'configuracoes.gerenciar') || can(p, 'permissoes.gerenciar') || can(p, 'usuarios.gerenciar') || can(p, 'auditoria.ver'))
+    ...((can(p, 'configuracoes.gerenciar') || can(p, 'checklists.modelos.editar') || can(p, 'permissoes.gerenciar') || can(p, 'usuarios.gerenciar') || can(p, 'auditoria.ver'))
       ? [{
           title: 'Administração',
           items: [
-            ...(can(p, 'configuracoes.gerenciar') ? [{ href: '/configuracoes', label: 'Configurações', icon: <I.IconSettings /> }] : []),
+            ...(can(p, 'configuracoes.gerenciar') ? [{ href: '/configuracoes', label: 'Configurações', icon: <I.IconSettings /> }]
+              : can(p, 'checklists.modelos.editar') ? [{ href: '/configuracoes?aba=checklists', label: 'Modelos de checklist', icon: <I.IconSettings /> }] : []),
             ...(can(p, 'permissoes.gerenciar') || can(p, 'usuarios.gerenciar') ? [{ href: '/permissoes', label: 'Usuários e permissões', icon: <I.IconKey /> }] : []),
             ...(can(p, 'auditoria.ver') ? [{ href: '/auditoria', label: 'Auditoria', icon: <I.IconShield /> }] : []),
           ],
