@@ -30,7 +30,11 @@
 | §13 Prazos de retenção | categorias com prazo e fundamento; descarte bloqueado sem prazo | phase3 | Implementado · prazos **Dependentes de validação jurídica (J-15)** |
 | §13 Integração Google Drive | `drive.ts`, `fileStore.ts` (Drive compartilhado, conta de serviço, acesso só pela aplicação, hash conferido) — ADR 0010, guia docs/23 | phase3b (API simulada) | Implementado · Testado com simulação · **ligação real Dependente de configuração (P-03)** |
 | §21 Antivírus dos anexos | `antivirus.ts` (ClamAV/clamd), falha fechada em produção | phase3b com ClamAV real | Implementado · Testado |
-| §14–16 Tarefas, processos, financeiro | — | — | Planejado (Fase 4) |
+| §14 Tarefas individuais/coletivas, subtarefas, responsáveis, prioridades, prazos, dependências, comentários, anexos, checklists, histórico, notificações, aprovações, recorrência, calendário, Kanban, Gantt, tabelas, painéis | `tasks.ts`, `/tarefas`, `/tarefas/[id]` | unit + phase4a (rodadas 1–3) + E2E | Implementado · Testado |
+| §14 Projetos (fases, marcos, custos, responsáveis, indicadores) e projetos iniciais sugeridos | `projects.ts`, `/projetos` | phase4a + E2E | Implementado · Testado |
+| §15 Processos (etapas, responsáveis, entradas, saídas, documentos exigidos, aprovações, prazos, alertas, exceções, auditoria, encerramento) | `routines.ts` (modelos e instâncias), `/rotinas` | phase4a (rodadas 1–3) | Implementado · Testado |
+| §15 Rotinas diárias/semanais/mensais/anuais; centrais 4×/dia; bloco 16–17 h; prioridade imediata; escalonamento Substituta/Oficial | `routines.ts`, `domain/recurrence.ts`, `escalate` | unit + rodadas 1–3 | Implementado · Testado |
+| §16 Financeiro | — | — | Planejado (Fase 4b) |
 | §17 Qualidade e conformidade | — | — | Planejado (Fase 5) |
 | §18 Calendar, Chat, Gmail | notificações internas | — | Planejado (Fase 4) |
 | §19 Identidade visual e design system | `app/globals.css`, `src/ui` | E2E (inclui 390 px) | Implementado |

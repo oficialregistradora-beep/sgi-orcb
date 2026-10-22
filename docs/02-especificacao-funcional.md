@@ -80,5 +80,12 @@ Criar, editar (nova versão em rascunho), duplicar, ordenar, remover itens, publ
 - **Ciclo de vida:** obsoleto, arquivado e descarte do conteúdo dos arquivos após a retenção (somente com prazo e fundamento registrados na categoria, permissão própria e reautenticação).
 - **Exportação:** pacote JSON por versão com conteúdo, hashes, assinaturas e verificação.
 
+## F14. Tarefas, projetos, rotinas e processos (Fase 4a)
+- **Tarefas:** criar (o colaborador cria para si; a coordenação atribui no setor), prioridade (Imediata, Urgente, Alta, Média, Baixa), prazo com horário, bloco de horário, checklist, subtarefas, dependências (sem ciclos), comentários e anexos (antivírus), aprovação da conclusão por outra pessoa, bloqueio com motivo (exceção), cancelamento e reabertura com motivo, encaminhamento à Substituta Legal ou à Oficial. Visões: Minhas tarefas, Lista, Quadro, Calendário e Painel (situação, carga por responsável, vencidas, % no prazo).
+- **Projetos:** gestor, membros e leitores; fases; marcos; custos realizados × estimado; indicadores com meta; cronograma (Gantt); encerramento somente sem tarefas abertas.
+- **Rotinas:** diárias, semanais, mensais e anuais, com horários (ex.: centrais 4×/dia), bloco de prioridade e responsável ou setor; tarefas geradas automaticamente, sem duplicar.
+- **Processos:** modelos com etapas (prazo, papel responsável, entradas, saídas, documentos exigidos, aprovação); a execução cria as etapas como tarefas encadeadas e encerra ao fim.
+- **Avisos:** atribuição, bloqueio, aprovação pendente, devolução, encaminhamento, etapa liberada e prazo (uma vez por prazo).
+
 ## Pendentes
 Avaliações de desempenho e treinamentos (Fase 5); reinício automático do período aquisitivo (art. 133); leitura integral da CCT 2026/2027 e cadastro das regras validadas correspondentes (J-14); prazos de retenção documental (J-15); integração com o Google Drive (P-03).

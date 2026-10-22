@@ -37,5 +37,10 @@ DDL executável: `db/migrations/0001_fundacao.sql`, `0002_pessoas_jornada.sql` e
 | `document_audience_sectors`, `document_audience_users` | Público destinatário / lista de acesso | — |
 | `document_events` | Histórico do documento | Imutável |
 
+| `projects`, `project_members`, `project_phases`, `project_milestones`, `project_costs`, `project_indicators` | Projetos | Sem exclusão; custos imutáveis; encerramento exige tarefas fechadas |
+| `tasks`, `task_dependencies`, `task_checklist_items`, `task_comments`, `task_attachments`, `task_events` | Tarefas | Sem exclusão; CHECKs de situação, aprovação e segregação; comentários, anexos e histórico imutáveis |
+| `routines` | Rotinas recorrentes | Ocorrência única por (rotina, data/horário) |
+| `process_templates`, `process_template_steps`, `process_instances` | Modelos e execuções de processo | Instância guarda cópia das etapas |
+
 ## Entidades previstas (Fases 2b–5)
-`oncall_schedules` / `oncall_shifts` / `oncall_calls` (plantões RCPN, com sobreaviso, trabalho efetivo e banco **separados**), `vacation_requests`, `drive_files` (se o Drive for adotado — ADR 0009), `tasks`, `projects`, `project_phases`, `task_dependencies`, `workflows`, `workflow_steps`, `suppliers`, `contracts`, `expenses`, `cost_centers`, `budgets`, `payments` (com segregação solicitante/aprovador/pagador), `trainings`, `training_records`, `evaluations`, `audits`, `nonconformities`, `corrective_actions`, `risks`, `incidents`, `assets`, `automations`.
+`oncall_schedules` / `oncall_shifts` / `oncall_calls` (plantões RCPN, com sobreaviso, trabalho efetivo e banco **separados**), `vacation_requests`, `drive_files` (se o Drive for adotado — ADR 0009), `suppliers`, `contracts`, `expenses`, `cost_centers`, `budgets`, `payments` (com segregação solicitante/aprovador/pagador), `trainings`, `training_records`, `evaluations`, `audits`, `nonconformities`, `corrective_actions`, `risks`, `incidents`, `assets`, `automations`.

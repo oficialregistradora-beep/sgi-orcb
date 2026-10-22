@@ -14,4 +14,6 @@
 
 **Documentos institucionais:** em *Gestão documental*, consulte os documentos vigentes destinados a você (pesquise pelo título ou por palavras do texto). Quando o documento exigir ciência, ele aparece em *Para ciência* e no painel: leia, marque a declaração e confirme com o código do autenticador. Uma nova versão pede nova ciência.
 
+**Tarefas:** em *Tarefas → Minhas tarefas* ficam suas atividades por urgência (imediatas, vencidas, hoje, próximas), inclusive as rotinas do dia. Use *Iniciar*, *Concluir*, *Registrar impedimento* (com o motivo) ou *Encaminhar para decisão*. Tarefas com aprovação vão para quem aprova ao concluir.
+
 **Privacidade:** você só vê seus próprios dados. Dúvidas sobre tratamento de dados pessoais: encarregado(a) de dados da serventia (a definir — P-06).

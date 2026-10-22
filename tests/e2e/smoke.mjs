@@ -176,6 +176,28 @@ try {
   await page.waitForSelector('text=aguardando aprovação', { timeout: 10000 });
   check('Autor não decide a própria versão (segregação)', await page.locator('text=segregação de funções').isVisible());
 
+  // 6e. Fase 4a — tarefas, projetos, rotinas e processos (Oficial)
+  await page.goto(`${BASE}/tarefas?visao=painel`);
+  check('Tarefas: painel com indicadores', await page.locator('text=Carga por responsável').isVisible());
+  await page.goto(`${BASE}/tarefas?visao=quadro`);
+  check('Tarefas: quadro com colunas por situação', (await page.locator('.board-col').count()) === 5);
+  await page.screenshot({ path: `${SHOTS}/18-quadro-tarefas.png`, fullPage: true });
+  await page.goto(`${BASE}/tarefas?visao=calendario`);
+  check('Tarefas: calendário mensal', (await page.locator('.cal [role=gridcell]').count()) === 42);
+  await page.goto(`${BASE}/projetos`);
+  await page.click('a:has-text("Implantação dos POPs")');
+  await page.waitForURL(/\/projetos\/[0-9a-f-]+$/);
+  check('Projetos: visão geral com progresso e custos', await page.locator('text=Custo realizado').isVisible());
+  await page.click('nav.tabs a:has-text("Cronograma")');
+  await page.waitForURL(/aba=gantt/);
+  check('Projetos: cronograma (Gantt) com fases e marcos', (await page.locator('.g-bar').count()) >= 3 && (await page.locator('.g-ms').count()) >= 1);
+  await page.screenshot({ path: `${SHOTS}/19-gantt.png`, fullPage: true });
+  await page.goto(`${BASE}/rotinas`);
+  check('Rotinas: verificação das centrais 4×/dia cadastrada', await page.locator('text=09:00, 11:00, 14:00, 16:00').first().isVisible());
+  await page.goto(`${BASE}/rotinas?aba=andamento`);
+  check('Processos: instância em andamento com etapa atual', await page.locator('text=Admissão — Pessoa Fictícia').first().isVisible());
+  await page.screenshot({ path: `${SHOTS}/20-processos.png`, fullPage: true });
+
   await page.goto(`${BASE}/configuracoes?aba=integracoes`);
   check('Integrações: antivírus ativo e armazenamento informado', await page.locator('tr:has-text("Antivírus") >> text=Ativa').isVisible() && await page.locator('text=Armazenamento dos arquivos').isVisible());
   await page.screenshot({ path: `${SHOTS}/17-integracoes.png`, fullPage: true });
@@ -204,6 +226,23 @@ try {
   check('API recusa consulta a outro funcionário', [403, 404].includes(other.status()), `HTTP ${other.status()}`);
   const forged = await page.request.post(`${BASE}/api/v1/ponto`, { headers: { origin: 'https://atacante.example' } });
   check('API recusa escrita de origem externa (CSRF)', forged.status() === 403, `HTTP ${forged.status()}`);
+
+  await page.goto(`${BASE}/tarefas`);
+  check('Colaborador: minhas tarefas com rotina e tarefa imediata', await page.locator('text=Verificar centrais eletrônicas').first().isVisible() && await page.locator('text=Conferência de averbação designada').isVisible());
+  await page.screenshot({ path: `${SHOTS}/21-minhas-tarefas.png`, fullPage: true });
+  await page.goto(`${BASE}/tarefas?visao=nova`);
+  check('Colaborador: nova tarefa sem campo de atribuição a terceiros', !(await page.locator('#nova-as').count()));
+  await page.fill('#nova-title', 'Separar títulos para conferência (E2E)');
+  await page.selectOption('#nova-prio', 'URGENTE');
+  await page.click('button:has-text("Criar tarefa")');
+  await page.waitForURL(/\/tarefas\/[0-9a-f-]+$/, { timeout: 10000 });
+  await page.click('button:has-text("Iniciar")');
+  await page.waitForSelector('.tag:has-text("Em andamento")', { timeout: 10000 });
+  await page.click('button:has-text("Concluir")');
+  await page.waitForSelector('.tag:has-text("Concluída")', { timeout: 10000 });
+  check('Colaborador: cria, inicia e conclui a própria tarefa', true);
+  const pqta = await page.request.get(`${BASE}/projetos`);
+  check('Colaborador não vê projeto da diretoria de que não participa', pqta.ok() && !(await pqta.text()).includes('PQTA-2027'));
 
   await page.goto(`${BASE}/documentos`);
   check('Colaborador vê documentos do seu público e não vê o confidencial', await page.locator('tbody a:has-text("Código de Ética")').isVisible() && !(await page.locator('tbody a:has-text("Plano de Continuidade")').count()));

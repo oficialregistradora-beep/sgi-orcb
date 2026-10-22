@@ -7,19 +7,34 @@ import { Empty, PageHead, Stat } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { punchAction } from '../../actions/journey.ts';
 import { listPendingAcknowledgements, listPendingDocApprovals } from '@/server/modules/repository.ts';
+import { listTasks } from '@/server/modules/tasks.ts';
+import { ensureRoutineTasks } from '@/server/modules/routines.ts';
+import { todayLocal } from '@/domain/time.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Painel' };
 
 export default async function Painel() {
   const ctx = await requirePageCtx();
-  const [me, team, exec, docAcks, docApprovals] = await Promise.all([
+  await ensureRoutineTasks();
+  const [me, team, exec, docAcks, docApprovals, myTasks] = await Promise.all([
     personalDashboard(ctx), managementDashboard(ctx), executiveIndicators(ctx), listPendingAcknowledgements(ctx), listPendingDocApprovals(ctx),
+    listTasks(ctx, { scope: 'minhas' }),
   ]);
+  const today = todayLocal();
+  const urgentTasks = myTasks.filter((t) => t.priority === 'IMEDIATA' || t.priority === 'URGENTE' || (t.due_date && t.due_date <= today));
   const firstName = ctx.principal.displayName.split(' ')[0];
   return (
     <div className="stack">
       <PageHead title={`Olá, ${firstName}`} subtitle="Resumo das informações que você está autorizado(a) a ver." />
+      {myTasks.length ? (
+        <div className="card">
+          <div className="card-head"><h2>Minhas tarefas</h2><p>{myTasks.length} em aberto · {urgentTasks.length} para hoje, vencidas ou urgentes — <Link href="/tarefas">abrir</Link></p></div>
+          {urgentTasks.length ? <div className="card-body stack" style={{ gap: 4 }}>{urgentTasks.slice(0, 8).map((t) => (
+            <div key={t.id} className="row-between small"><Link href={`/tarefas/${t.id}`}>{t.title}</Link><span className={t.due_date && t.due_date < today ? 'neg' : 'muted'}>{label(t.priority)}{t.due_date ? ` · ${fmtDate(t.due_date)}` : ''}{t.due_time != null ? ` ${String(Math.floor(t.due_time / 60)).padStart(2, '0')}:${String(t.due_time % 60).padStart(2, '0')}` : ''}</span></div>
+          ))}</div> : null}
+        </div>
+      ) : null}
       {docAcks.length || docApprovals.length ? (
         <div className="alert alert-warn small"><div>
           {docAcks.length ? <><strong>{docAcks.length}</strong> documento(s) institucional(is) aguardando sua ciência — <Link href="/documentos?aba=ciencia">ver</Link>. </> : null}

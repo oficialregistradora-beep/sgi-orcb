@@ -8,6 +8,9 @@ import { createSession, markMfaVerified } from '../src/server/auth/session.ts';
 import { loadPrincipal } from '../src/server/authz.ts';
 import type { Ctx } from '../src/server/context.ts';
 import { createDocument, decideVersion, saveDraft, submitForApproval } from '../src/server/modules/repository.ts';
+import { addChecklistItem, createTask, escalate, setStatus } from '../src/server/modules/tasks.ts';
+import { addMilestone, addPhase, createProject, saveIndicator, setMember } from '../src/server/modules/projects.ts';
+import { generateRoutineTasks, saveProcessTemplate, saveRoutine, startProcess } from '../src/server/modules/routines.ts';
 import { addDays, localToInstant, todayLocal, weekdayOf, formatHHMM } from '../src/domain/time.ts';
 
 const cfg = getConfig();
@@ -157,6 +160,37 @@ await publish(cBeatriz, cHelena, { categoryId: await cat('PCN'), title: 'Plano d
   confidentiality: 'CONFIDENCIAL', audienceType: 'USUARIOS', audienceUserIds: [cHelena.principal.userId, cBeatriz.principal.userId] },
   'Contatos de contingência e procedimentos (fictícios).');
 console.log('✓ 4 documentos institucionais fictícios');
+
+// Tarefas, projetos, rotinas e processos fictícios (Fase 4a).
+const cDiego = await seedCtx('diego.alves');
+const uid = (c: Ctx) => c.principal.userId;
+const ri = await sector('RI');
+await saveRoutine(cBeatriz, { name: 'Verificar centrais eletrônicas', area: 'RI', sectorId: ri, assigneeUserId: uid(cDiego), frequency: 'DIARIA', times: [540, 660, 840, 960], priority: 'ALTA', startsOn: addDays(today, -7) });
+await saveRoutine(cBeatriz, { name: 'Notificações e matrículas eletrônicas', area: 'RI', sectorId: ri, frequency: 'DIARIA', priority: 'URGENTE', blockStart: 960, blockEnd: 1020, startsOn: addDays(today, -7) });
+await saveRoutine(cBeatriz, { name: 'Conferir cópias de segurança (backup)', area: 'ADMINISTRACAO', sectorId: await sector('DIR'), assigneeUserId: uid(cBeatriz), frequency: 'SEMANAL', weekdays: [1], priority: 'MEDIA', startsOn: addDays(today, -7) });
+await saveRoutine(cBeatriz, { name: 'Fechamento mensal do banco de horas', area: 'PESSOAL', sectorId: await sector('DIR'), assigneeUserId: uid(cBeatriz), frequency: 'MENSAL', monthDay: 5, priority: 'ALTA', startsOn: addDays(today, -40) });
+await generateRoutineTasks(addDays(today, -2), addDays(today, 1));
+const pops = await createProject(cCamila, { name: 'Implantação dos POPs (fictício)', code: 'POPS-2026', sectorId: ri, startDate: addDays(today, -20), dueDate: addDays(today, 70), estimatedCost: 1200 });
+await setMember(cCamila, pops, uid(cDiego), 'MEMBRO');
+const ph1 = await addPhase(cCamila, pops, { name: 'Levantamento', startDate: addDays(today, -20), dueDate: addDays(today, 5) });
+const ph2 = await addPhase(cCamila, pops, { name: 'Redação e aprovação', startDate: addDays(today, 6), dueDate: addDays(today, 60) });
+await addMilestone(cCamila, pops, { title: 'POPs do RI aprovados', dueDate: addDays(today, 45) });
+await saveIndicator(cCamila, pops, { name: 'POPs publicados', unit: 'un', target: 8, current: 1 });
+const t1 = await createTask(cCamila, { title: 'Mapear rotina de prenotação', projectId: pops, phaseId: ph1, assigneeUserId: uid(cDiego), startDate: addDays(today, -15), dueDate: addDays(today, -1), priority: 'ALTA' });
+await addChecklistItem(cDiego, t1, 'Entrevistar escreventes');
+await setStatus(cDiego, t1, 'EM_ANDAMENTO');
+await createTask(cCamila, { title: 'Redigir POP de registro de imóveis', projectId: pops, phaseId: ph2, assigneeUserId: uid(cCamila), startDate: addDays(today, 6), dueDate: addDays(today, 30), requiresApproval: true, approverUserId: uid(cBeatriz) });
+await createProject(cHelena, { name: 'Preparação para o PQTA 2027 (fictício)', code: 'PQTA-2027', sectorId: await sector('DIR'), startDate: today, dueDate: addDays(today, 300) });
+const duvida = await createTask(cDiego, { title: 'Dúvida sobre cálculo de emolumentos (fictício)', priority: 'MEDIA', dueDate: today });
+await escalate(cDiego, duvida, 'SUBSTITUTA', 'Questão ordinária: confirmar tabela aplicável (fictício)');
+await createTask(cDiego, { title: 'Conferência de averbação designada', priority: 'IMEDIATA', dueDate: today });
+const tpl = await saveProcessTemplate(cBeatriz, { name: 'Admissão — rotina administrativa (modelo fictício)', sectorId: await sector('DIR'), steps: [
+  { title: 'Coletar documentos', slaDays: 2, requiredDocuments: 'Documentos pessoais (fictício)' },
+  { title: 'Cadastrar no sistema', slaDays: 1 },
+  { title: 'Conferir cadastro', slaDays: 1, requiresApproval: true },
+] });
+await startProcess(cBeatriz, tpl, 'Admissão — Pessoa Fictícia');
+console.log('✓ rotinas, projetos, tarefas e processo fictícios');
 
 console.log('Apurando jornadas…');
 await ensureProcessedAll();

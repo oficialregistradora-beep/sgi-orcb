@@ -64,6 +64,12 @@ export const LABELS: Record<string, string> = {
   EM_AQUISICAO: 'Em aquisição', QUITADO: 'Quitado', VENCIDAS: 'Vencidas — pagamento em dobro (art. 137)', ABERTO: 'Aberto', CONCLUIDO: 'Concluído', NAO_APLICAVEL: 'Não se aplica',
   UNIFORME: 'Uniforme', EQUIPAMENTO: 'Equipamento', CRACHA: 'Crachá', CHAVE: 'Chave', ADMISSAO: 'Admissão', DESLIGAMENTO: 'Desligamento',
   TERMO_ENTREGA: 'Termo de entrega', ESPELHO: 'Espelho de frequência', EXTRATO_BANCO: 'Extrato do banco',
+  A_FAZER: 'A fazer', EM_ANDAMENTO: 'Em andamento', EM_REVISAO: 'Aguardando aprovação', BLOQUEADA: 'Bloqueada', CONCLUIDA: 'Concluída',
+  IMEDIATA: 'Imediata', URGENTE: 'Urgente', ALTA: 'Alta', MEDIA: 'Média', BAIXA: 'Baixa',
+  PAUSADO: 'Pausado', CANCELADO: 'Cancelado', ENCERRADO: 'Encerrado', GESTOR: 'Gestor(a)', MEMBRO: 'Membro', LEITOR: 'Leitor(a)',
+  DIARIA: 'Diária', SEMANAL: 'Semanal', MENSAL: 'Mensal', ANUAL: 'Anual',
+  ATENDIMENTO: 'Atendimento', RI: 'RI', RCPN: 'RCPN', RTD: 'RTD', RCPJ: 'RCPJ', ADMINISTRACAO: 'Administração', DIRETORIA: 'Diretoria', PESSOAL: 'Gestão de pessoal',
+  SUBSTITUTA: 'Substituta Legal', OFICIAL: 'Oficial',
   VIGENTE: 'Vigente', EM_APROVACAO: 'Em aprovação', OBSOLETO: 'Obsoleto', ARQUIVADO: 'Arquivado',
   INTERNO: 'Interno', RESTRITO: 'Restrito', CONFIDENCIAL: 'Confidencial',
   FOLGA_INTEGRAL: 'Folga integral', COMPENSACAO_PARCIAL: 'Compensação parcial', ENTRADA_POSTERIOR: 'Entrada posterior', SAIDA_ANTECIPADA: 'Saída antecipada',
@@ -75,8 +81,9 @@ export function label(code: string | null | undefined): string {
 }
 
 export function statusTone(code: string): string {
-  if (['APROVADA', 'RESOLVIDA', 'ATIVO', 'DISPONIVEL', 'CIENCIA', 'APROVACAO', 'CONCORDANCIA', 'REALIZADO', 'QUITADO', 'CONCLUIDO', 'VALIDADO', 'VIGENTE_VALIDADO', 'PUBLICADO', 'VIGENTE'].includes(code)) return 'tag tag-ok';
-  if (['PENDENTE', 'A_VENCER', 'AFASTADO', 'SUSPENSO', 'PLANEJADO', 'ABERTO', 'PENDENTE_VALIDACAO', 'VIGENTE_LEITURA_PENDENTE', 'RASCUNHO', 'EM_APROVACAO'].includes(code)) return 'tag tag-warn';
-  if (['REJEITADA', 'VENCIDO', 'VENCIDAS', 'DESLIGADO', 'REVOGADO', 'CONTESTACAO', 'CANCELADO', 'PERDIDO', 'HISTORICO_NAO_APLICAR'].includes(code)) return 'tag tag-danger';
+  if (['APROVADA', 'RESOLVIDA', 'ATIVO', 'DISPONIVEL', 'CIENCIA', 'APROVACAO', 'CONCORDANCIA', 'REALIZADO', 'QUITADO', 'CONCLUIDO', 'VALIDADO', 'VIGENTE_VALIDADO', 'PUBLICADO', 'VIGENTE', 'CONCLUIDA', 'ENCERRADO'].includes(code)) return 'tag tag-ok';
+  if (['PENDENTE', 'A_VENCER', 'AFASTADO', 'SUSPENSO', 'PLANEJADO', 'ABERTO', 'PENDENTE_VALIDACAO', 'VIGENTE_LEITURA_PENDENTE', 'RASCUNHO', 'EM_APROVACAO', 'EM_REVISAO', 'PAUSADO', 'URGENTE'].includes(code)) return 'tag tag-warn';
+  if (['REJEITADA', 'VENCIDO', 'VENCIDAS', 'DESLIGADO', 'REVOGADO', 'CONTESTACAO', 'CANCELADO', 'PERDIDO', 'HISTORICO_NAO_APLICAR', 'BLOQUEADA', 'IMEDIATA'].includes(code)) return 'tag tag-danger';
+  if (['EM_ANDAMENTO'].includes(code)) return 'tag tag-info';
   return 'tag';
 }

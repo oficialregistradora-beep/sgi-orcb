@@ -37,7 +37,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ...(can(p, 'banco.ocorrencias.tratar') ? [{ href: '/ocorrencias', label: 'Ocorrências', icon: <I.IconAlert /> }] : []),
         ...(teamScope && (teamScope.all || teamScope.sectorIds.length) ? [{ href: '/equipe', label: 'Equipe', icon: <I.IconUsers /> }] : []),
         ...(can(p, 'banco.ocorrencias.tratar') ? [{ href: '/relatorios', label: 'Relatórios', icon: <I.IconChart /> }] : []),
-        { href: '#projetos', label: 'Tarefas e projetos', icon: <I.IconKanban />, planned: 'Fase 4' },
+        ...(can(p, 'tarefas.ver') || can(p, 'tarefas.criar') ? [
+          { href: '/tarefas', label: 'Tarefas', icon: <I.IconKanban /> },
+          { href: '/projetos', label: 'Projetos', icon: <I.IconChart /> },
+          { href: '/rotinas', label: 'Rotinas e processos', icon: <I.IconCalendar /> },
+        ] : []),
         { href: '#financeiro', label: 'Financeiro', icon: <I.IconWallet />, planned: 'Fase 4' },
         { href: '#qualidade', label: 'Qualidade', icon: <I.IconCheck />, planned: 'Fase 5' },
       ],

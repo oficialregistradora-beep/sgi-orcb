@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import { ensureProcessedAll } from '@/server/modules/timeclock.ts';
 import { processReviewReminders } from '@/server/modules/repository.ts';
+import { generateRoutineTasks } from '@/server/modules/routines.ts';
+import { processTaskReminders } from '@/server/modules/tasks.ts';
+import { addDays, todayLocal } from '@/domain/time.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,5 +21,7 @@ export async function POST(req: Request) {
   }
   const n = await ensureProcessedAll();
   const revisoes = await processReviewReminders();
-  return NextResponse.json({ processados: n, avisosDeRevisao: revisoes });
+  const rotinas = await generateRoutineTasks(todayLocal(), addDays(todayLocal(), 1));
+  const prazos = await processTaskReminders();
+  return NextResponse.json({ processados: n, avisosDeRevisao: revisoes, tarefasDeRotina: rotinas, avisosDePrazo: prazos });
 }

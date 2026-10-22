@@ -41,6 +41,11 @@ Configurável em **Usuários e permissões → Matriz** sem alterar código. A O
 | documentos.aprovar | T | T | — | — |
 | documentos.gerenciar ★ | T | T | — | — |
 | documentos.descartar ★ | T | — | — | — |
+| tarefas.ver | T | T | S | P (atribuídas, criadas, de projetos em que participa) |
+| tarefas.criar | T | T | S | P (para si, no próprio setor) |
+| tarefas.gerenciar | T | T | S | — |
+| projetos.gerenciar | T | T | S | — |
+| rotinas.gerenciar | T | T | — | — |
 
 ★ permissão sensível. Papéis se acumulam: a Escrevente Substituta recebe *Coordenação de setor* e *Colaborador*.
 

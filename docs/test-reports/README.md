@@ -198,3 +198,27 @@ Limitações conhecidas (não testadas por não existirem): integração com Goo
 **Limites honestos desta execução:** a base **oficial** de assinaturas do ClamAV não pôde ser baixada (rede do ambiente de desenvolvimento bloqueia `database.clamav.net`); os testes usaram o mecanismo real com assinaturas **locais** de teste (EICAR por hash e por conteúdo). Em produção, a imagem `clamav/clamav` baixa a base oficial sozinha. O Drive **real** da serventia não foi acessado (depende das credenciais e dos passos do guia `docs/23`).
 
 Capturas: [16-antivirus-bloqueio.png](telas/16-antivirus-bloqueio.png), [17-integracoes.png](telas/17-integracoes.png).
+
+
+---
+
+# Fase 4a — tarefas, projetos, rotinas e processos — execução de 22/10/2026 (branch `fase-4a`)
+
+| Conjunto | Resultado |
+|---|---|
+| Unitário (inclui `phase4a.test.ts`, 12 casos: recorrência com feriados e adiamento, centrais 4×/dia, ciclos de dependência, geometria do Gantt, regras de acesso) | aprovado |
+| Rodada 1 — Funcional (`phase4a.test.ts`, 17 casos) | aprovado |
+| Rodada 2 — Segurança (`phase4a-security.test.ts`, 12 casos: imutabilidade, CHECKs, IDOR, segregação, concorrência de rotinas, dependências e conclusões, cópia do modelo de processo) | aprovado |
+| Rodada 3 — Simulação de 3 meses (`phase4a-cycle.test.ts`: 350 tarefas de rotina conferidas contra o calendário, projeto de 30 tarefas encadeadas, 12 processos) | aprovado · [métricas](rodada3-fase4a-metricas.json) |
+| **Suíte completa** | **305/305** |
+| Ponta a ponta | **56/56** (11 verificações novas) · `npm audit`: 0 vulnerabilidades |
+
+## Defeitos encontrados e corrigidos na Fase 4a
+| # | Origem | Defeito | Correção |
+|---|---|---|---|
+| D17 | Rodada 1 | Iniciar processo falhava: o mesmo parâmetro SQL era usado como inteiro (etapa) e como número real (ordenação) | Tipos explícitos no comando |
+| D18 | Rodada 1 | Editar uma tarefa (ex.: trocar o responsável) **desligava a exigência de aprovação** e redefinia a prioridade, por herdar os valores padrão da criação | Esquema de atualização sem valores padrão: campos ausentes mantêm o valor atual |
+| — | Rodada 3 | Roteiro da simulação fazia a coordenação concluir etapa que ela mesma aprovaria; a segregação impediu (comportamento correto) e nenhum processo encerrava, o que tornava a verificação vazia | Roteiro corrigido e exigência explícita de 9 encerramentos |
+| — | E2E | Verificação esperava mensagem de um botão que some após a mudança de situação | Passou a esperar a nova situação na tela |
+
+Capturas: [18-quadro-tarefas.png](telas/18-quadro-tarefas.png), [19-gantt.png](telas/19-gantt.png), [20-processos.png](telas/20-processos.png), [21-minhas-tarefas.png](telas/21-minhas-tarefas.png).

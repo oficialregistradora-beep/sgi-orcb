@@ -281,6 +281,34 @@ details.disclosure[open] > summary { margin-bottom: 12px; }
 .doc header { border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 12px; }
 .hash { word-break: break-all; }
 
+
+/* ---------- Tarefas: quadro, calendário e Gantt ---------- */
+form .row > .input { width: auto; flex: 1 1 160px; }
+.board { display: grid; grid-template-columns: repeat(5, minmax(220px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 4px; }
+.board-col { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; min-height: 120px; display: flex; flex-direction: column; gap: 8px; }
+.board-col h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3); display: flex; justify-content: space-between; }
+.task-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+.task-card.prio-IMEDIATA { border-left: 3px solid var(--danger); }
+.task-card.prio-URGENTE { border-left: 3px solid var(--warn); }
+.task-card .meta { font-size: 11.5px; color: var(--text-3); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
+.cal > div { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-height: 92px; padding: 4px 6px; font-size: 12px; overflow: hidden; }
+.cal .cal-head { min-height: 0; font-weight: 600; color: var(--text-3); text-align: center; background: var(--surface-2); }
+.cal .cal-out { background: var(--surface-2); color: var(--text-3); }
+.cal .cal-today { outline: 2px solid var(--primary); outline-offset: -2px; }
+.cal a { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gantt { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; font-size: 12.5px; }
+.gantt > div { border-bottom: 1px solid var(--border); padding: 6px 8px; min-height: 30px; }
+.gantt .g-track { position: relative; padding: 0; }
+.gantt .g-bar { position: absolute; top: 7px; height: 16px; border-radius: 4px; background: var(--primary); opacity: .85; }
+.gantt .g-bar.done { background: var(--ok); }
+.gantt .g-bar.late { background: var(--danger); }
+.gantt .g-bar.phase { background: var(--text-3); opacity: .5; }
+.gantt .g-ms { position: absolute; top: 8px; width: 12px; height: 12px; transform: translateX(-6px) rotate(45deg); background: var(--warn); }
+.gantt .g-today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--danger); opacity: .6; }
+.gantt .g-scale { display: flex; justify-content: space-between; color: var(--text-3); font-size: 11px; padding: 4px 8px; }
+@media (max-width: 860px) { .board { grid-template-columns: repeat(5, 240px); } .cal > div { min-height: 64px; font-size: 11px; } }
+
 @media print {
   .sidebar, .topbar, .no-print { display: none !important; }
   .shell { display: block; }

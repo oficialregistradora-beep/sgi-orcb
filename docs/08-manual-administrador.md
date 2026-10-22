@@ -35,3 +35,9 @@
 - **Confidenciais:** indique nominalmente as pessoas. A Substituta Legal, mesmo com gestão documental, só vê o documento se estiver na lista.
 - **Cobertura de ciência:** no documento, quadro *Ciência da versão N*.
 - **Rotina diária opcional:** o agendador (`/api/cron/processar`) também envia os avisos de revisão.
+
+## Fase 4a — tarefas, projetos, rotinas e processos
+- **Rotinas** (*Rotinas e processos → Rotinas recorrentes*): cadastre as atividades fixas (ex.: centrais 4×/dia com horários 09:00, 11:00, 14:00, 16:00; notificações e matrículas eletrônicas com bloco 16:00–17:00). As tarefas aparecem sozinhas a cada dia.
+- **Processos** (*Modelos de processo*): uma etapa por linha (título | prazo | papel | aprovação s/n | documentos). Ao iniciar, as etapas viram tarefas em sequência.
+- **Encaminhamentos:** questões ordinárias chegam à Substituta Legal; complexas, à Oficial. Registre a decisão na própria tarefa.
+- **Projetos:** sugestões do planejamento (POPs, PQTA 2027, Segurança da Informação…) aparecem ao digitar o nome.

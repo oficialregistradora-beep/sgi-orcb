@@ -1,0 +1,19 @@
+{
+  "executadoEm": "2026-10-22T23:32:41.149Z",
+  "periodo": "2027-01-04 a 2027-04-02",
+  "metricas": {
+    "dias_uteis": 64,
+    "tarefas_de_rotina": 350,
+    "rotinas_concluidas": 231,
+    "rotinas_em_aberto": 25,
+    "projeto_tarefas": 30,
+    "tentativas_fora_de_ordem_bloqueadas": 29,
+    "aprovacoes": 6,
+    "devolucoes": 1,
+    "processos": 12,
+    "processos_encerrados": 9,
+    "tarefas_total": 416,
+    "tarefas_abertas": 122,
+    "eventos_auditoria": 60
+  }
+}
