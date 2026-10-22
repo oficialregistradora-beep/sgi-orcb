@@ -27,7 +27,8 @@ export type ProjectRow = {
 
 const PROJECT_SELECT = `
   SELECT p.id, p.code, p.name, p.description, p.status, p.owner_user_id, u.display_name AS owner_name, p.sector_id, s.name AS sector_name,
-         p.start_date, p.due_date, p.estimated_cost::text, coalesce((SELECT sum(amount) FROM project_costs c WHERE c.project_id = p.id), 0)::text AS actual_cost,
+         p.start_date, p.due_date, p.estimated_cost::text, (coalesce((SELECT sum(amount) FROM project_costs c WHERE c.project_id = p.id), 0)
+          + coalesce((SELECT sum(x.amount) FROM expenses x WHERE x.project_id = p.id AND x.status = 'PAGA'), 0))::text AS actual_cost,
          p.created_at, p.closed_at, CASE WHEN p.owner_user_id = $1 THEN 'GESTOR' ELSE pm.role END AS member_role,
          (SELECT count(*)::int FROM tasks t WHERE t.project_id = p.id AND t.status <> 'CANCELADA') AS tasks_total,
          (SELECT count(*)::int FROM tasks t WHERE t.project_id = p.id AND t.status = 'CONCLUIDA') AS tasks_done,
