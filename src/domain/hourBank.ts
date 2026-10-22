@@ -34,7 +34,10 @@ export function creditExpiry(entryDate: string, compensationMonths: number): str
 export function buildLots(entries: LedgerEntry[], allocations: Allocation[], today: string, alertDays: number): CreditLot[] {
   const reversed = new Set(entries.filter((e) => e.kind === 'ESTORNO' && e.reversesEntryId).map((e) => e.reversesEntryId));
   const consumed = new Map<string, number>();
-  for (const a of allocations) consumed.set(a.creditEntryId, (consumed.get(a.creditEntryId) ?? 0) + a.minutes);
+  for (const a of allocations) {
+    if (reversed.has(a.debitEntryId)) continue; // débito estornado devolve os minutos ao crédito
+    consumed.set(a.creditEntryId, (consumed.get(a.creditEntryId) ?? 0) + a.minutes);
+  }
   const alertLimit = addDays(today, alertDays);
   return entries
     .filter((e) => e.kind === 'CREDITO')

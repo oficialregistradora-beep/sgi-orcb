@@ -21,9 +21,7 @@ export function getPool(): pg.Pool {
       max: 10,
       idleTimeoutMillis: 30_000,
       application_name: 'sgi-orcb',
-    });
-    globalForPool.__sgiPool.on('connect', (client) => {
-      void client.query("SET TIME ZONE 'America/Sao_Paulo'");
+      options: '-c TimeZone=America/Sao_Paulo', // fuso da sessão definido já na conexão
     });
   }
   return globalForPool.__sgiPool;

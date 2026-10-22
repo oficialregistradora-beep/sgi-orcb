@@ -191,7 +191,7 @@ CREATE TABLE time_punches (
   punched_at             timestamptz NOT NULL,
   local_date             date NOT NULL,
   kind                   text NOT NULL CHECK (kind IN ('ENTRADA','SAIDA_INTERVALO','RETORNO_INTERVALO','SAIDA','ADICIONAL')),
-  source                 text NOT NULL CHECK (source IN ('WEB','CORRECAO')),
+  source                 text NOT NULL CHECK (source IN ('WEB','CORRECAO','IMPORTACAO')),  -- IMPORTACAO: carga de histórico/homologação
   correction_request_id  uuid REFERENCES requests(id),
   ip                     text,
   user_agent             text,
@@ -260,9 +260,14 @@ CREATE TABLE daily_occurrences (
   justified_at              timestamptz,
   superseded_at             timestamptz,
   created_at                timestamptz NOT NULL DEFAULT now(),
-  CHECK ((status = 'RESOLVIDA') = (resolution IS NOT NULL)),
-  CHECK (type <> 'HORA_EXTRA' OR resolution IS NULL OR resolution IN ('BANCO_CREDITO','PAGAMENTO_EXTRA','CIENTE')),
-  CHECK (type <> 'DIFERENCA_NEGATIVA' OR resolution IS NULL OR resolution IN ('ABONO','BANCO_DEBITO','FALTA_NAO_JUSTIFICADA','CIENTE'))
+  -- Resolvida exige decisão; pendente não tem decisão; superada preserva a decisão anterior (histórico).
+  CHECK (status <> 'RESOLVIDA' OR resolution IS NOT NULL),
+  CHECK (status <> 'PENDENTE' OR resolution IS NULL),
+  -- Hora extra nunca é descartada: vai para o banco ou para pagamento (J-05).
+  CHECK (type <> 'HORA_EXTRA' OR resolution IS NULL OR resolution IN ('BANCO_CREDITO','PAGAMENTO_EXTRA')),
+  -- Diferença negativa nunca é descontada automaticamente: decisão expressa (J-06).
+  CHECK (type <> 'DIFERENCA_NEGATIVA' OR resolution IS NULL OR resolution IN ('ABONO','BANCO_DEBITO','FALTA_NAO_JUSTIFICADA')),
+  CHECK (type <> 'MARCACAO_INCOMPLETA' OR resolution IS NULL OR resolution = 'CIENTE')
 );
 -- Apenas uma ocorrência viva (não superada) por dia e tipo.
 CREATE UNIQUE INDEX ux_occurrence_alive ON daily_occurrences (employee_id, work_date, type) WHERE status <> 'SUPERADA';
