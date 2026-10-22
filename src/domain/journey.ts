@@ -110,7 +110,9 @@ export function computeDay(input: DayInput): DayResult {
   if (worked > 360) {
     let maxGap = 0;
     for (let i = 0; i + 1 < intervals.length; i++) maxGap = Math.max(maxGap, intervals[i + 1]![0] - intervals[i]![1]);
-    if (maxGap < 60) alerts.push('INTERVALO_INSUFICIENTE');
+    // Limite de 1 h (art. 71) com a mesma tolerância por marcação, se habilitada (J-12: dependente de validação jurídica).
+    const minBreak = 60 - (input.tolerance.enabled ? input.tolerance.perMark : 0);
+    if (maxGap < minBreak) alerts.push('INTERVALO_INSUFICIENTE');
   }
   if (diff > input.maxDailyExtraMinutes && kind === 'UTIL') alerts.push('HORAS_EXTRAS_ACIMA_LIMITE');
   if (worked > 600) alerts.push('JORNADA_ACIMA_10H');

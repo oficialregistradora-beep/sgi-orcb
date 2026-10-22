@@ -86,6 +86,11 @@ describe('apuração diária — jornada padrão 08–12/13–17', () => {
     expect(day(['08:00', '12:00', '12:30', '16:30']).alerts).toContain('INTERVALO_INSUFICIENTE');
   });
 
+  it('intervalo de 57 min fica dentro da tolerância por marcação; sem tolerância, gera alerta', () => {
+    expect(day(['08:00', '12:02', '12:59', '17:00']).alerts).not.toContain('INTERVALO_INSUFICIENTE');
+    expect(day(['08:00', '12:02', '12:59', '17:00'], { tolerance: { ...TOL, enabled: false } }).alerts).toContain('INTERVALO_INSUFICIENTE');
+  });
+
   it('horas extras acima de 2h/dia e jornada acima de 10h geram alertas', () => {
     const r = day(['07:00', '12:00', '13:00', '19:30']);
     expect(r.worked).toBe(690); // 5h + 6h30

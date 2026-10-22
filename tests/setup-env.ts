@@ -1,5 +1,5 @@
 // Ambiente de testes: banco dedicado (sgi_test) e chaves fictícias. Nenhum dado real é utilizado.
-process.env.NODE_ENV = 'test';
+(process.env as Record<string, string>).NODE_ENV = 'test';
 process.env.APP_URL = 'http://localhost:3000';
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL ?? 'postgres://sgi:sgi_dev_local@localhost:5432/sgi_test';
 process.env.DATABASE_SSL = 'false';

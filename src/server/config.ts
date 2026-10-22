@@ -7,6 +7,8 @@ const base64Key = z
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  // Ambiente institucional (independe do modo de build). Em build de produção, o padrão é 'producao'.
+  APP_ENV: z.enum(['desenvolvimento', 'homologacao', 'producao']).optional(),
   APP_URL: z.url(),
   DATABASE_URL: z.string().min(1),
   DATABASE_SSL: z.enum(['true', 'false']).default('false'),
@@ -20,6 +22,7 @@ const schema = z.object({
 
 export type AppConfig = {
   env: 'development' | 'test' | 'production';
+  appEnv: 'desenvolvimento' | 'homologacao' | 'producao';
   appUrl: string;
   secureCookies: boolean;
   databaseUrl: string;
@@ -44,15 +47,17 @@ export function getConfig(): AppConfig {
     throw new Error(`Configuração inválida: ${issues}`);
   }
   const e = parsed.data;
+  const appEnv = e.APP_ENV ?? (e.NODE_ENV === 'production' ? 'producao' : 'desenvolvimento');
   const devLogin = e.AUTH_DEV_LOGIN === 'true';
-  if (e.NODE_ENV === 'production' && devLogin) {
-    throw new Error('AUTH_DEV_LOGIN não pode ser habilitado em produção.');
+  if (appEnv === 'producao' && devLogin) {
+    throw new Error('AUTH_DEV_LOGIN não pode ser habilitado em produção (APP_ENV=producao).');
   }
-  if (e.NODE_ENV === 'production' && !e.APP_URL.startsWith('https://')) {
+  if (appEnv === 'producao' && !e.APP_URL.startsWith('https://')) {
     throw new Error('APP_URL deve usar HTTPS em produção.');
   }
   cached = {
     env: e.NODE_ENV,
+    appEnv,
     appUrl: e.APP_URL.replace(/\/$/, ''),
     secureCookies: e.APP_URL.startsWith('https://'),
     databaseUrl: e.DATABASE_URL,
