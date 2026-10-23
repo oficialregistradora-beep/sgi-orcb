@@ -7,7 +7,7 @@
 |---|---|---|
 | P-01 | Edição do Google Workspace | Integrações |
 | P-02 | Aprovar a infraestrutura (Cloud Run + Cloud SQL) e o faturamento no Google Cloud | Homologação na nuvem e produção |
-| P-03 | Projeto no Google Cloud, cliente OAuth interno, conta de serviço (Drive/Agenda/Gmail), espaço do Chat | Login Google real e integrações |
+| P-03 | Projeto no Google Cloud, cliente OAuth interno, conta de serviço (Drive/Agenda/Gmail), espaço do Chat — passo a passo em `27-guia-google-cloud-p02-p03.md` | Login Google real e integrações |
 | P-04 | Convenção coletiva vigente e modelos de acordo individual | Parametrização de jornada/banco/plantão |
 | P-05 | Profissional jurídico para validar os itens J | Homologação |
 | P-06 | Encarregado(a) de dados (LGPD) | Produção (dados reais de pessoas) |

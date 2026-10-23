@@ -29,4 +29,5 @@ Legenda de status: **Implementado** · **Testado** (automatizado, executado) · 
 | 24 | Revisão de segurança (ASVS, autoavaliação) | [24-revisao-seguranca.md](24-revisao-seguranca.md) | Redigido (Fase 6) |
 | 25 | Roteiro de homologação | [25-roteiro-homologacao.md](25-roteiro-homologacao.md) | Pronto para uso pela serventia |
 | 26 | Checklist para produção | [26-checklist-producao.md](26-checklist-producao.md) | Sistema **não** publicado |
+| 27 | Guia P-02/P-03 — Google Cloud e login Google | [27-guia-google-cloud-p02-p03.md](27-guia-google-cloud-p02-p03.md) | Para a serventia executar |
 | 22 | Matriz de conformidade normativa | [22-matriz-conformidade.md](22-matriz-conformidade.md) | Redigido — nenhuma validação jurídica realizada |
