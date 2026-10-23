@@ -1,0 +1,20 @@
+{
+  "executadoEm": "2026-10-23T04:19:33.339Z",
+  "metricas": {
+    "avaliacoes_programadas": 33,
+    "ciencia": 17,
+    "concordancia": 7,
+    "discordancia": 6,
+    "retificadas": 4,
+    "semCiencia": 1,
+    "pendentes": 2,
+    "turmas": 4,
+    "faltas": 18,
+    "certificados": 5,
+    "certificados_recusados": 3,
+    "estudos_pop": 7,
+    "estudos_bloqueados": 5,
+    "automacoes": 2,
+    "capacitacao_pct": 65.2
+  }
+}

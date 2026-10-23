@@ -13,7 +13,9 @@
 | §7 Painéis por perfil | `dashboard.ts`, `/painel` | E2E | Implementado · Testado (E2E) |
 | §8.1 Cadastro funcional e sensíveis | `people.ts` | rodadas 1 e 2 | Implementado · Testado |
 | §8.2 Admissão / desligamento com checklists, uniformes e equipamentos | `people.ts`, `checklists.ts` | phase2b (rodadas 1 e 2) | Implementado · Testado |
-| §8.3–8.4 Avaliações e treinamentos | — | — | Planejado (Fase 5) |
+| §8.3 Treinamentos — catálogo, público obrigatório, turmas na agenda, certificados com validação, reciclagem, estudo de POP por versão, avaliação de aprendizagem, matriz de capacitação | `training.ts`, `/treinamentos` | phase5b (rodadas 1–3) + E2E | Implementado · Testado |
+| §8.4 Avaliações — modelos versionados, experiência/30/60/90/anual programáveis, competências e produtividade com pesos, autoavaliação, feedback, PDI, histórico, ciência sem concordância obrigatória | `evaluations.ts`, `/avaliacoes` | phase5b + E2E | Implementado · Testado · prazos de experiência Dependentes de definição da serventia |
+| Painéis configuráveis e automações | `automation.ts`, `/painel`, `/automacoes` | phase5b + E2E | Implementado · Testado |
 | §9 Marcação com horário do servidor | trigger `fn_punch_before_insert` | rodada 2 | Implementado · Testado |
 | §9 Correção preservando o original | `requests.ts`, `punch_annulments` | rodada 1 | Implementado · Testado |
 | §9.2 Jornada 08–12/13–17 e individuais | migration 0003, `createSchedule` | unit | Implementado · Testado |

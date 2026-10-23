@@ -277,6 +277,37 @@ try {
   check('Incidentes: pendência de avaliação LGPD destacada', await page.locator('text=avaliação LGPD pendente').first().isVisible());
   await page.screenshot({ path: `${SHOTS}/27-incidentes.png`, fullPage: true });
 
+  // 6i. Fase 5b — treinamentos, avaliações, automações e painel configurável (Oficial)
+  await page.goto(`${BASE}/treinamentos?aba=equipe`);
+  check('Treinamentos: matriz de capacitação com vencido destacado', await page.locator('th:has-text("LGPD-01")').isVisible() && (await page.locator('.tag:has-text("Vencido")').count()) >= 1);
+  await page.screenshot({ path: `${SHOTS}/29-matriz-capacitacao.png`, fullPage: true });
+  await page.goto(`${BASE}/treinamentos?aba=catalogo`);
+  await page.click('tbody a:has-text("LGPD-01")');
+  await page.waitForURL(/\/treinamentos\/[0-9a-f-]+$/);
+  check('Treinamento: turma planejada com inscritos', await page.locator('h2:has-text("Turmas")').isVisible() && await page.locator('text=Sala de reuniões').first().isVisible());
+  await page.goto(`${BASE}/agenda`);
+  check('Agenda: turma de treinamento no calendário', (await page.locator('text=Treinamento: LGPD').count()) >= 1);
+  await page.goto(`${BASE}/avaliacoes?aba=modelos`);
+  check('Avaliações: modelos publicados com critérios e pesos', await page.locator('text=Acompanhamento do período de experiência').first().isVisible() && await page.locator('text=Qualidade técnica (peso 2)').first().isVisible());
+  await page.goto(`${BASE}/avaliacoes?aba=programacao`);
+  check('Avaliações: programação 30/60/90 dias', await page.locator('td:has-text("Acompanhamento 90 dias")').isVisible());
+  await page.goto(`${BASE}/automacoes`);
+  check('Automações: regras cadastradas', await page.locator('td:has-text("Avisar tarefas atrasadas há 2 dias")').isVisible());
+  await page.locator('tr:has-text("Avisar tarefas atrasadas") button:has-text("Executar agora")').click();
+  await page.waitForSelector('text=Executado:', { timeout: 15000 });
+  check('Automações: execução manual pela tela', true);
+  await page.screenshot({ path: `${SHOTS}/30-automacoes.png`, fullPage: true });
+  await page.goto(`${BASE}/painel`);
+  await page.click('summary:has-text("Personalizar painel")');
+  await page.locator('label:has-text("Visão da administração") input[type=checkbox]').uncheck();
+  await page.click('button:has-text("Salvar painel")');
+  await page.waitForSelector('text=Painel personalizado.', { timeout: 15000 });
+  await page.goto(`${BASE}/painel`);
+  check('Painel configurável: bloco removido pela pessoa', !(await page.locator('h2:has-text("Visão da administração")').count()) && await page.locator('text=Capacitação obrigatória da equipe em dia').isVisible());
+  await page.click('summary:has-text("Personalizar painel")');
+  await page.click('button:has-text("Restaurar padrão")');
+  await page.waitForSelector('text=Painel restaurado ao padrão.', { timeout: 15000 });
+
   // 7. Colaborador: marcação e restrições
   await page.context().close();
   page = await newPage();
@@ -340,6 +371,22 @@ try {
   check('Colaborador sem acesso à qualidade é levado à comunicação de incidentes', page.url().endsWith('/qualidade/incidentes'), `HTTP ${q?.status()}`);
   const qFile = await page.request.get(`${BASE}/api/v1/qualidade/arquivos/00000000-0000-4000-8000-000000000000`);
   check('Colaborador não baixa evidências da qualidade', [403, 404].includes(qFile.status()), `HTTP ${qFile.status()}`);
+
+  await page.goto(`${BASE}/treinamentos`);
+  check('Colaborador: meus treinamentos com situação e certificado em validação', await page.locator('tr:has-text("LGPD-01") >> .tag:has-text("Válido")').isVisible() && await page.locator('text=certificado em validação').isVisible());
+  await page.goto(`${BASE}/avaliacoes`);
+  await page.click('tbody a:has-text("Acompanhamento 90 dias")');
+  await page.waitForURL(/\/avaliacoes\/[0-9a-f-]+$/);
+  check('Avaliação: avaliado vê notas, feedback e PDI enviados', await page.locator('text=Resultado ponderado').isVisible() && await page.locator('text=Cumprir os prazos de qualificação').first().isVisible());
+  await page.fill('textarea[name=comment]', 'Recebi a avaliação (E2E).');
+  await page.check('input[name=confirmed]');
+  await page.click('button:has-text("Registrar manifestação")');
+  await page.waitForSelector('text=Ciência de', { timeout: 15000 });
+  check('Avaliação: ciência registrada pelo avaliado (sem concordância obrigatória)', await page.locator('text=não implica concordância').first().isVisible());
+  await page.screenshot({ path: `${SHOTS}/31-avaliacao-ciencia.png`, fullPage: true });
+  await page.goto(`${BASE}/avaliacoes/00000000-0000-4000-8000-000000000000`);
+  check('Colaborador não acessa avaliação inexistente/alheia', await page.locator('text=Não foi possível exibir esta página').isVisible());
+  check('Colaborador não vê o menu Automações', !(await page.locator('nav >> text=Automações').count()));
 
   // 8. Celular: sem rolagem horizontal
   await page.context().close();

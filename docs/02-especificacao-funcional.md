@@ -109,5 +109,14 @@ Criar, editar (nova versão em rascunho), duplicar, ordenar, remover itens, publ
 - **Incidentes:** comunicação por qualquer colaborador, tratamento, avaliação LGPD, encerramento.
 - **Ativos, backups, vulnerabilidades:** inventário e movimentações, registros imutáveis, prazos pela política interna.
 
+## F18. Treinamentos (Fase 5b)
+Catálogo com público obrigatório e reciclagem; turmas na agenda com lista de presença; registro e validação de certificados; estudo de POP vinculado à versão vigente; avaliação de aprendizagem; matriz de capacitação; lembretes de vencimento.
+
+## F19. Avaliações de desempenho e desenvolvimento (Fase 5b)
+Modelos versionados (competências, produtividade, comportamento, conhecimento, pesos); programação automática (dias após a admissão ou anual); autoavaliação; feedback e PDI; envio com conteúdo congelado; ciência, concordância ou discordância do avaliado; retificação com versões; encerramento sem ciência motivado; histórico por pessoa.
+
+## F20. Painel configurável e automações (Fase 5b)
+Blocos do painel escolhidos e ordenados por pessoa; regras de aviso e criação de tarefas sobre gatilhos fixos.
+
 ## Pendentes
-Avaliações de desempenho e treinamentos (Fase 5b); reinício automático do período aquisitivo (art. 133); leitura integral da CCT 2026/2027 e cadastro das regras validadas correspondentes (J-14); prazos de retenção documental (J-15); integração com o Google Drive (P-03).
+ reinício automático do período aquisitivo (art. 133); leitura integral da CCT 2026/2027 e cadastro das regras validadas correspondentes (J-14); prazos de retenção documental (J-15); integração com o Google Drive (P-03).

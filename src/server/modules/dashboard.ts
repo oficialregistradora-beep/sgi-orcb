@@ -27,7 +27,7 @@ export async function personalDashboard(ctx: Ctx) {
     db,
     `SELECT count(*)::int AS n FROM documents d
        JOIN LATERAL (SELECT id FROM document_versions x WHERE x.document_id = d.id ORDER BY version_number DESC LIMIT 1) v ON TRUE
-      WHERE d.owner_employee_id = $1
+      WHERE d.owner_employee_id = $1 AND d.reference_type IN ('ESPELHO','EXTRATO_BANCO','TERMO_ENTREGA')
         AND NOT EXISTS (SELECT 1 FROM signatures s WHERE s.document_version_id = v.id AND s.act IN ('CIENCIA','CONTESTACAO','CONCORDANCIA'))`,
     [employeeId],
   ))!.n;

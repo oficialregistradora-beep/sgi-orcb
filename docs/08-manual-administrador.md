@@ -59,6 +59,12 @@
 - **Incidentes:** trate (contenção, causa raiz), registre a avaliação LGPD quando houver dados pessoais e encerre.
 - **Ativos, backups e vulnerabilidades:** mantenha o inventário (inclua certificados digitais e licenças com validade), registre backups e testes de restauração e as vulnerabilidades. Ajuste os prazos em *Configurações* (chaves `seguranca.*`).
 
+## Fase 5b — treinamentos, avaliações, painel e automações
+- **Treinamentos:** cadastre no *Catálogo* (público obrigatório, reciclagem, avaliação de aprendizagem — questões no formato `Pergunta | a | *correta | c`). Crie turmas (vão para a agenda) e encerre com a lista de presença. Valide certificados na aba *Validações*. Acompanhe a *Matriz de capacitação*.
+- **Avaliações:** crie modelos (critérios `GRUPO | Critério | peso`), publique e configure a *Programação* (ex.: 30, 60 e 90 dias após a admissão; anual). Defina os prazos do período de experiência conforme o contrato — o sistema não altera contratos nem aplica efeitos.
+- **Automações** (menu Administração): regras de aviso e criação de tarefas; use *Executar agora* para testar.
+- **Painel:** cada pessoa personaliza em *Personalizar painel*.
+
 ## Fase 4c — agenda e integrações Google
 - **Agenda** (menu): cadastre reuniões, prazos e treinamentos; marque “Avisar no Google Chat” quando quiser anunciar.
 - **Integrações** (*Configurações → Integrações*): depois de configurar as credenciais (guia docs/23, Parte C), ative cada canal. Comece pela Agenda com plantões, marcos e eventos; ative férias somente após avaliação do encarregado de dados.

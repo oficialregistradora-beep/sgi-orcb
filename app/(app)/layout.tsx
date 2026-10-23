@@ -47,10 +47,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ...(['qualidade.ver', 'qualidade.gerenciar', 'qualidade.auditar', 'incidentes.gerenciar', 'ativos.gerenciar'].some((x) => can(p, x))
           ? [{ href: '/qualidade', label: 'Qualidade e segurança', icon: <I.IconCheck /> }]
           : can(p, 'incidentes.registrar') ? [{ href: '/qualidade/incidentes', label: 'Comunicar incidente', icon: <I.IconAlert /> }] : []),
-        { href: '#treinamentos', label: 'Treinamentos e avaliações', icon: <I.IconUsers />, planned: 'Fase 5b' },
+        ...(can(p, 'treinamentos.ver') || can(p, 'treinamentos.gerenciar') ? [{ href: '/treinamentos', label: 'Treinamentos', icon: <I.IconCheck /> }] : []),
+        ...(p.employeeId || can(p, 'avaliacoes.avaliar') || can(p, 'avaliacoes.gerenciar') ? [{ href: '/avaliacoes', label: 'Avaliações e PDI', icon: <I.IconUsers /> }] : []),
       ],
     },
-    ...((can(p, 'configuracoes.gerenciar') || can(p, 'checklists.modelos.editar') || can(p, 'permissoes.gerenciar') || can(p, 'usuarios.gerenciar') || can(p, 'auditoria.ver'))
+    ...((can(p, 'configuracoes.gerenciar') || can(p, 'checklists.modelos.editar') || can(p, 'permissoes.gerenciar') || can(p, 'usuarios.gerenciar') || can(p, 'auditoria.ver') || can(p, 'automacoes.gerenciar'))
       ? [{
           title: 'Administração',
           items: [
@@ -58,6 +59,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               : can(p, 'checklists.modelos.editar') ? [{ href: '/configuracoes?aba=checklists', label: 'Modelos de checklist', icon: <I.IconSettings /> }] : []),
             ...(can(p, 'permissoes.gerenciar') || can(p, 'usuarios.gerenciar') ? [{ href: '/permissoes', label: 'Usuários e permissões', icon: <I.IconKey /> }] : []),
             ...(can(p, 'auditoria.ver') ? [{ href: '/auditoria', label: 'Auditoria', icon: <I.IconShield /> }] : []),
+            ...(can(p, 'automacoes.gerenciar') ? [{ href: '/automacoes', label: 'Automações', icon: <I.IconBell /> }] : []),
           ],
         }]
       : []),

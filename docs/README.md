@@ -19,7 +19,7 @@ Legenda de status: **Implementado** · **Testado** (automatizado, executado) · 
 | 13 | Plano de continuidade | [13-plano-continuidade.md](13-plano-continuidade.md) | Redigido |
 | 14 | Plano de implantação | [14-plano-implantacao.md](14-plano-implantacao.md) | Redigido |
 | 15 | Plano de testes | [15-plano-de-testes.md](15-plano-de-testes.md) | Redigido |
-| 16 | Relatórios das rodadas | [test-reports/](test-reports/) | Rodadas 1–3 executadas para as Fases 1, 2, 2b, 2c, 3, 3b, 4a, 4b, 4c e 5a |
+| 16 | Relatórios das rodadas | [test-reports/](test-reports/) | Rodadas 1–3 executadas para as Fases 1, 2, 2b, 2c, 3, 3b, 4a, 4b, 4c, 5a e 5b |
 | 17 | Decisões técnicas (ADR) | [adr/](adr/) | Redigido |
 | 18 | Estimativa de custos | [01-entrega-1-planejamento.md](01-entrega-1-planejamento.md) §4 | Redigido (preços a confirmar) |
 | 19 | Dependências e licenças | [19-inventario-dependencias.md](19-inventario-dependencias.md) | Redigido |

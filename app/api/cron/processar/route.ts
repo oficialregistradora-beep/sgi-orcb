@@ -6,6 +6,9 @@ import { generateRoutineTasks } from '@/server/modules/routines.ts';
 import { processTaskReminders } from '@/server/modules/tasks.ts';
 import { processFinanceReminders } from '@/server/modules/finance.ts';
 import { processQualityReminders } from '@/server/modules/security.ts';
+import { processTrainingReminders } from '@/server/modules/training.ts';
+import { generateScheduledEvaluations, processEvaluationReminders } from '@/server/modules/evaluations.ts';
+import { runAutomations } from '@/server/modules/automation.ts';
 import { dispatchOutbox, syncCalendar } from '@/server/modules/integrations.ts';
 import { addDays, todayLocal } from '@/domain/time.ts';
 
@@ -34,8 +37,12 @@ export async function POST(req: Request) {
   const prazos = await processTaskReminders();
   const vencimentos = await processFinanceReminders();
   const qualidade = await processQualityReminders();
+  const treinamentos = await processTrainingReminders();
+  const avaliacoesGeradas = await generateScheduledEvaluations();
+  const avaliacoes = await processEvaluationReminders();
+  const automacoes = await runAutomations();
   // Integrações por último: falhas do Google não interrompem as rotinas internas.
   const envio = await dispatchOutbox(500).catch((e) => ({ erro: String(e).slice(0, 200) }));
   const agenda = await syncCalendar().catch((e) => ({ erro: String(e).slice(0, 200) }));
-  return NextResponse.json({ processados: n, avisosDeRevisao: revisoes, tarefasDeRotina: rotinas, avisosDePrazo: prazos, avisosDeVencimento: vencimentos, avisosDeQualidade: qualidade, envio, agenda });
+  return NextResponse.json({ processados: n, avisosDeRevisao: revisoes, tarefasDeRotina: rotinas, avisosDePrazo: prazos, avisosDeVencimento: vencimentos, avisosDeQualidade: qualidade, avisosDeTreinamento: treinamentos, avaliacoesGeradas, avisosDeAvaliacao: avaliacoes, automacoes, envio, agenda });
 }

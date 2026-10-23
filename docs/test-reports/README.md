@@ -298,3 +298,28 @@ Captura: [24-agenda.png](telas/24-agenda.png).
 **Limites honestos:** nenhum requisito real do PQTA ou das normas foi cadastrado (J-17); os prazos de vulnerabilidade e de teste de restauração são política interna inicial; o sistema não decide sobre comunicação de incidentes à ANPD.
 
 Capturas: [25-qualidade-painel.png](telas/25-qualidade-painel.png), [26-auditoria.png](telas/26-auditoria.png), [27-incidentes.png](telas/27-incidentes.png), [28-incidente-celular.png](telas/28-incidente-celular.png).
+
+
+---
+
+# Fase 5b — treinamentos, avaliações, painel configurável e automações — execução de 23/10/2026 (branch `fase-5b`)
+
+| Conjunto | Resultado |
+|---|---|
+| Unitário (`phase5b.test.ts`, 9 casos: situação do treinamento e reciclagem, nova versão de POP, público, correção da avaliação de aprendizagem, média ponderada, programação por admissão e anual) | aprovado |
+| Rodada 1 — Funcional (`phase5b.test.ts`, 15 casos: catálogo, estudo de POP com ciência e avaliação, limite de tentativas, nova versão, turmas na agenda, presença, autodeclaração e validação segregada, anulação, matriz, modelos versionados, quem avalia quem, rascunho oculto, conteúdo congelado, ciência, autoavaliação, retificação, encerramento sem ciência, PDI, feedback, programação, painel, automações) | aprovado |
+| Rodada 2 — Segurança (`phase5b-security.test.ts`, 8 casos: tentativas e validações simultâneas, autovalidação barrada no banco, isolamento de downloads, confidencialidade das avaliações, reautenticação na manifestação, versão vigente, manifestação única, limite e concorrência das automações, ações inexistentes) | aprovado |
+| Rodada 3 — um ano (`phase5b-cycle.test.ts`: 33 avaliações programadas = expectativa independente; 17 ciências, 7 concordâncias, 6 discordâncias, 4 retificações, 1 sem ciência; 4 turmas com 18 faltas; 5 certificados, 3 recusados; 2 versões de POP com 7 estudos concluídos e 5 bloqueados pela avaliação; 6 invariantes) | aprovado · [métricas](rodada3-fase5b-metricas.json) |
+| **Suíte completa** | **436/436** |
+| Ponta a ponta | **99/99** (matriz de capacitação, turma na agenda, modelos e programação, automação executada pela tela, painel personalizado e restaurado; colaborador vê seus treinamentos e registra ciência da avaliação) |
+| `npm audit` | 0 vulnerabilidades |
+
+## Achados da Fase 5b
+| Origem | Achado | Tratamento |
+|---|---|---|
+| Rodada 3 | A programação automática gerava avaliações da própria Oficial (titular), avaliada pela Substituta | A Oficial fica fora da programação automática |
+| Revisão de projeto | O contador “documentos para ciência” do painel passaria a contar as avaliações | Contador restrito aos documentos de jornada; avaliações têm bloco próprio |
+| Regressão (rodada 1, Fase 2c) | Teste de comunicação mínima falhava às sextas e sábados (próximo dia útil a mais de 48 h) — defeito do **teste**, não do sistema | Teste ajusta a antecedência ao intervalo real |
+| Revisão dos testes | Duas expectativas erradas nos próprios testes (limite de 30 dias do aviso; janela de lembrete de avaliação) | Corrigidas |
+
+Capturas: [29-matriz-capacitacao.png](telas/29-matriz-capacitacao.png), [30-automacoes.png](telas/30-automacoes.png), [31-avaliacao-ciencia.png](telas/31-avaliacao-ciencia.png).

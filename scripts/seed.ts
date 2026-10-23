@@ -17,6 +17,9 @@ import {
 } from '../src/server/modules/finance.ts';
 import { addAction, addRequirementEvidence, createAudit, evaluateAuditItem, reviewRequirement, saveRequirement, saveRisk, setRootCause, startAudit } from '../src/server/modules/quality.ts';
 import { recordBackup, registerVulnerability, reportIncident, saveAsset, treatIncident } from '../src/server/modules/security.ts';
+import { completePopStudy, createSession as createTrainingSession, registerCompletion, saveTraining, selfDeclare, setQuestions, submitAttempt } from '../src/server/modules/training.ts';
+import { addPdiItem, createEvaluation, publishTemplate, saveAssessment, saveSchedule, saveTemplate, sendForAcknowledgement, listTemplates } from '../src/server/modules/evaluations.ts';
+import { saveRule } from '../src/server/modules/automation.ts';
 import { addDays, localToInstant, todayLocal, weekdayOf, formatHHMM } from '../src/domain/time.ts';
 
 const cfg = getConfig();
@@ -256,6 +259,49 @@ const inc = await reportIncident(cDiego, { title: 'E-mail com anexo suspeito abe
   severity: 'MEDIA', detectedAt: new Date(), personalDataInvolved: true });
 await treatIncident(cBeatriz, inc, { containment: 'Máquina isolada da rede e varredura executada.' });
 console.log('✓ qualidade e segurança fictícias (requisitos-exemplo, auditoria, NC, riscos, ativos, backups, vulnerabilidade, incidente)');
+
+// Treinamentos, avaliações e automações fictícios (Fase 5b).
+const cGabriela = await seedCtx('gabriela.rocha');
+const empOf = async (c: Ctx) => c.principal.employeeId!;
+const lgpd = await saveTraining(cBeatriz, { code: 'LGPD-01', title: 'LGPD na rotina da serventia (fictício)', kind: 'CURSO_INTERNO', workloadMinutes: 120, validityMonths: 12, mandatory: true, audienceType: 'TODOS',
+  description: 'Conteúdo fictício de homologação.' });
+const popTrn = await saveTraining(cBeatriz, { code: 'POP-RI-001-EST', title: 'Estudo do POP de prenotação (fictício)', kind: 'ESTUDO_POP', documentId: pop, mandatory: true, audienceType: 'SETORES', sectorIds: [ri],
+  hasAssessment: true, passScore: 70, maxAttempts: 3, workloadMinutes: 30 });
+await setQuestions(cBeatriz, popTrn, [
+  { question: 'Qual o primeiro passo ao receber um título?', options: ['Arquivar', 'Conferir os requisitos formais', 'Devolver'], correctIndex: 1 },
+  { question: 'Onde o título é lançado?', options: ['No protocolo', 'Em planilha pessoal'], correctIndex: 0 },
+]);
+await saveTraining(cBeatriz, { code: 'EXT-01', title: 'Curso externo de atualização registral (fictício)', kind: 'CURSO_EXTERNO', mandatory: false });
+const cIsabel = await seedCtx('isabel.costa');
+await registerCompletion(cBeatriz, { trainingId: lgpd, employeeId: await empOf(cCamila), completedOn: addDays(today, -340) }); // vence em breve
+await registerCompletion(cBeatriz, { trainingId: lgpd, employeeId: await empOf(cIsabel), completedOn: addDays(today, -400) }); // vencido
+await registerCompletion(cCamila, { trainingId: lgpd, employeeId: await empOf(cDiego), completedOn: addDays(today, -30) }, PDF('certificado-lgpd'));
+await createTrainingSession(cBeatriz, { trainingId: lgpd, sessionDate: addDays(today, 10), startTime: 540, endTime: 660, location: 'Sala de reuniões', instructor: 'Instrutora fictícia',
+  employeeIds: [await empOf(cGabriela), await empOf(cIsabel)] });
+await submitAttempt(cCamila, popTrn, [1, 0]);
+await completePopStudy(cCamila, popTrn, true).catch(() => undefined); // exige ciência do POP vigente; pode ficar pendente
+const extId = (await queryOne<{ id: string }>(db, "SELECT id FROM trainings WHERE code = 'EXT-01'"))!.id;
+await selfDeclare(cDiego, { trainingId: extId, completedOn: addDays(today, -5), minutes: 480, notes: 'Curso on-line (fictício)' }, PDF('certificado-externo'));
+const evTpl = await saveTemplate(cBeatriz, { name: 'Acompanhamento do período de experiência (modelo fictício)', kind: 'EXPERIENCIA', scaleMax: 5, selfAssessment: false,
+  instructions: 'Avalie com base em fatos observados no período.', criteria: [
+    { grp: 'COMPETENCIA', title: 'Qualidade técnica', weight: 2 }, { grp: 'COMPORTAMENTO', title: 'Atendimento ao usuário', weight: 1 },
+    { grp: 'PRODUTIVIDADE', title: 'Cumprimento de prazos', weight: 2 }, { grp: 'CONHECIMENTO', title: 'Domínio dos POPs do setor', weight: 1 }] });
+await publishTemplate(cBeatriz, evTpl);
+const anual = await saveTemplate(cBeatriz, { name: 'Avaliação anual de desempenho (modelo fictício)', kind: 'ANUAL', scaleMax: 5, selfAssessment: true, criteria: [
+  { grp: 'COMPETENCIA', title: 'Qualidade técnica', weight: 2 }, { grp: 'COMPORTAMENTO', title: 'Trabalho em equipe', weight: 1 }, { grp: 'PRODUTIVIDADE', title: 'Organização e prazos', weight: 1 }] });
+await publishTemplate(cBeatriz, anual);
+const fam = (await listTemplates(cBeatriz)).find((t) => t.id === evTpl)!.family_key;
+for (const d of [30, 60, 90]) await saveSchedule(cBeatriz, { name: `Acompanhamento ${d} dias`, templateFamily: fam, trigger: 'DIAS_APOS_ADMISSAO', daysAfter: d, leadDays: 7 });
+const ev = await createEvaluation(cCamila, { templateId: evTpl, employeeId: await empOf(cDiego), periodLabel: 'Acompanhamento 90 dias (fictício)', dueDate: addDays(today, 5) });
+const crit = await query<{ id: string }>(db, 'SELECT id FROM evaluation_criteria WHERE template_id = $1 ORDER BY position', [evTpl]);
+await saveAssessment(cCamila, ev, { scores: crit.map((k, i) => ({ criterionId: k.id, score: [4, 5, 3, 4][i]! })), strengths: 'Cordialidade no atendimento.', improvements: 'Organização dos prazos.',
+  feedback: 'Bom desempenho no período; combinamos foco nos prazos de qualificação (fictício).' });
+await addPdiItem(cCamila, { evaluationId: ev, employeeId: await empOf(cDiego), goal: 'Cumprir os prazos de qualificação', action: 'Usar o quadro de tarefas diariamente', trainingId: popTrn, dueDate: addDays(today, 60) });
+await sendForAcknowledgement(cCamila, ev);
+await createEvaluation(cBeatriz, { templateId: anual, employeeId: await empOf(cCamila), periodLabel: `Anual ${today.slice(0, 4)} (fictício)`, dueDate: addDays(today, 20) });
+await saveRule(cBeatriz, { name: 'Avisar tarefas atrasadas há 2 dias', trigger: 'TAREFA_ATRASADA', days: 2, action: 'NOTIFICAR_RESPONSAVEL' });
+await saveRule(cBeatriz, { name: 'Treinamento obrigatório a vencer em 30 dias', trigger: 'TREINAMENTO_VENCENDO', days: 30, action: 'NOTIFICAR_RESPONSAVEL' });
+console.log('✓ treinamentos, avaliações, PDI e automações fictícios');
 
 console.log('Apurando jornadas…');
 await ensureProcessedAll();

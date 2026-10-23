@@ -10,6 +10,12 @@ import { listPendingAcknowledgements, listPendingDocApprovals } from '@/server/m
 import { listTasks } from '@/server/modules/tasks.ts';
 import { ensureRoutineTasks } from '@/server/modules/routines.ts';
 import { todayLocal } from '@/domain/time.ts';
+import { availableWidgets, myWidgets, WIDGETS } from '@/server/modules/automation.ts';
+import { complianceMatrix, myTrainings } from '@/server/modules/training.ts';
+import { listEvaluations } from '@/server/modules/evaluations.ts';
+import { qualityOverview } from '@/server/modules/security.ts';
+import { financeOverview } from '@/server/modules/finance.ts';
+import { panelAction } from '../../actions/phase5b.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Painel' };
@@ -17,32 +23,32 @@ export const metadata = { title: 'Painel' };
 export default async function Painel() {
   const ctx = await requirePageCtx();
   await ensureRoutineTasks();
+  const widgets = await myWidgets(ctx);
+  const on = (w: string) => widgets.includes(w);
   const [me, team, exec, docAcks, docApprovals, myTasks] = await Promise.all([
-    personalDashboard(ctx), managementDashboard(ctx), executiveIndicators(ctx), listPendingAcknowledgements(ctx), listPendingDocApprovals(ctx),
-    listTasks(ctx, { scope: 'minhas' }),
+    on('jornada') ? personalDashboard(ctx) : null, on('coordenacao') ? managementDashboard(ctx) : null, on('administracao') ? executiveIndicators(ctx) : null,
+    on('pendencias') ? listPendingAcknowledgements(ctx) : [], on('pendencias') ? listPendingDocApprovals(ctx) : [], on('tarefas') ? listTasks(ctx, { scope: 'minhas' }) : [],
   ]);
   const today = todayLocal();
   const urgentTasks = myTasks.filter((t) => t.priority === 'IMEDIATA' || t.priority === 'URGENTE' || (t.due_date && t.due_date <= today));
   const firstName = ctx.principal.displayName.split(' ')[0];
-  return (
-    <div className="stack">
-      <PageHead title={`Olá, ${firstName}`} subtitle="Resumo das informações que você está autorizado(a) a ver." />
-      {myTasks.length ? (
+  const avail = availableWidgets(ctx.principal);
+  const blocks: Record<string, React.ReactNode> = {};
+  blocks.tarefas = myTasks.length ? (
         <div className="card">
           <div className="card-head"><h2>Minhas tarefas</h2><p>{myTasks.length} em aberto · {urgentTasks.length} para hoje, vencidas ou urgentes — <Link href="/tarefas">abrir</Link></p></div>
           {urgentTasks.length ? <div className="card-body stack" style={{ gap: 4 }}>{urgentTasks.slice(0, 8).map((t) => (
             <div key={t.id} className="row-between small"><Link href={`/tarefas/${t.id}`}>{t.title}</Link><span className={t.due_date && t.due_date < today ? 'neg' : 'muted'}>{label(t.priority)}{t.due_date ? ` · ${fmtDate(t.due_date)}` : ''}{t.due_time != null ? ` ${String(Math.floor(t.due_time / 60)).padStart(2, '0')}:${String(t.due_time % 60).padStart(2, '0')}` : ''}</span></div>
           ))}</div> : null}
         </div>
-      ) : null}
-      {docAcks.length || docApprovals.length ? (
+      ) : null;
+  blocks.pendencias = docAcks.length || docApprovals.length ? (
         <div className="alert alert-warn small"><div>
           {docAcks.length ? <><strong>{docAcks.length}</strong> documento(s) institucional(is) aguardando sua ciência — <Link href="/documentos?aba=ciencia">ver</Link>. </> : null}
           {docApprovals.length ? <><strong>{docApprovals.length}</strong> versão(ões) aguardando sua aprovação — <Link href="/documentos?aba=aprovacoes">ver</Link>.</> : null}
         </div></div>
-      ) : null}
-
-      {me ? (
+      ) : null;
+  blocks.jornada = me ? (
         <section className="stack" aria-labelledby="pessoal">
           <h2 id="pessoal" className="sr-only">Minha situação</h2>
           <div className="grid grid-4">
@@ -77,9 +83,8 @@ export default async function Painel() {
         </section>
       ) : (
         <div className="alert alert-info">Seu usuário não está vinculado a um cadastro funcional; as áreas pessoais de jornada não se aplicam.</div>
-      )}
-
-      {team ? (
+      );
+  blocks.coordenacao = team ? (
         <section className="stack" aria-labelledby="equipe-h">
           <h2 id="equipe-h">Coordenação</h2>
           <div className="grid grid-3">
@@ -126,9 +131,8 @@ export default async function Painel() {
             </div>
           </div>
         </section>
-      ) : null}
-
-      {exec ? (
+      ) : null;
+  blocks.administracao = exec ? (
         <section className="stack" aria-labelledby="exec-h">
           <h2 id="exec-h">Visão da administração</h2>
           <div className="grid grid-4">
@@ -173,7 +177,74 @@ export default async function Painel() {
             </div>
           </div>
         </section>
-      ) : null}
+      ) : null;
+  if (on('treinamentos') && ctx.principal.employeeId) {
+    const tr = (await myTrainings(ctx)).filter((r) => r.required);
+    const bad = tr.filter((r) => ['PENDENTE', 'VENCIDO', 'NOVA_VERSAO'].includes(r.situation));
+    const soon = tr.filter((r) => r.situation === 'A_VENCER');
+    blocks.treinamentos = tr.length ? (
+      <div className="card"><div className="card-head"><h2>Meus treinamentos</h2><p>{tr.length - bad.length} de {tr.length} obrigatórios em dia — <Link href="/treinamentos">abrir</Link></p></div>
+        {bad.length || soon.length ? <div className="card-body stack small" style={{ gap: 4 }}>{[...bad, ...soon].slice(0, 6).map((r) => (
+          <div key={r.training.id} className="row-between"><Link href={`/treinamentos/${r.training.id}`}>{r.training.title}</Link><span className={bad.includes(r) ? 'neg' : 'muted'}>{bad.includes(r) ? (r.situation === 'NOVA_VERSAO' ? 'nova versão' : r.situation === 'VENCIDO' ? 'vencido' : 'pendente') : `vence ${r.expiresOn?.split('-').reverse().join('/')}`}</span></div>
+        ))}</div> : null}</div>
+    ) : null;
+  }
+  if (on('avaliacoes')) {
+    const all = await listEvaluations(ctx);
+    const mine = all.filter((v) => v.employee_user_id === ctx.principal.userId && (v.status === 'AGUARDANDO_CIENCIA' || (v.status === 'PENDENTE' && v.self_assessment && !v.self_submitted_at)));
+    const todo = all.filter((v) => v.evaluator_user_id === ctx.principal.userId && v.status === 'PENDENTE');
+    blocks.avaliacoes = mine.length || todo.length ? (
+      <div className="grid grid-2">
+        <Stat label="Minhas avaliações aguardando ação" value={mine.length} tone={mine.length ? 'warn' : undefined} hint={<Link href="/avaliacoes">Ciência ou autoavaliação</Link>} />
+        <Stat label="Avaliações a fazer" value={todo.length} tone={todo.some((v) => v.due_date < today) ? 'neg' : undefined} hint={<Link href="/avaliacoes?aba=avaliar">{todo.filter((v) => v.due_date < today).length} em atraso</Link>} />
+      </div>
+    ) : null;
+  }
+  if (on('capacitacao')) {
+    const m = await complianceMatrix(ctx).catch(() => null);
+    blocks.capacitacao = m && m.summary.required ? (
+      <Stat label="Capacitação obrigatória da equipe em dia" value={`${m.summary.pct?.toLocaleString('pt-BR')}%`} tone={m.summary.expired ? 'neg' : undefined} hint={<Link href="/treinamentos?aba=equipe">{m.summary.expired} vencido(s) · ver matriz</Link>} />
+    ) : null;
+  }
+  if (on('qualidade')) {
+    const q = await qualityOverview(ctx).catch(() => null);
+    blocks.qualidade = q ? (
+      <div className="grid grid-4">
+        {q.compliance ? <Stat label="Índice de atendimento (registrado)" value={q.compliance.pct === null ? '—' : `${q.compliance.pct.toLocaleString('pt-BR')}%`} hint={<Link href="/qualidade">Qualidade</Link>} /> : null}
+        {q.ncs ? <Stat label="Não conformidades abertas" value={q.ncs.open} tone={q.ncs.critical_open ? 'neg' : undefined} /> : null}
+        {q.incidents ? <Stat label="Incidentes em aberto" value={q.incidents.open} tone={q.incidents.personal_pending ? 'neg' : undefined} /> : null}
+        {q.vulnerabilities ? <Stat label="Vulnerabilidades vencidas" value={q.vulnerabilities.overdue} tone={q.vulnerabilities.overdue ? 'neg' : undefined} /> : null}
+      </div>
+    ) : null;
+  }
+  if (on('financeiro')) {
+    const f = await financeOverview(ctx, today.slice(0, 7), today.slice(0, 7)).catch(() => null);
+    blocks.financeiro = f ? (
+      <div className="grid grid-3">
+        <Stat label="Contas vencidas" value={f.totals.overdue} tone={f.totals.overdue ? 'neg' : undefined} hint={<Link href="/financeiro?aba=pagar">Contas a pagar</Link>} />
+        <Stat label="A vencer em breve" value={f.totals.dueSoon} />
+      </div>
+    ) : null;
+  }
+
+  return (
+    <div className="stack">
+      <PageHead title={`Olá, ${firstName}`} subtitle="Resumo das informações que você está autorizado(a) a ver." />
+      {widgets.map((w) => blocks[w] ? <section key={w} aria-label={WIDGETS[w]!.label}>{blocks[w]}</section> : null)}
+      {!widgets.length ? <div className="alert alert-info">Seu painel está vazio. Escolha os blocos abaixo.</div> : null}
+      <details className="disclosure small">
+        <summary><a>Personalizar painel</a></summary>
+        <ActionForm action={panelAction} submitLabel="Salvar painel">
+          <p className="muted">Marque os blocos e defina a ordem (1 = primeiro). Cada bloco mostra apenas o que você já pode ver.</p>
+          {avail.map((w, i) => (
+            <div key={w} className="row">
+              <input name={`pos_${w}`} type="number" min={1} max={30} className="input" style={{ width: 70 }} aria-label={`Ordem: ${WIDGETS[w]!.label}`} defaultValue={widgets.includes(w) ? widgets.indexOf(w) + 1 : i + 1 + widgets.length} />
+              <label className="check"><input type="checkbox" name="widget" value={w} defaultChecked={widgets.includes(w)} /> {WIDGETS[w]!.label}</label>
+            </div>
+          ))}
+        </ActionForm>
+        <ActionForm action={panelAction} submitLabel="Restaurar padrão" submitClass="btn btn-sm"><input type="hidden" name="op" value="padrao" /></ActionForm>
+      </details>
     </div>
   );
 }

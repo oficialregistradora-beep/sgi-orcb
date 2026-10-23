@@ -1,8 +1,8 @@
 {
-  "executadoEm": "2026-10-23T00:36:18.514Z",
+  "executadoEm": "2026-10-23T04:19:15.107Z",
   "periodo": {
-    "de": "2026-04-15",
-    "ate": "2026-10-21"
+    "de": "2026-04-16",
+    "ate": "2026-10-22"
   },
   "metricas": {
     "dias_uteis_simulados": 837,
@@ -11,17 +11,17 @@
     "dias_com_marcacao_esquecida": 9,
     "dias_com_atraso": 24,
     "correcoes_aprovadas": 6,
-    "justificativas": 12,
-    "decisao_BANCO_CREDITO": 59,
-    "decisao_ABONO": 12,
+    "decisao_BANCO_CREDITO": 58,
     "espelhos_com_ciencia": 30,
     "competencias_fechadas": 6,
+    "justificativas": 12,
+    "decisao_ABONO": 12,
     "espelhos_contestados": 2,
     "decisao_FALTA_NAO_JUSTIFICADA": 9,
     "compensacoes_aprovadas": 1,
     "minutos_vencidos_pagos": 81,
-    "creditos_conferidos": 59,
+    "creditos_conferidos": 58,
     "versoes_verificadas": 32,
-    "registros_auditoria": 214
+    "registros_auditoria": 213
   }
 }

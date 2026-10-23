@@ -62,5 +62,9 @@ DDL executável: `db/migrations/0001_fundacao.sql`, `0002_pessoas_jornada.sql` e
 | `vulnerabilities` | Vulnerabilidades com prazo pela política | Sem exclusão; fechamento com resolução |
 | `reminder_log`, `quality_counters` | Lembretes já enviados; numeração por tipo/ano | — |
 
-## Entidades previstas (Fase 5b)
-`trainings`, `training_records`, `evaluations`, `automations`.
+| `trainings`, `training_audience`, `training_questions`, `training_sessions` | Catálogo, público, questões e turmas | Questões bloqueadas após respostas |
+| `training_records`, `training_attempts` | Participações/conclusões e tentativas | Conclusão só anulada com justificativa; tentativas imutáveis |
+| `evaluation_templates`, `evaluation_criteria`, `evaluation_schedules` | Modelos versionados e programação | Publicado imutável |
+| `evaluations`, `evaluation_scores` | Avaliações e notas | Avaliador ≠ avaliado; notas congeladas no envio; encerrada imutável |
+| `pdi_items`, `feedback_notes` | PDI e feedbacks | Sem exclusão; feedback imutável |
+| `dashboard_preferences`, `automation_rules`, `automation_runs` | Painel por pessoa e automações | Um disparo por item e regra |

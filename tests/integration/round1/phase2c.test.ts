@@ -13,7 +13,7 @@ import { listChecklists, setChecklistItem } from '../../../src/server/modules/ch
 import { createEmployee, addSalary } from '../../../src/server/modules/people.ts';
 import { getShift, registerCall } from '../../../src/server/modules/oncall.ts';
 import { acquisitivePeriods } from '../../../src/domain/vacation.ts';
-import { addDays, addMonths, localToInstant, todayLocal, weekdayOf } from '../../../src/domain/time.ts';
+import { addDays, addMonths, diffDays, localToInstant, todayLocal, weekdayOf } from '../../../src/domain/time.ts';
 import { expiryByRule } from '../../../src/domain/hourBank.ts';
 import { closePool, ctxFor, FULL_DAY, ids, makePerson, resetDatabase, seedPunches } from '../../helpers.ts';
 
@@ -170,9 +170,11 @@ describe('J-07/J-14 — regras jurídicas por vigência', () => {
     const ctxP = await ctxFor(p.userId);
     let tomorrow = addDays(today, 1);
     while (await isOff(tomorrow)) tomorrow = addDays(tomorrow, 1);
-    const noticeId = await createRule(ctxOwner, { code: 'BANCO_COMUNICACAO_MINIMA', value: { horas: 48 }, validFrom: today, legalBasis: 'Cláusula Z (teste)', source: 'Teste', validatedBy: 'Advogada Fictícia — OAB/SC 00000', validatedAt: today });
-    await expect(createRequest(ctxP, { type: 'COMPENSACAO', referenceDate: tomorrow, payload: { mode: 'SAIDA_ANTECIPADA', minutes: 30 }, justification: 'Em cima da hora' })).rejects.toThrow('48 horas');
-    let later = addDays(today, 5);
+    // Às sextas e sábados o próximo dia útil fica a mais de 48 h: a antecedência exigida cobre o intervalo real.
+    const hours = Math.max(48, 24 * (diffDays(today, tomorrow) + 1));
+    const noticeId = await createRule(ctxOwner, { code: 'BANCO_COMUNICACAO_MINIMA', value: { horas: hours }, validFrom: today, legalBasis: 'Cláusula Z (teste)', source: 'Teste', validatedBy: 'Advogada Fictícia — OAB/SC 00000', validatedAt: today });
+    await expect(createRequest(ctxP, { type: 'COMPENSACAO', referenceDate: tomorrow, payload: { mode: 'SAIDA_ANTECIPADA', minutes: 30 }, justification: 'Em cima da hora' })).rejects.toThrow(`${hours} horas`);
+    let later = addDays(tomorrow, Math.ceil(hours / 24) + 2);
     while (await isOff(later)) later = addDays(later, 1);
     await createRequest(ctxP, { type: 'COMPENSACAO', referenceDate: later, payload: { mode: 'SAIDA_ANTECIPADA', minutes: 30 }, justification: 'Com antecedência' }).catch((e: Error) => {
       expect(e.message).not.toContain('antecedência'); // pode falhar por falta de saldo, nunca pela comunicação
