@@ -1,0 +1,44 @@
+# SGI-ORCB — teste no próprio computador (laptop), com DADOS FICTÍCIOS e login de homologação.
+# Uso (Docker Desktop instalado):   docker compose -f docker-compose.local.yml up -d --build
+# Abrir:  http://localhost:8080      Parar:  docker compose -f docker-compose.local.yml down
+# Apagar tudo e recomeçar do zero:  docker compose -f docker-compose.local.yml down -v
+#
+# Só o próprio computador acessa (porta ligada a 127.0.0.1). NÃO usar com dados reais nem como produção.
+services:
+  db:
+    image: postgres:16
+    environment: { POSTGRES_DB: sgi, POSTGRES_USER: sgi, POSTGRES_PASSWORD: somente-teste-local }
+    volumes: [pgdata_local:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U sgi"], interval: 3s, retries: 30 }
+  clamav:
+    image: clamav/clamav:1.4
+    volumes: [clamdb_local:/var/lib/clamav]
+    healthcheck: { test: ["CMD", "clamdcheck.sh"], interval: 20s, retries: 30, start_period: 600s }
+  app:
+    build: .
+    user: root   # grava as chaves locais no volume na primeira execução
+    environment:
+      APP_ENV: homologacao
+      AUTH_DEV_LOGIN: "true"
+      APP_URL: http://localhost:8080
+      DATABASE_URL: postgres://sgi:somente-teste-local@db:5432/sgi
+      GOOGLE_WORKSPACE_DOMAIN: exemplo-cartorio.com.br
+      CLAMAV_HOST: clamav
+    volumes: [chaves_local:/chaves]
+    # Na primeira execução: gera as chaves de cifragem (guardadas no volume), cria as tabelas e a carga fictícia.
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -e
+        [ -f /chaves/env ] || node -e "const c=require('crypto');const k=()=>c.randomBytes(32).toString('base64');require('fs').writeFileSync('/chaves/env','FIELD_ENCRYPTION_KEY='+k()+'\nHMAC_KEY='+k()+'\n')"
+        set -a; . /chaves/env; set +a
+        node --experimental-strip-types scripts/migrate.ts
+        node --experimental-strip-types scripts/seed.ts
+        exec node server.js
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on: { db: { condition: service_healthy }, clamav: { condition: service_healthy } }
+volumes:
+  pgdata_local:
+  clamdb_local:
+  chaves_local:

@@ -15,6 +15,18 @@ npm run build && npm run start   # ou npm run dev
 ```
 Com `APP_ENV=homologacao` e `AUTH_DEV_LOGIN=true`, a tela de login oferece usuários fictícios, e a tela de MFA mostra o código atual do usuário de teste.
 
+## Demonstração em um computador (Docker Desktop, dados fictícios)
+Para conhecer o sistema num notebook, sem nuvem e sem credenciais: requer apenas Docker Desktop (Windows/macOS/Linux).
+```bash
+docker compose -f docker-compose.local.yml up -d --build   # 1ª vez: 5–15 min (compilação + assinaturas do antivírus)
+# abrir http://localhost:8080 — escolher um usuário fictício; o código MFA aparece na própria tela
+docker compose -f docker-compose.local.yml down             # parar (os dados ficam guardados)
+docker compose -f docker-compose.local.yml down -v          # parar e APAGAR tudo (banco, chaves)
+```
+- Sobe banco, antivírus (ClamAV) e aplicação; aplica as migrations e o seed fictício só na primeira vez; as chaves de criptografia são geradas no próprio volume `chaves_local`.
+- A porta fica presa ao próprio computador (`127.0.0.1:8080`): ninguém na mesma rede Wi-Fi acessa.
+- Uso exclusivo para demonstração/homologação: login de teste ligado, senha de banco fixa, sem Google, sem backup. **Não cadastrar dados reais.**
+
 ## Produção — Alternativa A (Google Cloud, região southamerica-east1)
 **Depende de autorização da serventia (P-02) e de projeto GCP com faturamento.**
 1. Projeto GCP; habilitar Cloud Run, Cloud SQL Admin, Secret Manager e Artifact Registry.
