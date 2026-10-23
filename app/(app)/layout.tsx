@@ -44,7 +44,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           { href: '/rotinas', label: 'Rotinas e processos', icon: <I.IconCalendar /> },
         ] : []),
         ...(['financeiro.ver', 'financeiro.solicitar', 'financeiro.aprovar', 'financeiro.pagar', 'financeiro.cadastros', 'financeiro.receitas'].some((x) => can(p, x)) ? [{ href: '/financeiro', label: 'Financeiro', icon: <I.IconWallet /> }] : []),
-        { href: '#qualidade', label: 'Qualidade', icon: <I.IconCheck />, planned: 'Fase 5' },
+        ...(['qualidade.ver', 'qualidade.gerenciar', 'qualidade.auditar', 'incidentes.gerenciar', 'ativos.gerenciar'].some((x) => can(p, x))
+          ? [{ href: '/qualidade', label: 'Qualidade e segurança', icon: <I.IconCheck /> }]
+          : can(p, 'incidentes.registrar') ? [{ href: '/qualidade/incidentes', label: 'Comunicar incidente', icon: <I.IconAlert /> }] : []),
+        { href: '#treinamentos', label: 'Treinamentos e avaliações', icon: <I.IconUsers />, planned: 'Fase 5b' },
       ],
     },
     ...((can(p, 'configuracoes.gerenciar') || can(p, 'checklists.modelos.editar') || can(p, 'permissoes.gerenciar') || can(p, 'usuarios.gerenciar') || can(p, 'auditoria.ver'))

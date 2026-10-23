@@ -39,6 +39,9 @@ Retenção: nenhum expurgo automático foi implementado; prazos a definir por ti
 ## Integrações Google e LGPD
 A publicação de **férias** e **compensações** na Agenda Google expõe dados pessoais a quem tiver acesso à agenda institucional: compensações começam desligadas e a publicação de férias deve ser validada pelo encarregado de dados (P-06) antes da ativação. E-mails e mensagens do Chat não carregam conteúdo sensível.
 
+## Registro de incidentes, ativos e backups (Fase 5a)
+Os incidentes são registrados no sistema (*Comunicar incidente*), com linha do tempo imutável; o encerramento com dados pessoais exige a avaliação LGPD registrada. O inventário de ativos, os backups e testes de restauração e as vulnerabilidades ficam em *Qualidade e segurança*, com lembretes automáticos. Os prazos são política interna, ajustável.
+
 ## Resposta a incidentes (resumo)
 1. Conter: suspender usuários afetados (revogação imediata) ou retirar o serviço do ar (Cloud Run → 0 instâncias).
 2. Preservar: exportar a auditoria e verificar a cadeia; snapshot do banco.

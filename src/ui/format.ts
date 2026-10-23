@@ -74,6 +74,23 @@ export const LABELS: Record<string, string> = {
   PIX: 'PIX', BOLETO: 'Boleto', TRANSFERENCIA: 'Transferência', DEBITO_AUTOMATICO: 'Débito automático', CARTAO: 'Cartão', DINHEIRO: 'Dinheiro',
   VIGENTE: 'Vigente', EM_APROVACAO: 'Em aprovação', OBSOLETO: 'Obsoleto', ARQUIVADO: 'Arquivado',
   INTERNO: 'Interno', RESTRITO: 'Restrito', CONFIDENCIAL: 'Confidencial',
+  // qualidade e segurança
+  NAO_AVALIADO: 'Não avaliado', ATENDIDO: 'Atendido', PARCIAL: 'Parcialmente atendido', NAO_ATENDIDO: 'Não atendido',
+  CONFORME: 'Conforme', NAO_CONFORME: 'Não conforme', OBSERVACAO: 'Observação', PLANEJADA: 'Planejada', EM_EXECUCAO: 'Em execução',
+  ABERTA: 'Aberta', EM_TRATAMENTO: 'Em tratamento', AGUARDANDO_VERIFICACAO: 'Aguardando verificação de eficácia', ENCERRADA: 'Encerrada', CONTIDO: 'Contido',
+  MENOR: 'Menor', MAIOR: 'Maior', CRITICA: 'Crítica', CRITICO: 'Crítico', BAIXO: 'Baixo', MODERADO: 'Moderado', ALTO: 'Alto',
+  AUDITORIA: 'Auditoria', INCIDENTE: 'Incidente', RECLAMACAO: 'Reclamação', AUTOAVALIACAO: 'Autoavaliação', OUTRA: 'Outra',
+  CORRECAO_IMEDIATA: 'Correção imediata', CORRETIVA: 'Ação corretiva', PREVENTIVA: 'Ação preventiva', MELHORIA: 'Melhoria',
+  MITIGAR: 'Mitigar', ACEITAR: 'Aceitar', TRANSFERIR: 'Transferir', EVITAR: 'Evitar',
+  SEGURANCA_INFORMACAO: 'Segurança da informação', DADOS_PESSOAIS: 'Dados pessoais', INDISPONIBILIDADE: 'Indisponibilidade', FISICO: 'Físico', OPERACIONAL: 'Operacional',
+  CONTINUIDADE: 'Continuidade', LEGAL_NORMATIVO: 'Legal/normativo', FINANCEIRO: 'Financeiro', PESSOAS: 'Pessoas', IMAGEM: 'Imagem',
+  INTERNA: 'Interna', DOCUMENTAL: 'Documental', LGPD: 'LGPD', PROCESSOS: 'Processos',
+  EM_USO: 'Em uso', ESTOQUE: 'Estoque', MANUTENCAO: 'Manutenção', BAIXADO: 'Baixado', COMPUTADOR: 'Computador', NOTEBOOK: 'Notebook', IMPRESSORA: 'Impressora',
+  SCANNER: 'Scanner', SERVIDOR: 'Servidor', REDE: 'Rede', NOBREAK: 'Nobreak', SOFTWARE_LICENCA: 'Software/licença', CERTIFICADO_DIGITAL: 'Certificado digital',
+  TOKEN_SMARTCARD: 'Token/smartcard', CELULAR: 'Celular', MOBILIARIO: 'Mobiliário',
+  BACKUP: 'Backup', TESTE_RESTAURACAO: 'Teste de restauração', SUCESSO: 'Sucesso', FALHA: 'Falha', CORRIGIDA: 'Corrigida', RISCO_ACEITO: 'Risco aceito',
+  COMUNICADO: 'Comunicado', TRATAMENTO: 'Tratamento', ANOTACAO: 'Anotação', AVALIACAO_LGPD: 'Avaliação LGPD',
+  CADASTRO: 'Cadastro', MOVIMENTACAO: 'Movimentação', ALTERACAO: 'Alteração',
   FOLGA_INTEGRAL: 'Folga integral', COMPENSACAO_PARCIAL: 'Compensação parcial', ENTRADA_POSTERIOR: 'Entrada posterior', SAIDA_ANTECIPADA: 'Saída antecipada',
 };
 
@@ -83,9 +100,9 @@ export function label(code: string | null | undefined): string {
 }
 
 export function statusTone(code: string): string {
-  if (['APROVADA', 'RESOLVIDA', 'ATIVO', 'DISPONIVEL', 'CIENCIA', 'APROVACAO', 'CONCORDANCIA', 'REALIZADO', 'QUITADO', 'CONCLUIDO', 'VALIDADO', 'VIGENTE_VALIDADO', 'PUBLICADO', 'VIGENTE', 'CONCLUIDA', 'ENCERRADO'].includes(code)) return 'tag tag-ok';
-  if (['PENDENTE', 'A_VENCER', 'AFASTADO', 'SUSPENSO', 'PLANEJADO', 'ABERTO', 'PENDENTE_VALIDACAO', 'VIGENTE_LEITURA_PENDENTE', 'RASCUNHO', 'EM_APROVACAO', 'EM_REVISAO', 'PAUSADO', 'URGENTE'].includes(code)) return 'tag tag-warn';
-  if (['REJEITADA', 'VENCIDO', 'VENCIDAS', 'DESLIGADO', 'REVOGADO', 'CONTESTACAO', 'CANCELADO', 'PERDIDO', 'HISTORICO_NAO_APLICAR', 'BLOQUEADA', 'IMEDIATA'].includes(code)) return 'tag tag-danger';
-  if (['EM_ANDAMENTO'].includes(code)) return 'tag tag-info';
+  if (['APROVADA', 'RESOLVIDA', 'ATIVO', 'DISPONIVEL', 'CIENCIA', 'APROVACAO', 'CONCORDANCIA', 'REALIZADO', 'QUITADO', 'CONCLUIDO', 'VALIDADO', 'VIGENTE_VALIDADO', 'PUBLICADO', 'VIGENTE', 'CONCLUIDA', 'ENCERRADO', 'ATENDIDO', 'CONFORME', 'ENCERRADA', 'SUCESSO', 'CORRIGIDA', 'EM_USO', 'BAIXO'].includes(code)) return 'tag tag-ok';
+  if (['PENDENTE', 'A_VENCER', 'AFASTADO', 'SUSPENSO', 'PLANEJADO', 'ABERTO', 'PENDENTE_VALIDACAO', 'VIGENTE_LEITURA_PENDENTE', 'RASCUNHO', 'EM_APROVACAO', 'EM_REVISAO', 'PAUSADO', 'URGENTE', 'PARCIAL', 'OBSERVACAO', 'ABERTA', 'PLANEJADA', 'AGUARDANDO_VERIFICACAO', 'CONTIDO', 'MODERADO', 'MANUTENCAO', 'NAO_AVALIADO'].includes(code)) return 'tag tag-warn';
+  if (['REJEITADA', 'VENCIDO', 'VENCIDAS', 'DESLIGADO', 'REVOGADO', 'CONTESTACAO', 'CANCELADO', 'PERDIDO', 'HISTORICO_NAO_APLICAR', 'BLOQUEADA', 'IMEDIATA', 'NAO_ATENDIDO', 'NAO_CONFORME', 'FALHA', 'CRITICO', 'ALTO', 'CRITICA'].includes(code)) return 'tag tag-danger';
+  if (['EM_ANDAMENTO', 'EM_EXECUCAO', 'EM_TRATAMENTO'].includes(code)) return 'tag tag-info';
   return 'tag';
 }

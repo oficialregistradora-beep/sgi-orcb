@@ -51,5 +51,16 @@ DDL executável: `db/migrations/0001_fundacao.sql`, `0002_pessoas_jornada.sql` e
 | `calendar_links`, `calendar_sync_runs` | Vínculos fato ↔ evento da Agenda Google e histórico das sincronizações | Um evento por fato |
 | `institutional_events` | Reuniões, prazos, treinamentos e eventos institucionais | Cancelamento registrado |
 
-## Entidades previstas (Fases 2b–5)
-`oncall_schedules` / `oncall_shifts` / `oncall_calls` (plantões RCPN, com sobreaviso, trabalho efetivo e banco **separados**), `vacation_requests`, `drive_files` (se o Drive for adotado — ADR 0009), `trainings`, `training_records`, `evaluations`, `audits`, `nonconformities`, `corrective_actions`, `risks`, `incidents`, `assets`, `automations`.
+| `quality_requirements`, `requirement_evidences`, `requirement_reviews` | Requisitos (com fonte), evidências e histórico de avaliações | Evidências e histórico imutáveis |
+| `audits`, `audit_items` | Auditorias internas e checklist | Imutáveis após conclusão (gatilho) |
+| `nonconformities` | Não conformidades | Sem exclusão; verificador ≠ responsável (CHECK) |
+| `quality_actions` | Vínculo ação ↔ tarefa (NC, risco ou incidente) | Imutável; exatamente um vínculo |
+| `risks`, `risk_reviews` | Riscos (nível gerado P×I) e reavaliações | Sem exclusão; histórico imutável |
+| `incidents`, `incident_events` | Incidentes e linha do tempo | Sem exclusão; encerramento com dados pessoais exige avaliação LGPD (CHECK) |
+| `assets`, `asset_events` | Inventário de ativos e movimentações | Sem exclusão; baixa com motivo |
+| `backup_records` | Backups e testes de restauração | Imutáveis |
+| `vulnerabilities` | Vulnerabilidades com prazo pela política | Sem exclusão; fechamento com resolução |
+| `reminder_log`, `quality_counters` | Lembretes já enviados; numeração por tipo/ano | — |
+
+## Entidades previstas (Fase 5b)
+`trainings`, `training_records`, `evaluations`, `automations`.

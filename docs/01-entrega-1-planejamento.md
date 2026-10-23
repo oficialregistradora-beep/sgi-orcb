@@ -271,6 +271,7 @@ A matriz completa, com status, está em `docs/22-matriz-conformidade.md`. Pontos
 | J-16 | Relação do financeiro gerencial com a escrituração obrigatória e o Livro Diário Auxiliar; tratamento contábil de encargos | Módulo gerencial, sem integração e sem encargos presumidos (Fase 4b) | Pendente de validação jurídica e contábil |
 | J-15 | Prazos de retenção e descarte do acervo administrativo (tabela de temporalidade; normas do CNJ e da CGJ/SC aplicáveis) | Prazo por categoria com fundamento obrigatório; descarte bloqueado sem prazo (Fase 3) | Pendente: nenhum prazo foi presumido |
 | J-12 | Intervalos (CLT arts. 66 e 71) e limite de 2 h extras diárias (art. 59) | O sistema gera **alertas**, sem bloquear o registro | Dependente de validação jurídica |
+| J-17 | Requisitos do regulamento vigente do PQTA e das normas do CNJ/CGJ-SC aplicáveis à qualidade e à segurança da informação | Nenhum requisito pré-carregado; a serventia cadastra cada requisito com a fonte (Fase 5a); prazos de vulnerabilidade e de teste de restauração são política interna ajustável | Pendente de cadastro e conferência pela serventia |
 
 ---
 

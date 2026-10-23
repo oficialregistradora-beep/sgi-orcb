@@ -100,5 +100,14 @@ Criar, editar (nova versão em rascunho), duplicar, ordenar, remover itens, publ
 - **E-mail:** cópia das notificações de prioridade alta para o e-mail institucional (título + link).
 - **Chat:** avisos administrativos e anúncio de documento institucional para ciência.
 
+## F17. Qualidade e segurança da informação (Fase 5a)
+- **Painel:** índice de atendimento (registrado), NCs e ações, riscos (matrizes inerente e residual), incidentes, vulnerabilidades, backups e vencimentos.
+- **Requisitos:** cadastro com fonte, responsável e revisão; evidências (documento do repositório ou arquivo); avaliação com histórico.
+- **Auditorias internas:** checklist, independência do auditor, avaliação com evidência, NC automática, conclusão imutável.
+- **Não conformidades:** causa raiz, ações como tarefas, verificação de eficácia por outra pessoa, cancelamento justificado.
+- **Riscos:** matriz 5×5, controles, residual, tratamento, reavaliação, ações preventivas.
+- **Incidentes:** comunicação por qualquer colaborador, tratamento, avaliação LGPD, encerramento.
+- **Ativos, backups, vulnerabilidades:** inventário e movimentações, registros imutáveis, prazos pela política interna.
+
 ## Pendentes
-Avaliações de desempenho e treinamentos (Fase 5); reinício automático do período aquisitivo (art. 133); leitura integral da CCT 2026/2027 e cadastro das regras validadas correspondentes (J-14); prazos de retenção documental (J-15); integração com o Google Drive (P-03).
+Avaliações de desempenho e treinamentos (Fase 5b); reinício automático do período aquisitivo (art. 133); leitura integral da CCT 2026/2027 e cadastro das regras validadas correspondentes (J-14); prazos de retenção documental (J-15); integração com o Google Drive (P-03).

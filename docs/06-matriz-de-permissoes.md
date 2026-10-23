@@ -62,4 +62,6 @@ Configurável em **Usuários e permissões → Matriz** sem alterar código. A O
 
 **Documentos (Fase 3):** `documentos.ver` dá acesso apenas aos documentos **vigentes** cujo público inclui a pessoa. Quem elaborou ou submeteu uma versão não a aprova — **nem a Oficial**. Documento **confidencial** só é visto pela Oficial, pelo responsável, pelo autor e pelas pessoas da lista; as permissões de gestão, edição e aprovação não o alcançam sem inclusão na lista. Aprovação, ciência e descarte exigem reautenticação.
 
+**Qualidade e segurança (Fase 5a):** `qualidade.ver` (setor para a coordenação), `qualidade.gerenciar`, `qualidade.auditar`, `incidentes.gerenciar` ★ e `ativos.gerenciar` cabem à Oficial e à Substituta; `incidentes.registrar` é de todos (o colaborador vê só o que comunicou). Regras codificadas: auditor não pertence ao setor auditado (salvo a Oficial); quem trata a NC não verifica a eficácia (também no banco); aceitar risco ou vulnerabilidade alta/crítica é exclusivo da Oficial.
+
 **Financeiro (Fase 4b):** quem solicita não aprova; quem solicita ou aprova não paga (regra também garantida no banco). Para que toda despesa possa ser paga, designe ao menos **três pessoas** com papéis financeiros (ex.: coordenação solicita, Substituta aprova, auxiliar administrativo paga — crie um papel próprio para o pagador, sem as demais permissões da Substituta).

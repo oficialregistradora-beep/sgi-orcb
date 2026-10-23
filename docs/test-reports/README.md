@@ -273,3 +273,28 @@ Capturas: [22-financeiro-painel.png](telas/22-financeiro-painel.png), [23-despes
 | Revisão dos testes | Uma asserção de concorrência era trivialmente verdadeira | Substituída por verificações reais |
 
 Captura: [24-agenda.png](telas/24-agenda.png).
+
+
+---
+
+# Fase 5a — qualidade, riscos e segurança da informação — execução de 23/10/2026 (branch `fase-5a`)
+
+| Conjunto | Resultado |
+|---|---|
+| Unitário (`phase5a.test.ts`, 8 casos: faixas e monotonicidade da matriz 5×5, mapa de calor, prazos de vulnerabilidade, vencimentos, situação de backups, índice de atendimento, códigos) | aprovado |
+| Rodada 1 — Funcional (`phase5a.test.ts`, 15 casos: requisitos e evidências, auditoria com independência, NC automática, conclusão imutável que atualiza requisitos, ações como tarefas, eficácia segregada, visibilidade por setor, riscos com histórico e aceitação pela Oficial, incidentes com avaliação LGPD, ativos/vulnerabilidades/backups, painel por perfil, lembretes únicos) | aprovado |
+| Rodada 2 — Segurança (`phase5a-security.test.ts`, 11 casos: auditor do setor auditado, responsável inativo, autoverificação e verificações simultâneas, confidencialidade de incidentes, restrições do banco contornando o serviço, numeração sob concorrência, entrada maliciosa e arquivo disfarçado, isolamento das rotas de download, lembretes concorrentes) | aprovado |
+| Rodada 3 — 12 ciclos mensais (`phase5a-cycle.test.ts`: 12 auditorias, 11 NCs, 3 verificações ineficazes, 12 incidentes — 7 com dados pessoais —, 4 falhas de backup, 6 vulnerabilidades; 8 invariantes conferidas) | aprovado · [métricas](rodada3-fase5a-metricas.json) |
+| **Suíte completa** | **402/402** |
+| Ponta a ponta | **86/86** (painel e matrizes, requisitos-exemplo, avaliação de item e conclusão de auditoria pela tela, NC com ação, riscos, backups, incidentes; colaborador comunica incidente no celular, sem acesso à qualidade nem às evidências) |
+| `npm audit` | 0 vulnerabilidades |
+
+## Achados da Fase 5a
+| Origem | Achado | Tratamento |
+|---|---|---|
+| Rodada 3 | Item de auditoria com resultado *Observação* não atualizava o requisito vinculado (podia ficar “não avaliado” mesmo auditado) | Observação passa a registrar o requisito como atendido, com a observação no histórico |
+| Revisão dos testes | Quatro expectativas erradas nos próprios testes (título curto demais, contagem de NCs abertas, contagem de lembretes por tipo, seletor ambíguo no E2E) | Corrigidas |
+
+**Limites honestos:** nenhum requisito real do PQTA ou das normas foi cadastrado (J-17); os prazos de vulnerabilidade e de teste de restauração são política interna inicial; o sistema não decide sobre comunicação de incidentes à ANPD.
+
+Capturas: [25-qualidade-painel.png](telas/25-qualidade-painel.png), [26-auditoria.png](telas/26-auditoria.png), [27-incidentes.png](telas/27-incidentes.png), [28-incidente-celular.png](telas/28-incidente-celular.png).

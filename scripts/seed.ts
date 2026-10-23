@@ -15,6 +15,8 @@ import {
   addFinanceAttachment, addQuote, addRevenue, chooseQuote, decideExpense, generateContractExpenses, listFinanceCategories, registerPayment, requestExpense, saveContract,
   saveCostCenter, saveSupplier, setBudget,
 } from '../src/server/modules/finance.ts';
+import { addAction, addRequirementEvidence, createAudit, evaluateAuditItem, reviewRequirement, saveRequirement, saveRisk, setRootCause, startAudit } from '../src/server/modules/quality.ts';
+import { recordBackup, registerVulnerability, reportIncident, saveAsset, treatIncident } from '../src/server/modules/security.ts';
 import { addDays, localToInstant, todayLocal, weekdayOf, formatHHMM } from '../src/domain/time.ts';
 
 const cfg = getConfig();
@@ -224,6 +226,36 @@ const quotes = await query<{ id: string }>(db, 'SELECT id FROM expense_quotes WH
 await chooseQuote(cCamila, quotes[0]!.id);
 await addRevenue(cHelena, { competence: ym, receivedOn: today, categoryId: fcat.RECEITA_EMOL!, description: 'Receitas do período (valor fictício)', amountCents: 2500000 });
 console.log('✓ financeiro fictício (centros, fornecedores, contrato, orçamento, despesas, compra, receita)');
+
+// Qualidade e segurança fictícias (Fase 5a). Requisitos são EXEMPLOS — a serventia cadastra os reais a partir das fontes oficiais.
+const reqA = await saveRequirement(cBeatriz, { code: 'EX-DOC-01', title: 'Procedimentos operacionais documentados e vigentes (exemplo)', source: 'Exemplo fictício — substituir pela fonte oficial', area: 'Gestão documental', ownerUserId: uid(cCamila) });
+await saveRequirement(cBeatriz, { code: 'EX-DOC-02', title: 'Ciência dos colaboradores sobre os procedimentos (exemplo)', source: 'Exemplo fictício — substituir pela fonte oficial', area: 'Gestão documental', ownerUserId: uid(cCamila) });
+await saveRequirement(cBeatriz, { code: 'EX-SI-01', title: 'Cópias de segurança testadas periodicamente (exemplo)', source: 'Exemplo fictício — substituir pela fonte oficial', area: 'Segurança da informação', ownerUserId: uid(cBeatriz) });
+await addRequirementEvidence(cCamila, reqA, { description: 'POP de prenotação vigente', documentId: pop });
+await reviewRequirement(cCamila, reqA, 'PARCIAL', 'Faltam POPs de outros setores (fictício).');
+const aud = await createAudit(cBeatriz, { title: 'Auditoria interna de documentação — RI (fictícia)', kind: 'DOCUMENTAL', scope: 'POPs e ciência no setor de RI', auditedSectorId: ri,
+  leadAuditorId: uid(cBeatriz), plannedDate: today, importArea: 'Gestão documental', questions: ['Protocolo conferido diariamente?'] });
+await startAudit(cBeatriz, aud);
+const items = await query<{ id: string; position: number }>(db, 'SELECT id, position FROM audit_items WHERE audit_id = $1 ORDER BY position', [aud]);
+await evaluateAuditItem(cBeatriz, { itemId: items[0]!.id, result: 'CONFORME', evidence: 'POP-RI-001 vigente' });
+await evaluateAuditItem(cBeatriz, { itemId: items[1]!.id, result: 'NAO_CONFORME', evidence: '2 de 3 colaboradores sem ciência registrada (fictício)', ncResponsibleId: uid(cCamila) });
+const ncId = (await queryOne<{ id: string }>(db, 'SELECT id FROM nonconformities ORDER BY created_at DESC LIMIT 1'))!.id;
+await setRootCause(cCamila, ncId, 'Ciência não acompanhada após publicação (fictício).');
+await addAction(cCamila, { kind: 'CORRETIVA', ncId, title: 'Cobrar ciência pendente do POP', responsibleUserId: uid(cDiego), dueDate: addDays(today, 5) });
+await saveRisk(cBeatriz, { title: 'Perda de dados por falha de backup (fictício)', category: 'CONTINUIDADE', probability: 2, impact: 5, treatment: 'MITIGAR', controls: 'Backup diário e teste trimestral', residualProbability: 1, residualImpact: 5, ownerUserId: uid(cBeatriz) });
+await saveRisk(cBeatriz, { title: 'Acesso indevido a dados pessoais no balcão (fictício)', category: 'DADOS_PESSOAIS', probability: 3, impact: 4, treatment: 'MITIGAR', controls: 'Bloqueio de tela, PSI', ownerUserId: uid(cBeatriz) });
+await saveRisk(cBeatriz, { title: 'Indisponibilidade de internet (fictício)', category: 'OPERACIONAL', probability: 3, impact: 2, treatment: 'ACEITAR', ownerUserId: uid(cBeatriz) });
+const srv = await saveAsset(cBeatriz, { tag: 'PAT-0001', name: 'Servidor de arquivos (fictício)', kind: 'SERVIDOR', location: 'Sala técnica', sectorId: await sector('DIR'), criticality: 'ALTA', warrantyUntil: addDays(today, 40) });
+await saveAsset(cBeatriz, { tag: 'CERT-A3-01', name: 'Certificado digital A3 da Oficial (fictício)', kind: 'CERTIFICADO_DIGITAL', responsibleUserId: uid(cHelena), criticality: 'ALTA', expiresOn: addDays(today, 25) });
+await saveAsset(cBeatriz, { tag: 'PAT-0002', name: 'Computador do balcão 1 (fictício)', kind: 'COMPUTADOR', location: 'Atendimento', sectorId: await sector('ATD') });
+await recordBackup(cBeatriz, { kind: 'BACKUP', system: 'SGI', performedOn: today, result: 'SUCESSO' });
+await recordBackup(cBeatriz, { kind: 'TESTE_RESTAURACAO', system: 'SGI', performedOn: addDays(today, -30), result: 'SUCESSO', notes: 'Restauração em ambiente isolado' });
+await recordBackup(cBeatriz, { kind: 'BACKUP', system: 'Arquivos digitalizados', performedOn: addDays(today, -1), result: 'PARCIAL', notes: 'Pasta de rede indisponível (fictício)' });
+await registerVulnerability(cBeatriz, { title: 'Atualização de segurança pendente do sistema operacional (fictício)', source: 'Boletim do fabricante', assetId: srv, severity: 'ALTA', detectedOn: addDays(today, -3) });
+const inc = await reportIncident(cDiego, { title: 'E-mail com anexo suspeito aberto (fictício)', description: 'Colaborador abriu anexo de remetente desconhecido (fictício).', category: 'SEGURANCA_INFORMACAO',
+  severity: 'MEDIA', detectedAt: new Date(), personalDataInvolved: true });
+await treatIncident(cBeatriz, inc, { containment: 'Máquina isolada da rede e varredura executada.' });
+console.log('✓ qualidade e segurança fictícias (requisitos-exemplo, auditoria, NC, riscos, ativos, backups, vulnerabilidade, incidente)');
 
 console.log('Apurando jornadas…');
 await ensureProcessedAll();

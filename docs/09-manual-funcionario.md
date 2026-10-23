@@ -16,4 +16,6 @@
 
 **Tarefas:** em *Tarefas → Minhas tarefas* ficam suas atividades por urgência (imediatas, vencidas, hoje, próximas), inclusive as rotinas do dia. Use *Iniciar*, *Concluir*, *Registrar impedimento* (com o motivo) ou *Encaminhar para decisão*. Tarefas com aprovação vão para quem aprova ao concluir.
 
+**Incidentes:** se perceber perda de equipamento, acesso indevido, e-mail suspeito aberto, vazamento ou sistema fora do ar, use *Comunicar incidente* no menu, descreva o fato sem incluir dados pessoais além do necessário e marque se pode envolver dados pessoais. Você acompanha o que comunicou na mesma tela.
+
 **Privacidade:** você só vê seus próprios dados. Dúvidas sobre tratamento de dados pessoais: encarregado(a) de dados da serventia (a definir — P-06).

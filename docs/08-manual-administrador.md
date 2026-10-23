@@ -51,6 +51,14 @@
 - **Receitas:** lançamento gerencial para o fluxo de caixa; correções por estorno.
 - O módulo é gerencial e não substitui a escrituração nem o Livro Diário Auxiliar.
 
+## Fase 5a — qualidade e segurança da informação
+- **Requisitos** (*Qualidade e segurança → Requisitos*): cadastre cada requisito a partir da fonte oficial (indique a norma/item consultado); defina responsável e periodicidade de revisão. Nada vem pré-carregado — os do ambiente de homologação são exemplos.
+- **Auditorias:** planeje com um auditor líder de fora do setor auditado, importe os requisitos de uma área e/ou escreva as perguntas. Inicie, avalie cada item com evidência objetiva e conclua — a auditoria fica imutável e atualiza os requisitos.
+- **Não conformidades:** o responsável registra a causa raiz e cria ações (viram tarefas); ao concluir, encaminha para verificação de eficácia, feita por outra pessoa.
+- **Riscos:** probabilidade e impacto de 1 a 5, controles e risco residual; reavalie na periodicidade. Aceitar risco alto/crítico é decisão da Oficial.
+- **Incidentes:** trate (contenção, causa raiz), registre a avaliação LGPD quando houver dados pessoais e encerre.
+- **Ativos, backups e vulnerabilidades:** mantenha o inventário (inclua certificados digitais e licenças com validade), registre backups e testes de restauração e as vulnerabilidades. Ajuste os prazos em *Configurações* (chaves `seguranca.*`).
+
 ## Fase 4c — agenda e integrações Google
 - **Agenda** (menu): cadastre reuniões, prazos e treinamentos; marque “Avisar no Google Chat” quando quiser anunciar.
 - **Integrações** (*Configurações → Integrações*): depois de configurar as credenciais (guia docs/23, Parte C), ative cada canal. Comece pela Agenda com plantões, marcos e eventos; ative férias somente após avaliação do encarregado de dados.

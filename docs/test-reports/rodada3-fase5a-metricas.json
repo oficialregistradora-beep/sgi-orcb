@@ -1,0 +1,16 @@
+{
+  "executadoEm": "2026-10-23T00:36:37.354Z",
+  "metricas": {
+    "auditorias": 12,
+    "ncs_abertas_em_auditoria": 11,
+    "verificacoes_ineficazes": 3,
+    "acoes_atrasadas": 2,
+    "incidentes": 12,
+    "incidentes_dados_pessoais": 7,
+    "falhas_de_backup": 4,
+    "vulnerabilidades": 6,
+    "lembretes": 6,
+    "ncs_encerradas": 10,
+    "indice_atendimento": 77.8
+  }
+}

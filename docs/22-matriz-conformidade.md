@@ -20,6 +20,7 @@
 | Código de Normas da CGJ/SC | Normas locais | — | Pendente de consulta (J-11) |
 | Tabela de temporalidade / conservação de documentos (normas do CNJ e da CGJ/SC aplicáveis) | Prazos de retenção do acervo **administrativo** | Prazo por categoria, com fundamento obrigatório; nenhum prazo presumido; descarte bloqueado sem prazo | Pendente de definição e validação (J-15). Acervo registral fora do escopo |
 | Normas do CNJ e da CGJ/SC sobre escrituração e Livro Diário Auxiliar | Controles financeiros formais | Financeiro apenas gerencial, com aviso em todas as telas; sem integração | Pendente de validação jurídica e contábil (J-16) |
-| PQTA | Qualidade | Fase 5 | Planejado |
+| PQTA (regulamento vigente) | Qualidade | Módulo de apoio: requisitos com fonte e evidências, auditorias internas, NC/ações, riscos, indicadores — **sem declarar conformidade ou certificação** | Implementado como apoio · requisitos do regulamento Pendentes de cadastro pela serventia (J-17) |
+| LGPD, art. 48 (comunicação de incidente) | Incidentes com dados pessoais | Registro, aviso imediato aos gestores, avaliação LGPD obrigatória para encerrar; decisão fora do sistema | Implementado · decisão Dependente do controlador/encarregado (P-06) |
 
 Fonte das atualizações de 22/10/2026: documento "Validação Jurídica — Requisitos do Sistema", consolidação de pesquisa apresentada pela Oficial Registradora. O próprio documento ressalva que não constitui validação integral das cláusulas da CCT vigente.

@@ -315,3 +315,13 @@ form .row > .input { width: auto; flex: 1 1 160px; }
   .card { box-shadow: none; }
   body { background: #fff; }
 }
+
+/* Qualidade — matriz de riscos 5×5 (probabilidade × impacto) */
+.heat { display: grid; grid-template-columns: 28px repeat(5, minmax(34px, 1fr)); gap: 3px; font-size: 12px; max-width: 360px; }
+.heat .hc { aspect-ratio: 1.4; display: grid; place-items: center; border-radius: var(--radius-sm); font-weight: 600; color: var(--text); }
+.heat .hl { display: grid; place-items: center; color: var(--text-3); }
+.heat .b-BAIXO { background: var(--ok-soft); }
+.heat .b-MODERADO { background: var(--warn-soft); }
+.heat .b-ALTO { background: color-mix(in srgb, var(--danger) 22%, var(--surface)); }
+.heat .b-CRITICO { background: color-mix(in srgb, var(--danger) 45%, var(--surface)); }
+.heat .zero { font-weight: 400; color: var(--text-3); }

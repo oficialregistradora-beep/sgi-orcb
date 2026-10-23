@@ -244,6 +244,39 @@ try {
   check('Integrações: tudo desligado por padrão', (await page.locator('.tag:has-text("Desligado")').count()) >= 3);
   await page.screenshot({ path: `${SHOTS}/17-integracoes.png`, fullPage: true });
 
+  // 6h. Fase 5a — qualidade e segurança (Oficial)
+  await page.goto(`${BASE}/qualidade`);
+  check('Qualidade: painel com índice registrado e matrizes de risco', await page.locator('text=Índice de atendimento (registrado)').isVisible() && (await page.locator('.heat').count()) === 2);
+  check('Qualidade: alerta de teste de restauração e de vencimento do certificado', await page.locator('.alert:has-text("Teste de restauração em atraso")').isVisible() && await page.locator('text=CERT-A3-01').first().isVisible());
+  await page.screenshot({ path: `${SHOTS}/25-qualidade-painel.png`, fullPage: true });
+  await page.goto(`${BASE}/qualidade?aba=requisitos`);
+  check('Requisitos: exemplos com a fonte indicada', await page.locator('tbody a:has-text("EX-DOC-01")').isVisible() && await page.locator('text=Exemplo fictício — substituir pela fonte oficial').first().isVisible());
+  await page.goto(`${BASE}/qualidade?aba=auditorias`);
+  await page.click('tbody a:has-text("AUD-")');
+  await page.waitForURL(/\/qualidade\/auditorias\/[0-9a-f-]+$/);
+  check('Auditoria: NC aberta automaticamente a partir do item', await page.locator('tbody a:has-text("NC-")').isVisible());
+  const pendingRow = page.locator('tr:has-text("Protocolo conferido diariamente")');
+  await pendingRow.locator('summary').click();
+  await pendingRow.locator('textarea[name=evidence]').fill('Livro de protocolo conferido na amostra (E2E)');
+  await pendingRow.locator('button:has-text("Registrar")').click();
+  await page.waitForSelector('tr:has-text("Protocolo conferido diariamente") >> .tag:has-text("Conforme")', { timeout: 15000 });
+  await page.fill('textarea[name=conclusion]', 'Auditoria concluída com uma não conformidade (E2E).');
+  page.once('dialog', (d) => d.accept());
+  await page.click('button:has-text("Concluir")');
+  await page.waitForSelector('.tag:has-text("Concluída")', { timeout: 15000 });
+  check('Auditoria: item avaliado e auditoria concluída pela interface', true);
+  await page.screenshot({ path: `${SHOTS}/26-auditoria.png`, fullPage: true });
+  await page.click('tbody a:has-text("NC-")');
+  await page.waitForURL(/\/qualidade\/nc\/[0-9a-f-]+$/);
+  check('NC: ação corretiva vinculada como tarefa', await page.locator('tbody a:has-text("Ação corretiva: Cobrar ciência")').isVisible());
+  await page.goto(`${BASE}/qualidade?aba=riscos`);
+  check('Riscos: classificação pela matriz', await page.locator('text=3×4 = 12 · Alto').isVisible());
+  await page.goto(`${BASE}/qualidade?aba=backups`);
+  check('Backups: sistema sem teste de restauração aparece em atraso', await page.locator('tr:has-text("Arquivos digitalizados") >> text=Teste em atraso').isVisible());
+  await page.goto(`${BASE}/qualidade/incidentes`);
+  check('Incidentes: pendência de avaliação LGPD destacada', await page.locator('text=avaliação LGPD pendente').first().isVisible());
+  await page.screenshot({ path: `${SHOTS}/27-incidentes.png`, fullPage: true });
+
   // 7. Colaborador: marcação e restrições
   await page.context().close();
   page = await newPage();
@@ -301,6 +334,13 @@ try {
   const confFile = await page.request.get(`${BASE}${pcnHref.replace('/documentos/', '/api/v1/documentos/')}/exportar/00000000-0000-4000-8000-000000000000`);
   check('Exportação de documento confidencial recusada', [403, 404].includes(confFile.status()), `HTTP ${confFile.status()}`);
 
+  await page.goto(`${BASE}/qualidade/incidentes`);
+  check('Colaborador vê o incidente que comunicou', await page.locator('tbody a:has-text("INC-")').isVisible());
+  const q = await page.goto(`${BASE}/qualidade`);
+  check('Colaborador sem acesso à qualidade é levado à comunicação de incidentes', page.url().endsWith('/qualidade/incidentes'), `HTTP ${q?.status()}`);
+  const qFile = await page.request.get(`${BASE}/api/v1/qualidade/arquivos/00000000-0000-4000-8000-000000000000`);
+  check('Colaborador não baixa evidências da qualidade', [403, 404].includes(qFile.status()), `HTTP ${qFile.status()}`);
+
   // 8. Celular: sem rolagem horizontal
   await page.context().close();
   page = await newPage({ width: 390, height: 844 });
@@ -308,6 +348,17 @@ try {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   check('Painel em 390 px sem rolagem horizontal', overflow <= 0, `excesso ${overflow}px`);
   await page.screenshot({ path: `${SHOTS}/09-painel-celular.png`, fullPage: true });
+
+  check('Menu do colaborador oferece “Comunicar incidente”', (await page.locator('nav >> text=Comunicar incidente').count()) > 0);
+  await page.goto(`${BASE}/qualidade/incidentes`);
+  await page.fill('input[name=title]', 'Impressora do balcão sem conexão (E2E)');
+  await page.selectOption('select[name=category]', 'INDISPONIBILIDADE');
+  await page.fill('textarea[name=description]', 'A impressora parou de responder durante o atendimento.');
+  await page.click('button:has-text("Comunicar")');
+  await page.waitForURL(/\/qualidade\/incidentes\/[0-9a-f-]+$/, { timeout: 15000 });
+  const incOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  check('Celular: colaboradora comunica incidente (sem rolagem horizontal)', incOverflow <= 0 && await page.locator('h1:has-text("INC-")').isVisible(), `excesso ${incOverflow}px`);
+  await page.screenshot({ path: `${SHOTS}/28-incidente-celular.png`, fullPage: true });
 
   check('Nenhuma violação de CSP no console', cspViolations.length === 0, cspViolations.slice(0, 2).join(' | '));
 } catch (err) {
