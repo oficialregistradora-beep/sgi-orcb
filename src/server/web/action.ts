@@ -25,6 +25,8 @@ export async function runAction(
   try {
     const message = (await fn(st.ctx)) || 'Operação concluída.';
     for (const p of Array.isArray(revalidate) ? revalidate : [revalidate]) revalidatePath(p);
+    // Envio oportunista da fila de integrações (e-mail/Chat), sem esperar o Google: falhas ficam para a rotina agendada.
+    void import('../modules/integrations.ts').then((m) => m.dispatchOutbox(20)).catch(() => undefined);
     return { ok: true, message, at: Date.now() };
   } catch (err) {
     if (!(err instanceof AppError) && !(err && typeof err === 'object' && 'issues' in err)) {

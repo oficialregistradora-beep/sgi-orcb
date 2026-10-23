@@ -247,3 +247,29 @@ Capturas: [18-quadro-tarefas.png](telas/18-quadro-tarefas.png), [19-gantt.png](t
 | — | Revisão dos testes | Dois valores esperados errados nos próprios testes (últimos dígitos de um CPF; número de competências de um contrato) | Corrigidos |
 
 Capturas: [22-financeiro-painel.png](telas/22-financeiro-painel.png), [23-despesa-paga.png](telas/23-despesa-paga.png).
+
+
+---
+
+# Fase 4c — Google Agenda, Gmail e Chat — execução de 23/10/2026 (branch `fase-4c`)
+
+| Conjunto | Resultado |
+|---|---|
+| Rodada 1 — Funcional (`phase4c.test.ts`, 11 casos: e-mail só título+link e só prioridade alta, fila desfeita com a operação, avisos no Chat com permissão, anúncio de documento só se interno/para todos, agenda criando/atualizando/removendo/recriando eventos, tipos ligáveis, agenda interna com acesso por origem, escopos) | aprovado |
+| Rodada 2 — Segurança (`phase4c-security.test.ts`, 11 casos: Google fora do ar, espera crescente, máximo de tentativas e reenvio, erro permanente de delegação, despachos e sincronizações simultâneos, idempotência, descarte de mensagens antigas, configuração de produção, injeção de cabeçalho no e-mail) | aprovado |
+| Rodada 3 — 90 dias com o Google instável (`phase4c-cycle.test.ts`: 540 notificações, 153 e-mails elegíveis = 153 enviados, 26 quedas no envio e 21 na sincronização; agenda final idêntica ao banco) | aprovado · [métricas](rodada3-fase4c-metricas.json) |
+| Regressão do Drive após unificar a autenticação Google | 19/19 |
+| **Suíte completa** | **366/366** |
+| Ponta a ponta | **72/72** (agenda, evento institucional, escopos e integrações desligadas por padrão, colaborador sem cadastro de eventos) |
+| `npm audit` | 0 vulnerabilidades |
+
+**Não testado (exige o Google real):** ligação com a agenda, a caixa de e-mail e o espaço do Chat da serventia; caminho sem chave (identidade do Cloud Run + IAM signJwt).
+
+## Achados da Fase 4c
+| Origem | Achado | Tratamento |
+|---|---|---|
+| Revisão de privacidade | O anúncio de documento para ciência no Chat exporia o título de documentos restritos/confidenciais a todo o espaço | Anúncio somente para documento interno destinado a todos |
+| Revisão de projeto | Os e-mails sairiam só na rotina diária | Rotina `?somente=integracoes` (5–15 min) e envio oportunista ao fim de cada ação |
+| Revisão dos testes | Uma asserção de concorrência era trivialmente verdadeira | Substituída por verificações reais |
+
+Captura: [24-agenda.png](telas/24-agenda.png).

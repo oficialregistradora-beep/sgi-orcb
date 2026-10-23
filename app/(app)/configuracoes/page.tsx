@@ -43,7 +43,7 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
       {tab === 'competencias' ? <Closings canClose={can(ctx.principal, 'banco.periodo.fechar')} /> : null}
       {tab === 'regras' ? <RegrasJuridicas ctx={ctx} /> : null}
       {tab === 'checklists' ? <ModelosChecklist ctx={ctx} modelo={sp.modelo} /> : null}
-      {tab === 'integracoes' ? <Integracoes /> : null}
+      {tab === 'integracoes' ? <Integracoes ctx={ctx} /> : null}
     </div>
   );
 }

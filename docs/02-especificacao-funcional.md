@@ -94,5 +94,11 @@ Criar, editar (nova versão em rascunho), duplicar, ordenar, remover itens, publ
 - **Contratos:** vigência, valor mensal/total, vencimento, reajuste (texto), aviso de término, arquivo; lançamento das mensalidades do mês para aprovação.
 - **Fornecedores, orçamento (mensal ou anual), receitas (com estorno), relatórios por categoria/centro/setor com CSV, centros e categorias.**
 
+## F16. Agenda e integrações Google (Fase 4c)
+- **Agenda** (menu): calendário mensal com férias, plantões, marcos, compensações e eventos institucionais, conforme o acesso de cada pessoa; cadastro e cancelamento de eventos (reunião, prazo, treinamento, institucional), com aviso opcional no Chat.
+- **Integrações** (Configurações): ativar/desativar cada canal e cada tipo de evento da Agenda, sincronizar, enviar pendentes, reenviar falhas, ver erros e os escopos solicitados.
+- **E-mail:** cópia das notificações de prioridade alta para o e-mail institucional (título + link).
+- **Chat:** avisos administrativos e anúncio de documento institucional para ciência.
+
 ## Pendentes
 Avaliações de desempenho e treinamentos (Fase 5); reinício automático do período aquisitivo (art. 133); leitura integral da CCT 2026/2027 e cadastro das regras validadas correspondentes (J-14); prazos de retenção documental (J-15); integração com o Google Drive (P-03).

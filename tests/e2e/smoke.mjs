@@ -227,8 +227,21 @@ try {
   const csv = await page.request.get(`${BASE}/api/v1/financeiro/relatorio?de=${new Date().toISOString().slice(0, 7)}&ate=${new Date().toISOString().slice(0, 7)}`);
   check('Relatório CSV exportado como anexo', csv.status() === 200 && /attachment/.test(csv.headers()['content-disposition'] ?? '') && (await csv.text()).includes('Papel A4'));
 
+  // 6g. Fase 4c — agenda e integrações Google
+  await page.goto(`${BASE}/agenda`);
+  check('Agenda: calendário do mês com plantões e marcos', (await page.locator('.cal [role=gridcell]').count()) === 42 && await page.locator('text=Plantão RCPN').first().isVisible());
+  await page.fill('input[name=title]', 'Reunião de planejamento (E2E)');
+  await page.fill('input[name=startTime]', '09:00');
+  await page.fill('input[name=endTime]', '10:00');
+  await page.click('button:has-text("Cadastrar")');
+  await page.waitForSelector('text=Reunião: Reunião de planejamento (E2E)', { timeout: 10000 });
+  check('Agenda: evento institucional cadastrado', true);
+  await page.screenshot({ path: `${SHOTS}/24-agenda.png`, fullPage: true });
+
   await page.goto(`${BASE}/configuracoes?aba=integracoes`);
   check('Integrações: antivírus ativo e armazenamento informado', await page.locator('tr:has-text("Antivírus") >> text=Ativa').isVisible() && await page.locator('text=Armazenamento dos arquivos').isVisible());
+  check('Integrações: escopos do Google registrados na tela', await page.locator('text=https://www.googleapis.com/auth/gmail.send').isVisible() && await page.locator('text=https://www.googleapis.com/auth/calendar.events').isVisible());
+  check('Integrações: tudo desligado por padrão', (await page.locator('.tag:has-text("Desligado")').count()) >= 3);
   await page.screenshot({ path: `${SHOTS}/17-integracoes.png`, fullPage: true });
 
   // 7. Colaborador: marcação e restrições
@@ -273,6 +286,8 @@ try {
   const pqta = await page.request.get(`${BASE}/projetos`);
   check('Colaborador não vê projeto da diretoria de que não participa', pqta.ok() && !(await pqta.text()).includes('PQTA-2027'));
 
+  await page.goto(`${BASE}/agenda`);
+  check('Colaborador: agenda visível sem cadastro de eventos', await page.locator('h1:has-text("Agenda")').isVisible() && !(await page.locator('h2:has-text("Novo evento institucional")').count()));
   check('Colaborador não vê o menu Financeiro', !(await page.locator('nav >> text=Financeiro').count()));
   await page.goto(`${BASE}/financeiro`);
   check('Colaborador sem acesso ao financeiro', await page.locator('text=não tem acesso ao módulo financeiro').isVisible());

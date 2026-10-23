@@ -19,6 +19,7 @@
 | Segredos | Somente variáveis de ambiente / Secret Manager; `.env` fora do Git | `.gitignore` |
 | Documentos | Acesso por público e confidencialidade verificado no servidor; resposta "não encontrado" sem revelar existência; arquivos só pela rota autorizada (anexo, `nosniff`, CSP `sandbox`); formatos em lista fechada conferidos pelo conteúdo; hash conferido na aprovação e no download; downloads e exportações auditados | `repository.ts`, `files.ts` |
 | Antivírus | ClamAV (clamd) no envio, na aprovação e no primeiro download de arquivo não verificado; falha fechada; bloqueios auditados | `antivirus.ts`, `fileStore.ts` |
+| Integrações Google | Escopos mínimos (calendar.events, gmail.send, drive opcional); fila transacional; e-mail só com título e link; Chat sem dados pessoais; endereços de API fixos em produção; nenhum segredo nos registros de erro | `google.ts`, `integrations.ts` |
 | Privilégio no banco | Aplicação com papel `sgi_app` (não dono; sem UPDATE/DELETE nas tabelas imutáveis) | `db/roles.sql` |
 
 **Limitações conhecidas:** limitação de taxa em memória (multiplica-se pelo número de instâncias); rotação da chave de campo exige script de recifragem (o formato `v1.` já prevê versionamento — Pendente); cadastro de dispositivos autorizados não implementado (avaliar o Endpoint Management do Workspace); antivírus dos anexos depende do serviço ClamAV estar ativo (em produção, sem ele o envio de arquivos é bloqueado); a base oficial de assinaturas não pôde ser baixada no ambiente de desenvolvimento (testes com base local).
@@ -34,6 +35,9 @@
 | IP/navegador em sessões e assinaturas | Segurança e evidência | Legítimo interesse / obrigação legal | Auditoria | — |
 
 Retenção: nenhum expurgo automático foi implementado; prazos a definir por tipo (J-09). Não utilizar dados reais em desenvolvimento ou homologação.
+
+## Integrações Google e LGPD
+A publicação de **férias** e **compensações** na Agenda Google expõe dados pessoais a quem tiver acesso à agenda institucional: compensações começam desligadas e a publicação de férias deve ser validada pelo encarregado de dados (P-06) antes da ativação. E-mails e mensagens do Chat não carregam conteúdo sensível.
 
 ## Resposta a incidentes (resumo)
 1. Conter: suspender usuários afetados (revogação imediata) ou retirar o serviço do ar (Cloud Run → 0 instâncias).

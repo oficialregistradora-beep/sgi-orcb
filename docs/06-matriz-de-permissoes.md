@@ -52,6 +52,9 @@ Configurável em **Usuários e permissões → Matriz** sem alterar código. A O
 | financeiro.pagar ★ | T | T | — | — |
 | financeiro.cadastros ★ | T | T | — | — |
 | financeiro.receitas ★ | T | — | — | — |
+| integracoes.gerenciar ★ | T | — | — | — |
+| agenda.eventos | T | T | — | — |
+| chat.avisos | T | T | — | — |
 
 ★ permissão sensível. Papéis se acumulam: a Escrevente Substituta recebe *Coordenação de setor* e *Colaborador*.
 

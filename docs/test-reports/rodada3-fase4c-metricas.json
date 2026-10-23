@@ -1,0 +1,13 @@
+{
+  "executadoEm": "2026-10-23T00:11:26.974Z",
+  "metricas": {
+    "notificacoes": 540,
+    "emails_elegiveis": 153,
+    "emails_enviados": 153,
+    "quedas_no_envio": 26,
+    "quedas_na_sincronizacao": 21,
+    "mudancas_na_agenda": 27,
+    "eventos_na_agenda": 15,
+    "chamadas_a_api": 239
+  }
+}

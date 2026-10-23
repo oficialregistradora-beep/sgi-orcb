@@ -38,7 +38,10 @@
 | §16 Segregação solicitação / aprovação / pagamento | serviço + CHECK + gatilho no banco | rodadas 1–3 | Implementado · Testado (exige 3 pessoas com papéis financeiros) |
 | §16 Integração com escrituração / Livro Diário Auxiliar | não integrado (gerencial) | — | Dependente de validação jurídica e contábil (J-16) |
 | §17 Qualidade e conformidade | — | — | Planejado (Fase 5) |
-| §18 Calendar, Chat, Gmail | notificações internas | — | Planejado (Fase 4) |
+| §18 Google Calendar (férias, plantões, reuniões, prazos, treinamentos, compensações, calendário institucional) | `integrations.ts` (reconciliação), `/agenda`, eventos institucionais | phase4c (rodadas 1–3, API simulada) + E2E | Implementado · Testado com simulação · ligação real Dependente de configuração (P-03) |
+| §18 Google Chat (avisos, alertas, lembretes) | fila + webhook do espaço; avisos administrativos | phase4c | Implementado · Testado com simulação · Dependente de configuração |
+| §18 Gmail (notificações, aprovações, prazos) | fila na mesma transação; só título + link | phase4c | Implementado · Testado com simulação · Dependente de configuração |
+| §18 Escopos mínimos registrados; falhas sem afetar o banco; sem senhas Google | `SCOPES`, tela de Integrações, outbox | rodadas 2 e 3 (Google instável) | Implementado · Testado |
 | §19 Identidade visual e design system | `app/globals.css`, `src/ui` | E2E (inclui 390 px) | Implementado |
 | §20 Integridade, decimal, fuso | migrations, `domain/time.ts` | unit | Implementado · Testado |
 | §21 Controles OWASP ASVS (inclui limitação de taxa) | ver manual de segurança; `ratelimit.ts` | rodada 2 + unit | Implementado · Testado (verificação ASVS formal: Pendente) |

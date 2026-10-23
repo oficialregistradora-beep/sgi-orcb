@@ -50,3 +50,9 @@
 - **Pagamento:** anexe o comprovante e registre data, valor (igual ao aprovado) e forma. O registro é definitivo.
 - **Receitas:** lançamento gerencial para o fluxo de caixa; correções por estorno.
 - O módulo é gerencial e não substitui a escrituração nem o Livro Diário Auxiliar.
+
+## Fase 4c — agenda e integrações Google
+- **Agenda** (menu): cadastre reuniões, prazos e treinamentos; marque “Avisar no Google Chat” quando quiser anunciar.
+- **Integrações** (*Configurações → Integrações*): depois de configurar as credenciais (guia docs/23, Parte C), ative cada canal. Comece pela Agenda com plantões, marcos e eventos; ative férias somente após avaliação do encarregado de dados.
+- **Erros:** a tela mostra os últimos erros; use *Reenviar mensagens com falha* depois de corrigir a configuração.
+- **Agendamento:** rotina diária (`/api/cron/processar`) e, para e-mails rápidos, `?somente=integracoes` a cada 10 minutos.

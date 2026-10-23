@@ -47,5 +47,9 @@ DDL executável: `db/migrations/0001_fundacao.sql`, `0002_pessoas_jornada.sql` e
 | `expenses`, `expense_payments`, `expense_quotes`, `finance_attachments`, `expense_events` | Despesas, pagamento (1 por despesa), cotações, anexos e histórico | Segregação no banco; pagamento, anexos e histórico imutáveis; despesa encerrada imutável |
 | `revenue_entries` | Receitas gerenciais | Imutáveis; estorno por lançamento vinculado |
 
+| `integration_outbox` | Fila de e-mails e avisos do Chat | Chave idempotente; gravada na transação do fato |
+| `calendar_links`, `calendar_sync_runs` | Vínculos fato ↔ evento da Agenda Google e histórico das sincronizações | Um evento por fato |
+| `institutional_events` | Reuniões, prazos, treinamentos e eventos institucionais | Cancelamento registrado |
+
 ## Entidades previstas (Fases 2b–5)
 `oncall_schedules` / `oncall_shifts` / `oncall_calls` (plantões RCPN, com sobreaviso, trabalho efetivo e banco **separados**), `vacation_requests`, `drive_files` (se o Drive for adotado — ADR 0009), `trainings`, `training_records`, `evaluations`, `audits`, `nonconformities`, `corrective_actions`, `risks`, `incidents`, `assets`, `automations`.

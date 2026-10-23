@@ -1,4 +1,4 @@
-# Guia de configuração — Google Drive e antivírus
+# Guia de configuração — Google (Drive, Agenda, Gmail, Chat) e antivírus
 
 Status: **código implementado e testado** (antivírus com ClamAV real; Drive com simulação da API do Google). **A ligação com a conta Google real da serventia ainda não foi feita**: ela exige acesso ao Google Workspace e ao Google Cloud da serventia, que só a Oficial (ou a equipe técnica autorizada) possui. Nenhuma senha, chave ou credencial deve ser enviada por chat ou e-mail; elas vão direto para o Secret Manager.
 
@@ -61,9 +61,42 @@ Por padrão os arquivos ficam no banco de dados (ADR 0009) e funcionam sem nenhu
 
 ---
 
+## Parte C — Agenda, Gmail e Chat (opcionais; tudo começa desligado)
+
+### C1. Conta de serviço (a mesma do Drive)
+No Google Cloud: ativar **Google Calendar API** e **Gmail API**. No Cloud Run, a identidade do serviço dispensa chave; para o Gmail sem chave, conceder à própria conta de serviço o papel **Criador de tokens da conta de serviço** (`roles/iam.serviceAccountTokenCreator`), usado para assinar a delegação. Fora do Cloud Run: `GOOGLE_SERVICE_ACCOUNT_KEY` (JSON em base64, no Secret Manager).
+
+### C2. Agenda institucional
+1. No Google Agenda, criar a agenda "SGI — Agenda institucional".
+2. Em *Compartilhar com pessoas específicas*, incluir o e-mail da conta de serviço com **Fazer alterações nos eventos**.
+3. Compartilhar com a equipe como **somente leitura** (todos os detalhes ou apenas livre/ocupado — decisão da Oficial).
+4. Copiar o **ID da agenda** (Configurações da agenda → Integrar agenda) para `GOOGLE_CALENDAR_ID`.
+
+### C3. Gmail (e-mail institucional)
+1. Criar (ou escolher) a caixa remetente, ex.: `sgi@<domínio>`, e informá-la em `GMAIL_SENDER`.
+2. No **Admin Console → Segurança → Controles de API → Delegação em todo o domínio**, adicionar o **ID do cliente** da conta de serviço com **somente** o escopo `https://www.googleapis.com/auth/gmail.send`.
+3. A delegação permite enviar como a caixa indicada; o sistema não lê nenhuma caixa.
+
+### C4. Google Chat
+1. No espaço da equipe: *Apps e integrações → Webhooks → Adicionar webhook* ("SGI").
+2. Guardar a URL (é um segredo) em `GOOGLE_CHAT_WEBHOOK_URL`. Em produção, só são aceitas URLs de `https://chat.googleapis.com/`.
+
+### C5. Ativar
+*Configurações → Integrações*: ativar Agenda (e os tipos desejados), Gmail e Chat. Usar *Sincronizar agenda agora* e acompanhar a coluna de erros. Agendar no Cloud Scheduler: `POST /api/cron/processar?somente=integracoes` a cada 10 minutos.
+
+### Escopos solicitados
+| API | Escopo | Uso |
+|---|---|---|
+| Google Agenda | `https://www.googleapis.com/auth/calendar.events` | Criar/atualizar/remover eventos na agenda compartilhada com a conta de serviço |
+| Gmail | `https://www.googleapis.com/auth/gmail.send` | Somente envio, a partir de `GMAIL_SENDER` |
+| Google Drive (opcional) | `https://www.googleapis.com/auth/drive` | Arquivos no Drive compartilhado |
+| Google Chat | — (webhook) | Avisos no espaço |
+
 ## O que foi testado e como
 | Item | Teste | Resultado |
 |---|---|---|
 | Antivírus | ClamAV 1.5.4 real (clamd via TCP), com base de assinaturas **local de teste** (o servidor oficial de assinaturas estava inacessível no ambiente de desenvolvimento): arquivo limpo, arquivo EICAR (padrão de teste da indústria), EICAR embutido em arquivo de 300 KB (vários blocos), antivírus fora do ar, produção sem antivírus, verificação no download e na aprovação | Aprovado |
 | Drive | Servidor que simula a API do Google (token da conta de serviço com assinatura RS256 conferida, envio multipart, leitura, lixeira, consulta ao Drive compartilhado): envio, aprovação, download, adulteração no Drive, indisponibilidade, MD5 divergente, chave não reconhecida, descarte | Aprovado |
 | Drive real da serventia | — | **Pendente (depende dos passos B1–B3)** |
+| Agenda, Gmail e Chat | API do Google simulada (token com assinatura conferida e `sub` de delegação, eventos, envio de e-mail, webhook): fluxos, falhas, nova tentativa, concorrência, 90 dias com o Google instável | Aprovado |
+| Agenda, Gmail e Chat reais; caminho sem chave (IAM signJwt) | — | **Pendente (passos C1–C5)** |

@@ -15,6 +15,7 @@ Autenticação: cookie de sessão do sistema (mesma sessão da interface, com MF
 | GET | `/api/v1/tarefas/{id}/anexos/{arquivo}` | acesso à tarefa | Download de anexo (mesmas proteções dos documentos) |
 | GET | `/api/v1/financeiro/arquivos/{arquivo}` | acesso à despesa/contrato | Nota fiscal, comprovante, contrato ou orçamento (mesmas proteções dos documentos) |
 | GET | `/api/v1/financeiro/relatorio?de=AAAA-MM&ate=AAAA-MM` | qualquer permissão financeira (escopo aplicado) | CSV das despesas (até 24 meses; exportação auditada) |
+| POST | `/api/cron/processar?somente=integracoes` | `Authorization: Bearer <CRON_SECRET>` | Somente envio da fila e sincronização da agenda (agendar a cada 5–15 min) |
 | POST | `/api/cron/processar` | `Authorization: Bearer <CRON_SECRET>` (≥ 32 caracteres) | Apuração, avisos de revisão documental, tarefas de rotina (hoje e amanhã), avisos de prazo e de vencimento de contas (opcional) |
 | GET | `/api/auth/google/start` · `/callback` | pública | Fluxo OIDC |
 | POST | `/api/auth/dev` | somente homologação | Login de teste com usuários fictícios |
