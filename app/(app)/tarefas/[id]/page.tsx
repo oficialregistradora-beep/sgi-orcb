@@ -10,6 +10,7 @@ import { PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { hm, TaskFields } from '@/ui/tasks.tsx';
 import { createTaskAction, taskAction } from '../../../actions/phase4a.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Tarefa' };
@@ -29,7 +30,7 @@ function Op({ id, op, children, label: l, cls = 'btn btn-sm', confirm }: { id: s
   );
 }
 
-export default async function TarefaPage({ params }: { params: Promise<{ id: string }> }) {
+async function TarefaPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requirePageCtx();
   const { id } = await params;
   const { task: t, access: a, checklist, comments, attachments, deps, dependents, subtasks, events, canReview } = await getTask(ctx, id);
@@ -151,7 +152,7 @@ export default async function TarefaPage({ params }: { params: Promise<{ id: str
       ) : null}
 
       <div className="card"><div className="card-head"><h2>Histórico</h2></div>
-        <div className="card-body flush table-wrap"><table className="table"><tbody>{events.map((e) => (
+        <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><tbody>{events.map((e) => (
           <tr key={e.id}><td className="small nowrap">{fmtDateTime(e.created_at)}</td><td className="small">{EVENTS[e.event] ?? e.event}<div className="muted">{e.user_name ?? 'Rotina automática'}</div></td>
             <td className="small muted" style={{ wordBreak: 'break-word' }}>{Object.keys(e.details).length ? JSON.stringify(e.details) : ''}</td></tr>
         ))}</tbody></table></div>
@@ -159,3 +160,5 @@ export default async function TarefaPage({ params }: { params: Promise<{ id: str
     </div>
   );
 }
+
+export default withGuard(TarefaPage);

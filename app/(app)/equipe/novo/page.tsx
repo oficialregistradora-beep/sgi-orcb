@@ -6,11 +6,12 @@ import { todayLocal } from '@/domain/time.ts';
 import { PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { createEmployeeAction } from '../../../actions/people.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Admissão' };
 
-export default async function NovoFuncionario() {
+async function NovoFuncionario() {
   const ctx = await requirePageCtx();
   requirePermission(ctx, 'pessoas.editar');
   const [sectors, jobs, schedules] = await Promise.all([listSectors(), listJobTitles(), listSchedules()]);
@@ -38,3 +39,5 @@ export default async function NovoFuncionario() {
     </div>
   );
 }
+
+export default withGuard(NovoFuncionario);

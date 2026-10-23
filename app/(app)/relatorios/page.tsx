@@ -6,11 +6,12 @@ import { addMonths, todayLocal } from '@/domain/time.ts';
 import { fmtMin } from '@/ui/format.ts';
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { MonthPicker } from '@/ui/MonthPicker.tsx';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Relatórios' };
 
-export default async function RelatoriosPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
+async function RelatoriosPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
   const ctx = await requirePageCtx();
   requirePermission(ctx, 'banco.ocorrencias.tratar');
   const sp = await searchParams;
@@ -25,7 +26,7 @@ export default async function RelatoriosPage({ searchParams }: { searchParams: P
         actions={<><MonthPicker period={period} base="/relatorios" /><a className="btn btn-primary btn-sm" href={`/api/v1/relatorios/folha?periodo=${period}`}>Exportar CSV</a></>}
       />
       <div className="card">
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           {rows.length ? (
             <table className="table">
               <thead><tr><th>Matrícula</th><th>Funcionário</th><th className="num">Extras para pagamento</th><th className="num">Faltas não justificadas</th><th className="num">Créditos no banco</th><th className="num">Diferenças compensadas</th><th className="num">Pagamentos do banco</th><th className="num">Pendências</th></tr></thead>
@@ -45,3 +46,5 @@ export default async function RelatoriosPage({ searchParams }: { searchParams: P
     </div>
   );
 }
+
+export default withGuard(RelatoriosPage);

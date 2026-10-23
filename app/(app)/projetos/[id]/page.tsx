@@ -9,6 +9,7 @@ import { PageHead, Stat } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { Gantt, TaskBoard, TaskFields, TaskTable, type GanttItem } from '@/ui/tasks.tsx';
 import { createTaskAction, projectAction } from '../../../actions/phase4a.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Projeto' };
@@ -19,7 +20,7 @@ function Op({ id, op, label: l, cls = 'btn btn-sm', children, reset }: { id: str
   return <ActionForm action={projectAction} submitLabel={l} submitClass={cls} inline resetOnSuccess={reset}><input type="hidden" name="projectId" value={id} /><input type="hidden" name="op" value={op} /><div className="row">{children}</div></ActionForm>;
 }
 
-export default async function ProjetoPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ aba?: string }> }) {
+async function ProjetoPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ aba?: string }> }) {
   const ctx = await requirePageCtx();
   const { id } = await params;
   const sp = await searchParams;
@@ -74,7 +75,7 @@ export default async function ProjetoPage({ params, searchParams }: { params: Pr
             </div>
           </div>
           <div className="card"><div className="card-head"><h2>Custos realizados</h2><p>Lançamentos gerenciais (o módulo financeiro, Fase 4b, terá contas a pagar e aprovação de despesas).</p></div>
-            <div className="card-body flush table-wrap"><table className="table"><thead><tr><th>Data</th><th>Descrição</th><th className="num">Valor</th><th>Lançado por</th></tr></thead>
+            <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><thead><tr><th>Data</th><th>Descrição</th><th className="num">Valor</th><th>Lançado por</th></tr></thead>
               <tbody>{costs.map((c) => <tr key={c.id}><td className="small">{fmtDate(c.spent_on)}</td><td className="small">{c.description}</td><td className="num">{fmtMoney(c.amount)}</td><td className="small">{c.created_by_name}</td></tr>)}</tbody></table></div>
             {a.manage && open ? <div className="card-body"><Op id={id} op="custo" label="Lançar custo" reset><input name="description" className="input" placeholder="Descrição" aria-label="Descrição do custo" required minLength={3} /><input name="amount" className="input" placeholder="Valor (R$)" aria-label="Valor" inputMode="decimal" required style={{ width: 120 }} /><input name="spentOn" type="date" className="input" aria-label="Data" defaultValue={todayLocal()} required /></Op></div> : null}
           </div>
@@ -83,7 +84,7 @@ export default async function ProjetoPage({ params, searchParams }: { params: Pr
 
       {tab === 'tarefas' ? (
         <div className="stack">
-          <div className="card"><div className="card-body flush table-wrap"><TaskTable tasks={tasks.filter((t) => t.status !== 'CANCELADA')} showProject={false} /></div></div>
+          <div className="card"><div className="card-body flush table-wrap" tabIndex={0}><TaskTable tasks={tasks.filter((t) => t.status !== 'CANCELADA')} showProject={false} /></div></div>
           {a.contribute && open ? (
             <div className="card"><div className="card-head"><h2>Nova tarefa do projeto</h2></div>
               <div className="card-body"><ActionForm action={createTaskAction} submitLabel="Criar tarefa" resetOnSuccess>
@@ -113,7 +114,7 @@ export default async function ProjetoPage({ params, searchParams }: { params: Pr
         return (
           <div className="card">
             <div className="card-head"><h2>Cronograma</h2><p>Barras: verde concluída, vermelha vencida, cinza fase; losango: marco; linha vermelha: hoje.</p></div>
-            <div className="card-body table-wrap"><Gantt items={items} from={from} to={to} /></div>
+            <div className="card-body table-wrap" tabIndex={0}><Gantt items={items} from={from} to={to} /></div>
             {a.manage && open ? <div className="card-body"><Op id={id} op="fase" label="Incluir fase" reset><input name="name" className="input" placeholder="Fase" aria-label="Nome da fase" required minLength={2} /><input name="startDate" type="date" className="input" aria-label="Início da fase" /><input name="dueDate" type="date" className="input" aria-label="Fim da fase" /></Op></div> : null}
           </div>
         );
@@ -122,7 +123,7 @@ export default async function ProjetoPage({ params, searchParams }: { params: Pr
       {tab === 'equipe' ? (
         <div className="stack">
           <div className="card"><div className="card-head"><h2>Equipe</h2><p>Gestor(a): gere o projeto · Membro: cria e executa tarefas · Leitor(a): consulta</p></div>
-            <div className="card-body flush table-wrap"><table className="table"><tbody>{members.map((m) => (
+            <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><tbody>{members.map((m) => (
               <tr key={m.user_id}><td>{m.display_name}</td><td><span className="tag">{label(m.role)}</span></td>
                 <td>{a.manage && m.user_id !== p.owner_user_id ? <Op id={id} op="membro" label="Remover" cls="btn btn-sm btn-ghost"><input type="hidden" name="userId" value={m.user_id} /></Op> : null}</td></tr>
             ))}</tbody></table></div>
@@ -155,3 +156,5 @@ export default async function ProjetoPage({ params, searchParams }: { params: Pr
     </div>
   );
 }
+
+export default withGuard(ProjetoPage);

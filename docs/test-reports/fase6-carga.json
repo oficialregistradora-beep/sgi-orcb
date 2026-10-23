@@ -1,0 +1,78 @@
+{
+  "executadoEm": "2026-10-23T10:26:13.372Z",
+  "usuariosSimultaneos": 9,
+  "navegacoesParalelasPorUsuario": 3,
+  "rodadas": 10,
+  "requisicoes": 3240,
+  "erros": 0,
+  "duracaoSegundos": 44.7,
+  "requisicoesPorSegundo": 72.4,
+  "amostrasDeErro": [],
+  "geral": {
+    "p50": 297,
+    "p95": 751,
+    "max": 1441
+  },
+  "porTela": {
+    "/financeiro": {
+      "p50": 233,
+      "p95": 440,
+      "max": 548
+    },
+    "/qualidade": {
+      "p50": 237,
+      "p95": 449,
+      "max": 486
+    },
+    "/qualidade/incidentes": {
+      "p50": 225,
+      "p95": 290,
+      "max": 374
+    },
+    "/treinamentos": {
+      "p50": 269,
+      "p95": 349,
+      "max": 416
+    },
+    "/documentos": {
+      "p50": 262,
+      "p95": 353,
+      "max": 418
+    },
+    "/avaliacoes": {
+      "p50": 279,
+      "p95": 369,
+      "max": 447
+    },
+    "/agenda": {
+      "p50": 323,
+      "p95": 418,
+      "max": 512
+    },
+    "/tarefas": {
+      "p50": 377,
+      "p95": 469,
+      "max": 526
+    },
+    "/banco-de-horas": {
+      "p50": 427,
+      "p95": 525,
+      "max": 618
+    },
+    "/notificacoes": {
+      "p50": 220,
+      "p95": 290,
+      "max": 352
+    },
+    "/jornada": {
+      "p50": 574,
+      "p95": 692,
+      "max": 834
+    },
+    "/painel": {
+      "p50": 771,
+      "p95": 1288,
+      "max": 1441
+    }
+  }
+}

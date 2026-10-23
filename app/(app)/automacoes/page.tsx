@@ -6,11 +6,12 @@ import { fmtDateTime } from '@/ui/format.ts';
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { automationAction } from '../../actions/phase5b.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Automações' };
 
-export default async function AutomacoesPage({ searchParams }: { searchParams: Promise<{ regra?: string }> }) {
+async function AutomacoesPage({ searchParams }: { searchParams: Promise<{ regra?: string }> }) {
   const ctx = await requirePageCtx();
   if (!can(ctx.principal, 'automacoes.gerenciar')) return <div className="stack"><PageHead title="Automações" /><div className="alert alert-warn">Você não tem acesso a esta página.</div></div>;
   const sp = await searchParams;
@@ -19,7 +20,7 @@ export default async function AutomacoesPage({ searchParams }: { searchParams: P
   return (
     <div className="stack">
       <PageHead title="Automações" subtitle="Regras “quando… então…” executadas pela rotina diária. Só enviam avisos ou criam tarefas — nunca alteram, aprovam, pagam ou excluem registros. Cada item dispara uma única vez por regra." />
-      <div className="card"><div className="card-body flush table-wrap">
+      <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>
         {rules.length ? <table className="table"><thead><tr><th>Regra</th><th>Quando</th><th>Então</th><th>Última execução</th><th className="num">Disparos</th><th></th></tr></thead>
           <tbody>{rules.map((r) => (
             <tr key={r.id} className={r.active ? undefined : 'row-muted'}>
@@ -50,9 +51,11 @@ export default async function AutomacoesPage({ searchParams }: { searchParams: P
         </ActionForm>
       </div></div>
 
-      <div className="card"><div className="card-head"><h2>Últimos disparos</h2></div><div className="card-body flush table-wrap">
+      <div className="card"><div className="card-head"><h2>Últimos disparos</h2></div><div className="card-body flush table-wrap" tabIndex={0}>
         {runs.length ? <table className="table"><tbody>{runs.map((r, i) => <tr key={i}><td className="small nowrap">{fmtDateTime(r.ran_at)}</td><td>{r.rule_name}</td><td className="small">{r.outcome}</td></tr>)}</tbody></table> : <Empty>Nenhum disparo.</Empty>}
       </div></div>
     </div>
   );
 }
+
+export default withGuard(AutomacoesPage);

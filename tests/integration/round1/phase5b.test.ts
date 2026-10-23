@@ -6,7 +6,7 @@ import {
   saveTraining, selfDeclare, setQuestions, submitAttempt, trainingFileForDownload, validateRecord,
 } from '../../../src/server/modules/training.ts';
 import {
-  acknowledgeEvaluation, acknowledgeFeedback, addFeedback, addPdiItem, closeWithoutAcknowledgement, createEvaluation, developmentHistory, generateScheduledEvaluations, getEvaluation,
+  acknowledgeEvaluation, acknowledgeFeedback, addFeedback, addPdiItem, cancelEvaluation, closeWithoutAcknowledgement, createEvaluation, developmentHistory, generateScheduledEvaluations, getEvaluation,
   listEvaluations, listTemplates, processEvaluationReminders, publishTemplate, rectify, saveAssessment, saveSchedule, saveSelfAssessment, saveTemplate, sendForAcknowledgement, updatePdiItem,
 } from '../../../src/server/modules/evaluations.ts';
 import { availableWidgets, myWidgets, resetWidgets, runAutomations, saveRule, saveWidgets } from '../../../src/server/modules/automation.ts';
@@ -244,6 +244,10 @@ describe('Fase 5b — avaliações de desempenho', () => {
   it('programação automática idempotente com avaliador da coordenação do setor', async () => {
     const fam = (await listTemplates(cSubst)).find((t) => t.id === tpl)!.family_key;
     await saveSchedule(cSubst, { name: 'Acompanhamento 30 dias', templateFamily: fam, trigger: 'DIAS_APOS_ADMISSAO', daysAfter: 30, leadDays: 7 });
+    // Avaliação manual do mesmo modelo e período já existente: a programação não duplica.
+    await createEvaluation(cCoord, { templateId: tpl, employeeId: emp.colab2!, periodLabel: 'Manual', dueDate: addDays(today, 8) });
+    expect(await generateScheduledEvaluations(today)).toBe(0);
+    await cancelEvaluation(cSubst, (await listEvaluations(cCoord, { scope: 'avaliar' })).find((v) => v.period_label === 'Manual')!.id, 'Substituída pela programação');
     expect(await generateScheduledEvaluations(today)).toBe(1); // somente quem foi admitido há 25 dias
     expect(await generateScheduledEvaluations(today)).toBe(0);
     const g = (await listEvaluations(cCoord, { scope: 'avaliar' })).find((v) => v.employee_id === emp.colab2)!;

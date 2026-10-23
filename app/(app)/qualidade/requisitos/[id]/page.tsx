@@ -9,11 +9,12 @@ import { fmtDate, fmtDateTime, label, statusTone } from '@/ui/format.ts';
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { qualityAction } from '../../../../actions/phase5a.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Requisito' };
 
-export default async function RequisitoPage({ params }: { params: Promise<{ id: string }> }) {
+async function RequisitoPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requirePageCtx();
   const { id } = await params;
   const p = ctx.principal;
@@ -54,7 +55,7 @@ export default async function RequisitoPage({ params }: { params: Promise<{ id: 
         </div>
       ) : null}
 
-      <div className="card"><div className="card-head"><h2>Evidências</h2></div><div className="card-body flush table-wrap">
+      <div className="card"><div className="card-head"><h2>Evidências</h2></div><div className="card-body flush table-wrap" tabIndex={0}>
         {evidences.length ? <table className="table"><tbody>{evidences.map((e) => (
           <tr key={e.id}><td>{e.description}{e.document_id ? <div className="small"><Link href={`/documentos/${e.document_id}`}>{e.document_title}</Link></div> : null}
             {e.file_id ? <div className="small"><a href={`/api/v1/qualidade/arquivos/${e.file_id}`}>{e.filename}</a></div> : null}</td>
@@ -62,7 +63,7 @@ export default async function RequisitoPage({ params }: { params: Promise<{ id: 
         ))}</tbody></table> : <Empty>Nenhuma evidência.</Empty>}
       </div></div>
 
-      <div className="card"><div className="card-head"><h2>Histórico de avaliações</h2></div><div className="card-body flush table-wrap">
+      <div className="card"><div className="card-head"><h2>Histórico de avaliações</h2></div><div className="card-body flush table-wrap" tabIndex={0}>
         {reviews.length ? <table className="table"><tbody>{reviews.map((v, i) => (
           <tr key={i}><td><span className={statusTone(v.status)}>{label(v.status)}</span></td><td className="small">{v.notes ?? ''}</td><td className="small">{v.reviewed_by_name}<div className="muted">{fmtDateTime(v.reviewed_at)}</div></td></tr>
         ))}</tbody></table> : <Empty>Ainda não avaliado.</Empty>}
@@ -87,3 +88,5 @@ export default async function RequisitoPage({ params }: { params: Promise<{ id: 
     </div>
   );
 }
+
+export default withGuard(RequisitoPage);

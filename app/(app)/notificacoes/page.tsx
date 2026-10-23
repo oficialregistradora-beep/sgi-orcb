@@ -5,11 +5,12 @@ import { fmtDateTime } from '@/ui/format.ts';
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { markReadAction } from '../../actions/admin.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Notificações' };
 
-export default async function NotificacoesPage() {
+async function NotificacoesPage() {
   const ctx = await requirePageCtx();
   const rows = await listMyNotifications(ctx, 100);
   return (
@@ -31,3 +32,5 @@ export default async function NotificacoesPage() {
     </div>
   );
 }
+
+export default withGuard(NotificacoesPage);

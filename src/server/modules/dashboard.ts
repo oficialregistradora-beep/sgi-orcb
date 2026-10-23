@@ -62,12 +62,14 @@ export async function managementDashboard(ctx: Ctx) {
     ? (await queryOne<{ n: number }>(
         db, `SELECT count(*)::int AS n FROM daily_occurrences o JOIN employees e ON e.id = o.employee_id WHERE o.status = 'PENDENTE' AND ${occScope}`, occParams))!.n
     : 0;
+  // Parâmetros próprios: reaproveitar a lista da consulta anterior deixaria parâmetros sem uso (erro no PostgreSQL).
+  const alertParams: unknown[] = [today];
   const alerts = await query<{ full_name: string; work_date: string; alerts: string[] }>(
     db,
     `SELECT e.full_name, d.work_date, d.alerts FROM daily_records d JOIN employees e ON e.id = d.employee_id
-      WHERE cardinality(d.alerts) > 0 AND d.work_date >= $1::date - 14 AND ${scopeSql(f, 'e', params)}
+      WHERE cardinality(d.alerts) > 0 AND d.work_date >= $1::date - 14 AND ${scopeSql(f, 'e', alertParams)}
       ORDER BY d.work_date DESC LIMIT 15`,
-    params,
+    alertParams,
   );
   return {
     team,

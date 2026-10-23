@@ -7,11 +7,12 @@ import { fmtDate, fmtMoney, label, statusTone } from '@/ui/format.ts';
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { createProjectAction } from '../../actions/phase4a.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Projetos' };
 
-export default async function ProjetosPage({ searchParams }: { searchParams: Promise<{ encerrados?: string }> }) {
+async function ProjetosPage({ searchParams }: { searchParams: Promise<{ encerrados?: string }> }) {
   const ctx = await requirePageCtx();
   const sp = await searchParams;
   const projects = await listProjects(ctx, { includeClosed: sp.encerrados === '1' });
@@ -23,7 +24,7 @@ export default async function ProjetosPage({ searchParams }: { searchParams: Pro
       <div className="card">
         <div className="card-head"><h2>{sp.encerrados === '1' ? 'Todos os projetos' : 'Projetos em curso'}</h2>
           <a className="small" href={sp.encerrados === '1' ? '/projetos' : '/projetos?encerrados=1'}>{sp.encerrados === '1' ? 'Ocultar encerrados' : 'Incluir encerrados'}</a></div>
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           {projects.length ? (
             <table className="table">
               <thead><tr><th>Projeto</th><th>Situação</th><th>Progresso</th><th>Prazo</th><th>Custo (previsto / realizado)</th><th>Gestor(a)</th></tr></thead>
@@ -68,3 +69,5 @@ export default async function ProjetosPage({ searchParams }: { searchParams: Pro
     </div>
   );
 }
+
+export default withGuard(ProjetosPage);

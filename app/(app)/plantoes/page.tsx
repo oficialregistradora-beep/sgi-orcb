@@ -12,10 +12,12 @@ import {
   assignShiftAction, cancelShiftAction, closeShiftAction, generateScheduleAction, registerCallAction, voidCallAction,
 } from '../../actions/phase2b.ts';
 
+import { withGuard } from '@/server/web/guard.ts';
+
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Plantões RCPN' };
 
-export default async function PlantoesPage({ searchParams }: { searchParams: Promise<{ mes?: string; plantao?: string }> }) {
+async function PlantoesPage({ searchParams }: { searchParams: Promise<{ mes?: string; plantao?: string }> }) {
   const ctx = await requirePageCtx();
   if (!scopeFilter(ctx.principal, 'plantoes.ver')) throw new ForbiddenError();
   const sp = await searchParams;
@@ -53,7 +55,7 @@ export default async function PlantoesPage({ searchParams }: { searchParams: Pro
               <div><div className="stat-label">Trabalho efetivo</div><div className="stat-value">{fmtMin(detail.shift.status === 'REALIZADO' ? detail.shift.effective_minutes! : detail.totals.effectiveMinutes)}</div></div>
               <div><div className="stat-label">Destino do efetivo</div><div className="stat-value" style={{ fontSize: 18 }}>{detail.shift.effective_destination ? label(detail.shift.effective_destination === 'BANCO' ? 'BANCO' : 'PAGAMENTO') : '—'}</div></div>
             </div>
-            <div className="table-wrap">
+            <div className="table-wrap" tabIndex={0}>
               <table className="table">
                 <thead><tr><th>Chamado</th><th>Resposta</th><th>Comparecimento</th><th>Descrição</th><th>Registrado por</th><th></th></tr></thead>
                 <tbody>
@@ -109,7 +111,7 @@ export default async function PlantoesPage({ searchParams }: { searchParams: Pro
 
       <div className="card">
         <div className="card-head"><h2>Escala da competência</h2><p>{shifts.length} plantão(ões) visível(is)</p></div>
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           {shifts.length ? (
             <table className="table">
               <thead><tr><th>Data</th><th>Responsável</th><th>Substituto</th><th className="num">Chamados</th><th>Situação</th>{canManage ? <th className="no-print">Substituição</th> : null}</tr></thead>
@@ -180,7 +182,7 @@ export default async function PlantoesPage({ searchParams }: { searchParams: Pro
       {canClose ? (
         <div className="card">
           <div className="card-head"><h2>Relatório da competência (plantões fechados)</h2><p>Valores estimados e informativos — dependentes de CCT e validação jurídica (J-07)</p></div>
-          <div className="card-body flush table-wrap">
+          <div className="card-body flush table-wrap" tabIndex={0}>
             {report.length ? (
               <table className="table">
                 <thead><tr><th>Funcionário</th><th className="num">Plantões</th><th className="num">Sobreaviso</th><th className="num">Efetivo → banco</th><th className="num">Efetivo → pagamento</th><th className="num">Valor sobreaviso*</th><th className="num">Valor efetivo pago*</th></tr></thead>
@@ -200,3 +202,5 @@ export default async function PlantoesPage({ searchParams }: { searchParams: Pro
     </div>
   );
 }
+
+export default withGuard(PlantoesPage);

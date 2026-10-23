@@ -20,7 +20,7 @@ export async function RegrasJuridicas({ ctx }: { ctx: Ctx }) {
 
       <div className="card">
         <div className="card-head"><h2>Instrumentos normativos</h2><p>Leis, convenções coletivas e súmulas consultadas</p></div>
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           <table className="table">
             <thead><tr><th>Código</th><th>Instrumento</th><th>Vigência</th><th>Situação</th>{canManage ? <th></th> : null}</tr></thead>
             <tbody>{instruments.map((i) => (
@@ -50,7 +50,7 @@ export async function RegrasJuridicas({ ctx }: { ctx: Ctx }) {
 
       <div className="card">
         <div className="card-head"><h2>Regras parametrizadas</h2><p>{rules.length} regra(s)</p></div>
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           <table className="table">
             <thead><tr><th>Regra</th><th>Valor</th><th>Vigência</th><th>Fundamento e fonte</th><th>Situação</th>{canManage ? <th></th> : null}</tr></thead>
             <tbody>{rules.map((r) => (

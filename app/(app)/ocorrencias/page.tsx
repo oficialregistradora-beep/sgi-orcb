@@ -8,6 +8,7 @@ import { fmtDate, fmtDateTime, fmtMin, label, statusTone } from '@/ui/format.ts'
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { resolveOccurrenceAction } from '../../actions/bank.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Ocorrências' };
@@ -18,7 +19,7 @@ const OPTIONS: Record<string, string[]> = {
   MARCACAO_INCOMPLETA: ['CIENTE'],
 };
 
-export default async function OcorrenciasPage({ searchParams }: { searchParams: Promise<{ aba?: string }> }) {
+async function OcorrenciasPage({ searchParams }: { searchParams: Promise<{ aba?: string }> }) {
   const ctx = await requirePageCtx();
   requirePermission(ctx, 'banco.ocorrencias.tratar');
   const { aba } = await searchParams;
@@ -36,7 +37,7 @@ export default async function OcorrenciasPage({ searchParams }: { searchParams: 
         <Link href="/ocorrencias?aba=resolvidas" aria-current={tab === 'RESOLVIDA' ? 'page' : undefined}>Resolvidas</Link>
       </nav>
       <div className="card">
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           {rows.length ? (
             <table className="table">
               <thead><tr><th>Data</th><th>Funcionário</th><th>Ocorrência</th><th className="num">Minutos</th><th>Contexto</th><th>{tab === 'PENDENTE' ? 'Decisão' : 'Resultado'}</th></tr></thead>
@@ -79,3 +80,5 @@ export default async function OcorrenciasPage({ searchParams }: { searchParams: 
     </div>
   );
 }
+
+export default withGuard(OcorrenciasPage);

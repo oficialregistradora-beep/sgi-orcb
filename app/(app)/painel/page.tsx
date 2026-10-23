@@ -16,11 +16,12 @@ import { listEvaluations } from '@/server/modules/evaluations.ts';
 import { qualityOverview } from '@/server/modules/security.ts';
 import { financeOverview } from '@/server/modules/finance.ts';
 import { panelAction } from '../../actions/phase5b.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Painel' };
 
-export default async function Painel() {
+async function Painel() {
   const ctx = await requirePageCtx();
   await ensureRoutineTasks();
   const widgets = await myWidgets(ctx);
@@ -95,7 +96,7 @@ export default async function Painel() {
           <div className="grid grid-2">
             <div className="card">
               <div className="card-head"><h2>Frequência de hoje</h2><p>Equipe sob sua visão</p></div>
-              <div className="card-body flush table-wrap">
+              <div className="card-body flush table-wrap" tabIndex={0}>
                 <table className="table">
                   <thead><tr><th>Funcionário</th><th>Setor</th><th>Situação</th></tr></thead>
                   <tbody>
@@ -112,7 +113,7 @@ export default async function Painel() {
             </div>
             <div className="card">
               <div className="card-head"><h2>Alertas de jornada</h2><p>Últimos 14 dias</p></div>
-              <div className="card-body flush table-wrap">
+              <div className="card-body flush table-wrap" tabIndex={0}>
                 {team.alerts.length ? (
                   <table className="table">
                     <thead><tr><th>Data</th><th>Funcionário</th><th>Alerta</th></tr></thead>
@@ -144,7 +145,7 @@ export default async function Painel() {
           <div className="grid grid-2">
             <div className="card">
               <div className="card-head"><h2>Banco de horas por funcionário</h2></div>
-              <div className="card-body flush table-wrap">
+              <div className="card-body flush table-wrap" tabIndex={0}>
                 <table className="table">
                   <thead><tr><th>Funcionário</th><th className="num">Saldo</th><th className="num">A vencer</th><th className="num">Vencido</th></tr></thead>
                   <tbody>
@@ -162,7 +163,7 @@ export default async function Painel() {
             </div>
             <div className="card">
               <div className="card-head"><h2>Ausências nos próximos 30 dias</h2></div>
-              <div className="card-body flush table-wrap">
+              <div className="card-body flush table-wrap" tabIndex={0}>
                 {exec.absencesNext30.length ? (
                   <table className="table">
                     <thead><tr><th>Funcionário</th><th>Tipo</th><th>Período</th></tr></thead>
@@ -248,3 +249,5 @@ export default async function Painel() {
     </div>
   );
 }
+
+export default withGuard(Painel);

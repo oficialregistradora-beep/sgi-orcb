@@ -12,6 +12,8 @@ import {
   acknowledgeAction, decideAction, lifecycleAction, saveDraftAction, submitAction, updateMetadataAction,
 } from '../../../actions/phase3.ts';
 
+import { withGuard } from '@/server/web/guard.ts';
+
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Documento' };
 
@@ -30,7 +32,7 @@ function kb(n: number) {
   return n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
 }
 
-export default async function DocumentoPage({ params }: { params: Promise<{ id: string }> }) {
+async function DocumentoPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requirePageCtx();
   const { id } = await params;
   const { doc, access, versions, events, draftFile, myAck, canDecide } = await getDocument(ctx, id);
@@ -158,7 +160,7 @@ export default async function DocumentoPage({ params }: { params: Promise<{ id: 
       {report ? (
         <div className="card">
           <div className="card-head"><div><h2>Ciência da versão {report.versionNumber}</h2><p>{report.done} de {report.total} pessoa(s) do público</p></div></div>
-          <div className="card-body flush table-wrap">
+          <div className="card-body flush table-wrap" tabIndex={0}>
             <table className="table"><thead><tr><th>Pessoa</th><th>Setor</th><th>Ciência</th></tr></thead>
               <tbody>{report.rows.map((r) => (
                 <tr key={r.id}><td>{r.display_name}</td><td className="small">{r.sector_name ?? '—'}</td>
@@ -214,7 +216,7 @@ export default async function DocumentoPage({ params }: { params: Promise<{ id: 
         <div className="grid grid-2">
           <div className="card">
             <div className="card-head"><h2>Versões</h2></div>
-            <div className="card-body flush table-wrap">
+            <div className="card-body flush table-wrap" tabIndex={0}>
               <table className="table"><thead><tr><th>Versão</th><th>Decisão</th><th>Ciências</th><th></th></tr></thead>
                 <tbody>{versions.map((v) => (
                   <tr key={v.id}>
@@ -231,7 +233,7 @@ export default async function DocumentoPage({ params }: { params: Promise<{ id: 
           </div>
           <div className="card">
             <div className="card-head"><h2>Histórico</h2></div>
-            <div className="card-body flush table-wrap">
+            <div className="card-body flush table-wrap" tabIndex={0}>
               <table className="table"><tbody>{events.map((e) => (
                 <tr key={e.id}><td className="small nowrap">{fmtDateTime(e.created_at)}</td><td className="small">{EVENT_LABELS[e.event] ?? e.event}<div className="muted">{e.user_name ?? 'Rotina automática'}</div></td>
                   <td className="small muted" style={{ wordBreak: 'break-word' }}>{Object.keys(e.details).length ? JSON.stringify(e.details) : ''}</td></tr>
@@ -243,3 +245,5 @@ export default async function DocumentoPage({ params }: { params: Promise<{ id: 
     </div>
   );
 }
+
+export default withGuard(DocumentoPage);

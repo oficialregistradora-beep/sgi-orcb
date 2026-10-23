@@ -22,7 +22,7 @@
   --border-strong: #cfd5dd;
   --text: #17202b;
   --text-2: #4a5563;
-  --text-3: #6b7685;
+  --text-3: #5d6877; /* ≥ 4,5:1 também sobre as superfícies cinza (WCAG AA) */
   --primary: var(--blue-600);
   --primary-hover: var(--blue-700);
   --primary-soft: var(--blue-100);
@@ -55,7 +55,7 @@
     --text: #e6ebf1;
     --text-2: #b4bfcc;
     --text-3: #8a96a6;
-    --primary: #5b93d6;
+    --primary: #6ba2e3;
     --primary-hover: #7aa8e0;
     --primary-soft: #1b2b40;
     --primary-text: #0b1420;
@@ -74,7 +74,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #0e141b; --surface: #151c25; --surface-2: #19212b; --border: #263140; --border-strong: #334155;
-  --text: #e6ebf1; --text-2: #b4bfcc; --text-3: #8a96a6; --primary: #5b93d6; --primary-hover: #7aa8e0;
+  --text: #e6ebf1; --text-2: #b4bfcc; --text-3: #8a96a6; --primary: #6ba2e3; --primary-hover: #7aa8e0;
   --primary-soft: #1b2b40; --primary-text: #0b1420; --focus: #7aa8e0; --ok: #4cc38a; --ok-soft: #12291f;
   --warn: #e0a640; --warn-soft: #2d2412; --danger: #f0776c; --danger-soft: #331816; --info: #7aa8e0;
   --info-soft: #172435; --shadow: none; color-scheme: dark;
@@ -93,6 +93,9 @@ body {
 }
 a { color: var(--primary); text-decoration: none; }
 a:hover { text-decoration: underline; }
+/* Links no meio de texto e de tabelas não dependem só da cor (WCAG 1.4.1). */
+main p a, main td a, main li a, main .small a, main .alert a, main .card-head a, main .stat-hint a { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+main a.btn, main .tabs a { text-decoration: none; }
 h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
 h1 { font-size: 22px; }
 h2 { font-size: 16px; }
@@ -292,7 +295,8 @@ form .row > .input { width: auto; flex: 1 1 160px; }
 .task-card.prio-URGENTE { border-left: 3px solid var(--warn); }
 .task-card .meta { font-size: 11.5px; color: var(--text-3); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
-.cal > div { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-height: 92px; padding: 4px 6px; font-size: 12px; overflow: hidden; }
+/* As linhas (role=row) usam display: contents; as bordas ficam nas células. */
+.cal [role=gridcell], .cal [role=columnheader] { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-height: 92px; padding: 4px 6px; font-size: 12px; overflow: hidden; }
 .cal .cal-head { min-height: 0; font-weight: 600; color: var(--text-3); text-align: center; background: var(--surface-2); }
 .cal .cal-out { background: var(--surface-2); color: var(--text-3); }
 .cal .cal-today { outline: 2px solid var(--primary); outline-offset: -2px; }

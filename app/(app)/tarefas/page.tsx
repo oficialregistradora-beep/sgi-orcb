@@ -11,13 +11,14 @@ import { MonthPicker } from '@/ui/MonthPicker.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { TaskBoard, TaskCalendar, TaskFields, TaskTable } from '@/ui/tasks.tsx';
 import { createTaskAction } from '../../actions/phase4a.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Tarefas' };
 
 const VIEWS = { minhas: 'Minhas tarefas', lista: 'Lista', quadro: 'Quadro', calendario: 'Calendário', painel: 'Painel', nova: 'Nova tarefa' } as const;
 
-export default async function TarefasPage({ searchParams }: { searchParams: Promise<{ visao?: string; q?: string; situacao?: string; setor?: string; responsavel?: string; mes?: string }> }) {
+async function TarefasPage({ searchParams }: { searchParams: Promise<{ visao?: string; q?: string; situacao?: string; setor?: string; responsavel?: string; mes?: string }> }) {
   const ctx = await requirePageCtx();
   const sp = await searchParams;
   const view = (sp.visao && sp.visao in VIEWS ? sp.visao : 'minhas') as keyof typeof VIEWS;
@@ -60,7 +61,7 @@ export default async function TarefasPage({ searchParams }: { searchParams: Prom
         return groups.map((g) => (
           <div className="card" key={g.title}>
             <div className="card-head"><h2>{g.title}</h2><p>{g.items.length}</p></div>
-            <div className="card-body flush table-wrap"><TaskTable tasks={g.items} /></div>
+            <div className="card-body flush table-wrap" tabIndex={0}><TaskTable tasks={g.items} /></div>
           </div>
         ));
       })() : null}
@@ -70,7 +71,7 @@ export default async function TarefasPage({ searchParams }: { searchParams: Prom
         return (
           <div className="card">
             <div className="card-head">{filters}</div>
-            <div className="card-body flush table-wrap"><TaskTable tasks={rows} /></div>
+            <div className="card-body flush table-wrap" tabIndex={0}><TaskTable tasks={rows} /></div>
           </div>
         );
       })() : null}
@@ -87,7 +88,7 @@ export default async function TarefasPage({ searchParams }: { searchParams: Prom
         return (
           <div className="card">
             <div className="card-head"><MonthPicker period={period} base="/tarefas" extra={{ visao: 'calendario', setor: sp.setor, responsavel: sp.responsavel }} /></div>
-            <div className="card-body flush table-wrap"><TaskCalendar tasks={rows.filter((t) => t.status !== 'CANCELADA')} period={period} /></div>
+            <div className="card-body flush table-wrap" tabIndex={0}><TaskCalendar tasks={rows.filter((t) => t.status !== 'CANCELADA')} period={period} /></div>
           </div>
         );
       })() : null}
@@ -110,7 +111,7 @@ export default async function TarefasPage({ searchParams }: { searchParams: Prom
                 })}</div>
               </div>
               <div className="card"><div className="card-head"><h2>Carga por responsável</h2><p>Tarefas em aberto</p></div>
-                <div className="card-body flush table-wrap"><table className="table"><thead><tr><th>Responsável</th><th className="num">Abertas</th><th className="num">Vencidas</th></tr></thead>
+                <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><thead><tr><th>Responsável</th><th className="num">Abertas</th><th className="num">Vencidas</th></tr></thead>
                   <tbody>{d.byAssignee.map((a) => <tr key={a.name}><td>{a.name}</td><td className="num">{a.open}</td><td className={`num ${a.overdue ? 'neg' : ''}`}>{a.overdue}</td></tr>)}</tbody></table></div>
               </div>
             </div>
@@ -132,3 +133,5 @@ export default async function TarefasPage({ searchParams }: { searchParams: Prom
     </div>
   );
 }
+
+export default withGuard(TarefasPage);

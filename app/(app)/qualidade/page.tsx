@@ -11,6 +11,7 @@ import { fmtDate, label, statusTone } from '@/ui/format.ts';
 import { Empty, PageHead, Stat } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { qualityAction, securityAction } from '../../actions/phase5a.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Qualidade e segurança' };
@@ -39,7 +40,7 @@ const RISK_CATS = ['OPERACIONAL', 'SEGURANCA_INFORMACAO', 'DADOS_PESSOAIS', 'CON
 const ASSET_KINDS = ['COMPUTADOR', 'NOTEBOOK', 'IMPRESSORA', 'SCANNER', 'SERVIDOR', 'REDE', 'NOBREAK', 'SOFTWARE_LICENCA', 'CERTIFICADO_DIGITAL', 'TOKEN_SMARTCARD', 'CELULAR', 'MOBILIARIO', 'OUTRO'];
 const opts = (xs: string[]) => xs.map((x) => <option key={x} value={x}>{label(x)}</option>);
 
-export default async function QualidadePage({ searchParams }: { searchParams: Promise<{ aba?: string; ativo?: string }> }) {
+async function QualidadePage({ searchParams }: { searchParams: Promise<{ aba?: string; ativo?: string }> }) {
   const ctx = await requirePageCtx();
   const sp = await searchParams;
   const p = ctx.principal;
@@ -91,7 +92,7 @@ export default async function QualidadePage({ searchParams }: { searchParams: Pr
             ) : null}
             {o.audits?.length ? (
               <div className="card"><div className="card-head"><h2>Auditorias planejadas e em execução</h2></div>
-                <div className="card-body flush table-wrap"><table className="table"><tbody>{o.audits.map((a) => <tr key={a.id}><td><Link href={`/qualidade/auditorias/${a.id}`}>{a.code}</Link> — {a.title}</td><td className="small">{fmtDate(a.planned_date)}</td><td><span className={statusTone(a.status)}>{label(a.status)}</span></td></tr>)}</tbody></table></div></div>
+                <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><tbody>{o.audits.map((a) => <tr key={a.id}><td><Link href={`/qualidade/auditorias/${a.id}`}>{a.code}</Link> — {a.title}</td><td className="small">{fmtDate(a.planned_date)}</td><td><span className={statusTone(a.status)}>{label(a.status)}</span></td></tr>)}</tbody></table></div></div>
             ) : null}
             {overdueRestore.length ? <div className="alert alert-danger small">Teste de restauração em atraso: {overdueRestore.map((b) => `${b.system} (${b.lastRestoreOk ? `último ok em ${fmtDate(b.lastRestoreOk)}` : 'nunca testado com sucesso'})`).join('; ')}.</div> : null}
             {o.expiring?.length ? <div className="alert alert-warn small">{o.expiring.map((e) => <div key={`${e.id}${e.what}`}>{e.what} de <strong>{e.tag}</strong> ({e.name}) {e.daysLeft < 0 ? `vencida há ${-e.daysLeft} dia(s)` : `vence em ${e.daysLeft} dia(s)`} — {fmtDate(e.expires)}.</div>)}</div> : null}
@@ -105,7 +106,7 @@ export default async function QualidadePage({ searchParams }: { searchParams: Pr
         return (
           <div className="stack">
             <div className="alert alert-info small">Nenhum requisito é pré-carregado: cadastre cada requisito a partir da fonte oficial consultada (provimentos, normas, regulamento do PQTA vigente etc.), indicando a fonte.</div>
-            <div className="card"><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>
               {rows.length ? <table className="table"><thead><tr><th>Requisito</th><th>Área</th><th>Responsável</th><th>Avaliação</th><th>Próxima revisão</th><th className="num">Evidências</th></tr></thead>
                 <tbody>{rows.map((r) => (
                   <tr key={r.id} className={r.active ? undefined : 'row-muted'}>
@@ -141,7 +142,7 @@ export default async function QualidadePage({ searchParams }: { searchParams: Pr
         const areas = [...new Set(reqs.filter((r) => r.active).map((r) => r.area))];
         return (
           <div className="stack">
-            <div className="card"><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>
               {rows.length ? <table className="table"><thead><tr><th>Auditoria</th><th>Tipo</th><th>Setor auditado</th><th>Auditor(a) líder</th><th>Data</th><th className="num">Itens</th><th className="num">NC</th><th>Situação</th></tr></thead>
                 <tbody>{rows.map((a) => (
                   <tr key={a.id}><td><Link href={`/qualidade/auditorias/${a.id}`}>{a.code}</Link> — {a.title}</td><td className="small">{label(a.kind)}</td><td className="small">{a.sector_name ?? 'Geral'}</td>
@@ -174,7 +175,7 @@ export default async function QualidadePage({ searchParams }: { searchParams: Pr
         const rows = await listNcs(ctx);
         return (
           <div className="stack">
-            <div className="card"><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>
               {rows.length ? <table className="table"><thead><tr><th>Não conformidade</th><th>Origem</th><th>Gravidade</th><th>Responsável</th><th className="num">Ações</th><th>Situação</th></tr></thead>
                 <tbody>{rows.map((n) => (
                   <tr key={n.id} className={n.status === 'ENCERRADA' || n.status === 'CANCELADA' ? 'row-muted' : undefined}>
@@ -227,7 +228,7 @@ export default async function QualidadePage({ searchParams }: { searchParams: Pr
         );
         return (
           <div className="stack">
-            <div className="card"><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>
               {rows.length ? <table className="table"><thead><tr><th>Risco</th><th>Categoria</th><th>P×I</th><th>Residual</th><th>Tratamento</th><th>Responsável</th><th>Revisão</th><th className="num">Ações</th>{manage ? <th></th> : null}</tr></thead>
                 <tbody>{rows.map((r) => {
                   const band = riskBand(r.probability, r.impact);
@@ -271,7 +272,7 @@ export default async function QualidadePage({ searchParams }: { searchParams: Pr
         const edit = rows.find((a) => a.id === sp.ativo && a.status !== 'BAIXADO');
         return (
           <div className="stack">
-            <div className="card"><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>
               {rows.length ? <table className="table"><thead><tr><th>Ativo</th><th>Tipo</th><th>Local / setor</th><th>Responsável</th><th>Criticidade</th><th>Garantia</th><th>Validade</th><th>Situação</th>{assetsAdmin ? <th></th> : null}</tr></thead>
                 <tbody>{rows.map((a) => (
                   <tr key={a.id} className={a.status === 'BAIXADO' ? 'row-muted' : undefined}>
@@ -321,7 +322,7 @@ export default async function QualidadePage({ searchParams }: { searchParams: Pr
         return (
           <div className="stack">
             <div className="card"><div className="card-head"><h2>Situação por sistema</h2><p>Teste de restauração bem-sucedido exigido a cada intervalo configurado (política interna).</p></div>
-              <div className="card-body flush table-wrap">{status.length ? <table className="table"><thead><tr><th>Sistema</th><th>Último backup</th><th>Último teste de restauração ok</th><th>Situação</th></tr></thead>
+              <div className="card-body flush table-wrap" tabIndex={0}>{status.length ? <table className="table"><thead><tr><th>Sistema</th><th>Último backup</th><th>Último teste de restauração ok</th><th>Situação</th></tr></thead>
                 <tbody>{status.map((b) => <tr key={b.system}><td>{b.system}</td><td className="small">{fmtDate(b.lastBackup)} {b.lastBackupResult ? <span className={statusTone(b.lastBackupResult)}>{label(b.lastBackupResult)}</span> : null}</td>
                   <td className="small">{fmtDate(b.lastRestoreOk)}{b.daysSinceRestore !== null ? ` (${b.daysSinceRestore} dias)` : ''}</td>
                   <td>{b.restoreOverdue ? <span className="tag tag-danger">Teste em atraso</span> : <span className="tag tag-ok">Em dia</span>}</td></tr>)}</tbody></table> : <Empty>Nenhum registro.</Empty>}</div></div>
@@ -340,7 +341,7 @@ export default async function QualidadePage({ searchParams }: { searchParams: Pr
                 </ActionForm>
               </div></div>
             ) : null}
-            <div className="card"><div className="card-head"><h2>Histórico</h2></div><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-head"><h2>Histórico</h2></div><div className="card-body flush table-wrap" tabIndex={0}>
               {rows.length ? <table className="table"><thead><tr><th>Data</th><th>Sistema</th><th>Tipo</th><th>Resultado</th><th>Observações</th><th>Registrado por</th></tr></thead>
                 <tbody>{rows.map((b) => <tr key={b.id}><td className="small">{fmtDate(b.performed_on)}</td><td>{b.system}</td><td className="small">{label(b.kind)}</td><td><span className={statusTone(b.result)}>{label(b.result)}</span></td>
                   <td className="small">{b.notes ?? ''}{b.file_id ? <> · <a href={`/api/v1/qualidade/arquivos/${b.file_id}`}>relatório</a></> : null}</td><td className="small">{b.recorded_by_name}</td></tr>)}</tbody></table> : <Empty>Nenhum registro.</Empty>}
@@ -353,7 +354,7 @@ export default async function QualidadePage({ searchParams }: { searchParams: Pr
         const [rows, assets] = await Promise.all([listVulnerabilities(ctx), listAssets(ctx)]);
         return (
           <div className="stack">
-            <div className="card"><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>
               {rows.length ? <table className="table"><thead><tr><th>Vulnerabilidade</th><th>Ativo</th><th>Severidade</th><th>Detectada</th><th>Prazo</th><th>Situação</th>{assetsAdmin ? <th></th> : null}</tr></thead>
                 <tbody>{rows.map((v) => {
                   const open = v.status === 'ABERTA' || v.status === 'EM_TRATAMENTO';
@@ -395,3 +396,5 @@ export default async function QualidadePage({ searchParams }: { searchParams: Pr
     </div>
   );
 }
+
+export default withGuard(QualidadePage);

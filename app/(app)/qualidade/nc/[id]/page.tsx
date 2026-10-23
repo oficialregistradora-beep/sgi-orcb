@@ -8,11 +8,12 @@ import { fmtDate, fmtDateTime, label, statusTone } from '@/ui/format.ts';
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { qualityAction } from '../../../../actions/phase5a.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Não conformidade' };
 
-export default async function NcPage({ params }: { params: Promise<{ id: string }> }) {
+async function NcPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requirePageCtx();
   const { id } = await params;
   const p = ctx.principal;
@@ -35,7 +36,7 @@ export default async function NcPage({ params }: { params: Promise<{ id: string 
         {n.cancel_reason ? <div><strong>Cancelamento:</strong> {n.cancel_reason}</div> : null}
       </div></div>
 
-      <div className="card"><div className="card-head"><h2>Ações</h2><p>Cada ação é uma tarefa do responsável — prazos, evidências e conclusão ficam na tarefa.</p></div><div className="card-body flush table-wrap">
+      <div className="card"><div className="card-head"><h2>Ações</h2><p>Cada ação é uma tarefa do responsável — prazos, evidências e conclusão ficam na tarefa.</p></div><div className="card-body flush table-wrap" tabIndex={0}>
         {actions.length ? <table className="table"><thead><tr><th>Ação</th><th>Tipo</th><th>Responsável</th><th>Prazo</th><th>Situação</th></tr></thead>
           <tbody>{actions.map((a) => (
             <tr key={a.id}><td><Link href={`/tarefas/${a.task_id}`}>{a.title}</Link></td><td className="small">{label(a.kind)}</td><td className="small">{a.assignee_name ?? '—'}</td>
@@ -87,3 +88,5 @@ export default async function NcPage({ params }: { params: Promise<{ id: string 
     </div>
   );
 }
+
+export default withGuard(NcPage);

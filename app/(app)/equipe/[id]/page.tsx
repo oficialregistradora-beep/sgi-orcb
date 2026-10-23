@@ -16,13 +16,14 @@ import {
 } from '../../../actions/people.ts';
 import { checklistItemAction, deliverItemAction, returnItemAction } from '../../../actions/phase2b.ts';
 import { listChecklists, listEmployeeItems } from '@/server/modules/checklists.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Funcionário' };
 
 const ABSENCE_TYPES = ['FERIAS', 'ATESTADO_MEDICO', 'LICENCA_MATERNIDADE', 'LICENCA_PATERNIDADE', 'LICENCA_OUTRA', 'FALTA_JUSTIFICADA', 'AFASTAMENTO_INSS', 'OUTRO'];
 
-export default async function FuncionarioPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ sensiveis?: string; salario?: string }> }) {
+async function FuncionarioPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ sensiveis?: string; salario?: string }> }) {
   const ctx = await requirePageCtx();
   const { id } = await params;
   const sp = await searchParams;
@@ -83,7 +84,7 @@ export default async function FuncionarioPage({ params, searchParams }: { params
         </div>
         <div className="card">
           <div className="card-head"><h2>Histórico de cargos e setores</h2></div>
-          <div className="card-body flush table-wrap">
+          <div className="card-body flush table-wrap" tabIndex={0}>
             {history.length ? (
               <table className="table"><thead><tr><th>Desde</th><th>Cargo</th><th>Setor</th><th>Motivo</th></tr></thead>
                 <tbody>{history.map((h, i) => <tr key={i}><td>{fmtDate(h.start_date)}</td><td>{h.job_title}</td><td className="small">{h.sector_name}</td><td className="small">{h.reason}</td></tr>)}</tbody>
@@ -159,7 +160,7 @@ export default async function FuncionarioPage({ params, searchParams }: { params
         <div className="card-head"><h2>Férias, afastamentos e ausências</h2></div>
         <div className="card-body stack">
           {absences.length ? (
-            <div className="table-wrap"><table className="table"><thead><tr><th>Tipo</th><th>Período</th><th>Abonada</th><th>Observação</th><th>Situação</th><th></th></tr></thead>
+            <div className="table-wrap" tabIndex={0}><table className="table"><thead><tr><th>Tipo</th><th>Período</th><th>Abonada</th><th>Observação</th><th>Situação</th><th></th></tr></thead>
               <tbody>{absences.map((a) => (
                 <tr key={a.id} className={a.status === 'CANCELADA' ? 'row-muted' : undefined}>
                   <td>{label(a.type)}</td><td className="nowrap">{fmtDate(a.start_date)} – {fmtDate(a.end_date)}</td><td>{a.counts_as_worked ? 'Sim' : 'Não'}</td>
@@ -325,3 +326,5 @@ export default async function FuncionarioPage({ params, searchParams }: { params
     </div>
   );
 }
+
+export default withGuard(FuncionarioPage);

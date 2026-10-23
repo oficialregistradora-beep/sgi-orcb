@@ -157,6 +157,10 @@ export async function generateScheduledEvaluations(today = todayLocal(), db: Db 
       const due = scheduleDue(s, p.admission_date, today);
       if (!due) continue;
       await tx(async (c) => {
+        // Avaliação do mesmo modelo já criada manualmente para o mesmo período (±15 dias): não duplica.
+        const manual = await queryOne(c, `SELECT 1 FROM evaluations v JOIN evaluation_templates t ON t.id = v.template_id
+          WHERE v.employee_id = $1 AND t.family_key = $2 AND v.status <> 'CANCELADA' AND v.schedule_id IS NULL AND abs(v.due_date - $3::date) <= 15`, [p.id, s.template_family, due.due]);
+        if (manual) return;
         const evaluator = await defaultEvaluator(c, p);
         if (!evaluator) return;
         const r = await queryOne<{ id: string }>(c, `INSERT INTO evaluations (template_id, employee_id, evaluator_user_id, period_label, due_date, schedule_id, schedule_ref, created_by)

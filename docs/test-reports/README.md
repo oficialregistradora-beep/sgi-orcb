@@ -323,3 +323,33 @@ Capturas: [25-qualidade-painel.png](telas/25-qualidade-painel.png), [26-auditori
 | Revisão dos testes | Duas expectativas erradas nos próprios testes (limite de 30 dias do aviso; janela de lembrete de avaliação) | Corrigidas |
 
 Capturas: [29-matriz-capacitacao.png](telas/29-matriz-capacitacao.png), [30-automacoes.png](telas/30-automacoes.png), [31-avaliacao-ciencia.png](telas/31-avaliacao-ciencia.png).
+
+
+---
+
+# Fase 6 — rodadas completas, segurança, acessibilidade e carga — execução de 23/10/2026 (branch `fase-6`)
+
+| Conjunto | Resultado |
+|---|---|
+| **Suíte completa** (unitário + rodadas 1, 2 e 3 de todas as fases) | **443/443** |
+| Rodada 2 — matriz de perfis (`phase6-role-matrix.test.ts`): 66 consultas de todos os módulos × 9 perfis sobre a carga completa | aprovado — reproduz o defeito S-1 sem a correção |
+| Rodada 3 — sistema inteiro (`phase6-system.test.ts`): rotina diária completa 3× (2ª e 3ª sem efeito), hashes de todas as versões, assinaturas e arquivos, vínculos entre módulos, auditoria | aprovado · [métricas](rodada3-fase6-sistema.json) |
+| Ponta a ponta | **99/99** |
+| Sondagem de segurança (`security-probe.mjs`) | **16/16** — [revisão](../24-revisao-seguranca.md) |
+| Acessibilidade (axe, WCAG 2.1 A/AA): 27 telas em tema claro e escuro + celular, 19 telas de detalhe | **0 violações** (eram 98 graves/críticas antes das correções) · [relatório](fase6-acessibilidade.json) |
+| Carga: 9 usuários × 3 navegações simultâneas, 3.240 requisições | **0 erros**, p50 297 ms, p95 751 ms, máx. 1,4 s (4 vCPU, servidor único) · [relatório](fase6-carga.json) |
+| Rotina agendada pela rota real com segredo | 1ª execução gera os avisos; 2ª não gera nada; segredo errado → 401 |
+| Backup e restauração | 114 tabelas com contagens idênticas; cadeia de auditoria íntegra no banco restaurado |
+| `npm audit` (produção e desenvolvimento) | 0 vulnerabilidades |
+
+## Achados da Fase 6
+| Origem | Achado | Tratamento |
+|---|---|---|
+| Teste de carga | Painel da coordenação com erro 500 para perfis de escopo de setor (defeito desde a Fase 1) | Corrigido; teste de matriz de perfis criado |
+| Sondagem | Recusas de acesso em telas respondiam 500 | 403/404 com página própria (`withGuard`) |
+| Acessibilidade | Contraste insuficiente (texto secundário 4,3:1; link no tema escuro 4,49:1), links só por cor, estrutura ARIA do calendário, tabelas roláveis sem teclado | Corrigidos; 0 violações |
+| Rodada 3 (sistema) | Programação de avaliações duplicava avaliação já criada manualmente para o mesmo período | Não duplica (mesmo modelo, ±15 dias) |
+| Dependências | vitest (desenvolvimento) com avisos publicados | Atualizado para 5.0.5 |
+| Revisão dos testes | Rótulo do armazenamento (`BANCO`) e reutilização de código TOTP nas sondagens (bloqueada pelo sistema, como deve) | Testes ajustados |
+
+**Não realizado (depende da serventia):** homologação humana (roteiro em `25-roteiro-homologacao.md`), validação jurídica, ambiente na nuvem, teste de intrusão independente, publicação.

@@ -11,6 +11,7 @@ import { PageHead, Empty } from '@/ui/Stat.tsx';
 import { MonthPicker } from '@/ui/MonthPicker.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { agendaAction } from '../../actions/phase4c.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Agenda' };
@@ -20,7 +21,7 @@ const TYPE: Record<AgendaItem['type'], [string, string]> = {
 };
 const hm = (m: number | null) => (m == null ? '' : formatHHMM(m));
 
-export default async function AgendaPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
+async function AgendaPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
   const ctx = await requirePageCtx();
   const sp = await searchParams;
   const period = /^\d{4}-\d{2}$/.test(sp.mes ?? '') ? sp.mes! : todayLocal().slice(0, 7);
@@ -39,10 +40,10 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
       <div className="row">{Object.entries(TYPE).map(([k, [l, c]]) => <span key={k} className={c}>{l}</span>)}</div>
       <div className="card">
         <div className="card-head"><MonthPicker period={period} base="/agenda" /></div>
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           <div className="cal" role="grid" aria-label="Agenda do mês">
-            {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((d) => <div key={d} className="cal-head" role="columnheader">{d}</div>)}
-            {days.map((d) => {
+            <div role="row" style={{ display: 'contents' }}>{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((d) => <div key={d} className="cal-head" role="columnheader">{d}</div>)}</div>
+            {[0, 1, 2, 3, 4, 5].map((w) => <div key={w} role="row" style={{ display: 'contents' }}>{days.slice(w * 7, w * 7 + 7).map((d) => {
               const list = items.filter((i) => i.startDate <= d && i.endDate >= d);
               return (
                 <div key={d} role="gridcell" className={`${d < from || d > to ? 'cal-out' : ''} ${d === today ? 'cal-today' : ''}`}>
@@ -51,13 +52,13 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
                   {list.length > 4 ? <span className="muted">+{list.length - 4}</span> : null}
                 </div>
               );
-            })}
+            })}</div>)}
           </div>
         </div>
       </div>
       <div className="grid grid-2">
         <div className="card"><div className="card-head"><h2>Próximos</h2></div>
-          <div className="card-body flush table-wrap">{upcoming.length ? <table className="table"><tbody>{upcoming.map((i) => (
+          <div className="card-body flush table-wrap" tabIndex={0}>{upcoming.length ? <table className="table"><tbody>{upcoming.map((i) => (
             <tr key={`${i.type}${i.id}`}><td className="small nowrap">{fmtDate(i.startDate)}{i.endDate !== i.startDate ? ` – ${fmtDate(i.endDate)}` : ''}{i.startTime != null ? ` ${hm(i.startTime)}–${hm(i.endTime)}` : ''}</td>
               <td><span className={TYPE[i.type][1]}>{TYPE[i.type][0]}</span> {i.link ? <Link href={i.link}>{i.title}</Link> : i.title}<div className="small muted">{i.description}</div></td>
               <td>{canEvents && i.type === 'EVENTO' ? <ActionForm action={agendaAction} submitLabel="Cancelar" submitClass="btn btn-sm btn-ghost" inline confirm="Cancelar este evento?"><input type="hidden" name="op" value="cancelar" /><input type="hidden" name="id" value={i.id} /></ActionForm> : null}</td></tr>
@@ -92,3 +93,5 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
     </div>
   );
 }
+
+export default withGuard(AgendaPage);

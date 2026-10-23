@@ -4,11 +4,12 @@ import { can } from '@/server/authz.ts';
 import { listEmployees } from '@/server/modules/people.ts';
 import { fmtDate, label, statusTone } from '@/ui/format.ts';
 import { Empty, PageHead } from '@/ui/Stat.tsx';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Equipe' };
 
-export default async function EquipePage({ searchParams }: { searchParams: Promise<{ todos?: string }> }) {
+async function EquipePage({ searchParams }: { searchParams: Promise<{ todos?: string }> }) {
   const ctx = await requirePageCtx();
   const { todos } = await searchParams;
   const rows = await listEmployees(ctx, { includeTerminated: todos === '1' });
@@ -23,7 +24,7 @@ export default async function EquipePage({ searchParams }: { searchParams: Promi
         </>}
       />
       <div className="card">
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           {rows.length ? (
             <table className="table">
               <thead><tr><th>Nome</th><th>Matrícula</th><th>Cargo</th><th>Setor</th><th>Admissão</th><th>Acesso</th><th>Situação</th></tr></thead>
@@ -47,3 +48,5 @@ export default async function EquipePage({ searchParams }: { searchParams: Promi
     </div>
   );
 }
+
+export default withGuard(EquipePage);

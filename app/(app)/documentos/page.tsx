@@ -9,13 +9,14 @@ import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { MetaFields } from './MetaFields.tsx';
 import { categoryAction, createDocumentAction } from '../../actions/phase3.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Gestão documental' };
 
 const STATUSES: (DocStatus | 'TODOS')[] = ['VIGENTE', 'EM_APROVACAO', 'RASCUNHO', 'OBSOLETO', 'ARQUIVADO', 'TODOS'];
 
-export default async function DocumentosPage({ searchParams }: { searchParams: Promise<{ aba?: string; q?: string; categoria?: string; situacao?: string }> }) {
+async function DocumentosPage({ searchParams }: { searchParams: Promise<{ aba?: string; q?: string; categoria?: string; situacao?: string }> }) {
   const ctx = await requirePageCtx();
   const p = ctx.principal;
   const sp = await searchParams;
@@ -65,7 +66,7 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
                 <button type="submit" className="btn">Filtrar</button>
               </form>
             </div>
-            <div className="card-body flush table-wrap">
+            <div className="card-body flush table-wrap" tabIndex={0}>
               {docs.length ? (
                 <table className="table">
                   <thead><tr><th>Documento</th><th>Categoria</th><th>Situação</th><th>Vigência</th><th>Próxima revisão</th><th>Responsável</th></tr></thead>
@@ -95,7 +96,7 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
       {tab === 'ciencia' ? (
         <div className="card">
           <div className="card-head"><h2>Documentos aguardando sua ciência</h2><p>Leia o documento e registre a ciência (assinatura eletrônica simples, vinculada à versão).</p></div>
-          <div className="card-body flush table-wrap">
+          <div className="card-body flush table-wrap" tabIndex={0}>
             {acks.length ? (
               <table className="table"><thead><tr><th>Documento</th><th>Versão</th><th>Vigente desde</th></tr></thead>
                 <tbody>{acks.map((d) => <tr key={d.id}><td><Link href={`/documentos/${d.id}`}>{d.title}</Link>{d.code ? <span className="small muted mono"> {d.code}</span> : null}</td><td>v{d.version}</td><td>{fmtDate(d.effective_from)}</td></tr>)}</tbody>
@@ -110,7 +111,7 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
         return (
           <div className="card">
             <div className="card-head"><h2>Versões aguardando sua decisão</h2><p>Versões elaboradas ou submetidas por você não aparecem aqui (segregação de funções).</p></div>
-            <div className="card-body flush table-wrap">
+            <div className="card-body flush table-wrap" tabIndex={0}>
               {rows.length ? (
                 <table className="table"><thead><tr><th>Documento</th><th>Versão</th><th>Submetida em</th></tr></thead>
                   <tbody>{rows.map((d) => <tr key={d.id}><td><Link href={`/documentos/${d.id}`}>{d.title}</Link></td><td>v{d.version}</td><td>{fmtDateTime(d.submitted_at)}</td></tr>)}</tbody>
@@ -126,7 +127,7 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
         return (
           <div className="card">
             <div className="card-head"><h2>Revisões periódicas</h2><p>Documentos vigentes com revisão vencida ou próxima.</p></div>
-            <div className="card-body flush table-wrap">
+            <div className="card-body flush table-wrap" tabIndex={0}>
               {rows.length ? (
                 <table className="table"><thead><tr><th>Documento</th><th>Revisão prevista</th><th>Responsável</th></tr></thead>
                   <tbody>{rows.map((d) => (
@@ -162,7 +163,7 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
           </div></div>
           <div className="card">
             <div className="card-head"><h2>Categorias</h2><p>{categories.length} categoria(s)</p></div>
-            <div className="card-body flush table-wrap">
+            <div className="card-body flush table-wrap" tabIndex={0}>
               <table className="table">
                 <thead><tr><th>Categoria</th><th>Revisão</th><th>Retenção</th><th>Confidencialidade padrão</th><th className="num">Docs</th><th></th></tr></thead>
                 <tbody>{categories.map((c) => (
@@ -210,3 +211,5 @@ function CategoryFields({ c }: { c?: Awaited<ReturnType<typeof listCategories>>[
     </div>
   );
 }
+
+export default withGuard(DocumentosPage);

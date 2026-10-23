@@ -11,11 +11,12 @@ import { Clock } from '@/ui/Clock.tsx';
 import { MonthPicker } from '@/ui/MonthPicker.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { correctionAction, extraAuthorizationAction, punchAction } from '../../actions/journey.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Jornada' };
 
-export default async function JornadaPage({ searchParams }: { searchParams: Promise<{ mes?: string; funcionario?: string }> }) {
+async function JornadaPage({ searchParams }: { searchParams: Promise<{ mes?: string; funcionario?: string }> }) {
   const ctx = await requirePageCtx();
   const sp = await searchParams;
   const today = todayLocal();
@@ -73,7 +74,7 @@ export default async function JornadaPage({ searchParams }: { searchParams: Prom
           <h2>Espelho da competência</h2>
           <p>Previsto {fmtMin(totals.exp)} · Trabalhado {fmtMin(totals.wk)} · Diferença apurada {fmtMin(totals.diff, true)}</p>
         </div>
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           <table className="table">
             <thead>
               <tr><th>Data</th><th>Situação</th><th>Marcações</th><th className="num">Previsto</th><th className="num">Trabalhado</th><th className="num">Diferença</th><th>Alertas</th></tr>
@@ -163,3 +164,5 @@ export default async function JornadaPage({ searchParams }: { searchParams: Prom
     </div>
   );
 }
+
+export default withGuard(JornadaPage);

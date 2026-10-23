@@ -11,6 +11,7 @@ import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { EVAL_STATUS, EvalTable, PdiList } from '@/ui/development.tsx';
 import { evaluationAction } from '../../actions/phase5b.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Avaliações' };
@@ -18,7 +19,7 @@ export const metadata = { title: 'Avaliações' };
 const KINDS = { EXPERIENCIA: 'Período de experiência', ACOMPANHAMENTO: 'Acompanhamento (30/60/90 dias)', ANUAL: 'Anual', COMPETENCIAS: 'Competências', PRODUTIVIDADE: 'Produtividade', OUTRA: 'Outra' };
 const FEEDBACK = { RECONHECIMENTO: 'Reconhecimento', ORIENTACAO: 'Orientação', ALINHAMENTO: 'Alinhamento' };
 
-export default async function AvaliacoesPage({ searchParams }: { searchParams: Promise<{ aba?: string; modelo?: string }> }) {
+async function AvaliacoesPage({ searchParams }: { searchParams: Promise<{ aba?: string; modelo?: string }> }) {
   const ctx = await requirePageCtx();
   const p = ctx.principal;
   const sp = await searchParams;
@@ -41,11 +42,11 @@ export default async function AvaliacoesPage({ searchParams }: { searchParams: P
         return (
           <div className="stack">
             <div className="card"><div className="card-head"><h2>Avaliações</h2><p>A ciência não implica concordância: você pode concordar ou registrar discordância com seus motivos.</p></div>
-              <div className="card-body flush table-wrap">{mine.length ? <EvalTable rows={mine} today={today} /> : <Empty>Nenhuma avaliação.</Empty>}</div></div>
-            <div className="card"><div className="card-head"><h2>Meu plano de desenvolvimento (PDI)</h2></div><div className="card-body flush table-wrap">
+              <div className="card-body flush table-wrap" tabIndex={0}>{mine.length ? <EvalTable rows={mine} today={today} /> : <Empty>Nenhuma avaliação.</Empty>}</div></div>
+            <div className="card"><div className="card-head"><h2>Meu plano de desenvolvimento (PDI)</h2></div><div className="card-body flush table-wrap" tabIndex={0}>
               <PdiList items={h.pdi} action={evaluationAction} canProgress canClose={false} />
             </div></div>
-            <div className="card"><div className="card-head"><h2>Feedbacks documentados</h2></div><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-head"><h2>Feedbacks documentados</h2></div><div className="card-body flush table-wrap" tabIndex={0}>
               {h.feedbacks.length ? <table className="table"><tbody>{h.feedbacks.map((f) => (
                 <tr key={f.id}><td className="small nowrap">{fmtDateTime(f.created_at)}<div className="muted">{FEEDBACK[f.kind as keyof typeof FEEDBACK]} · {f.author_name}</div></td>
                   <td style={{ whiteSpace: 'pre-wrap' }}>{f.content}{f.employee_comment ? <div className="small muted">Meu comentário: {f.employee_comment}</div> : null}</td>
@@ -60,7 +61,7 @@ export default async function AvaliacoesPage({ searchParams }: { searchParams: P
 
       {tab === 'avaliar' ? await (async () => {
         const rows = await listEvaluations(ctx, { scope: 'avaliar' });
-        return <div className="card"><div className="card-body flush table-wrap">{rows.length ? <EvalTable rows={rows} today={today} showEmployee /> : <Empty>Nenhuma avaliação atribuída a você.</Empty>}</div></div>;
+        return <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>{rows.length ? <EvalTable rows={rows} today={today} showEmployee /> : <Empty>Nenhuma avaliação atribuída a você.</Empty>}</div></div>;
       })() : null}
 
       {tab === 'equipe' ? await (async () => {
@@ -71,7 +72,7 @@ export default async function AvaliacoesPage({ searchParams }: { searchParams: P
         const peopleOpts = people.map((e) => <option key={e.id} value={e.id}>{e.full_name} ({e.sector_name})</option>);
         return (
           <div className="stack">
-            <div className="card"><div className="card-head"><h2>Avaliações da equipe</h2></div><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-head"><h2>Avaliações da equipe</h2></div><div className="card-body flush table-wrap" tabIndex={0}>
               {rows.length ? <EvalTable rows={rows.filter((v) => v.employee_user_id !== p.userId)} today={today} showEmployee /> : <Empty>Nenhuma avaliação.</Empty>}</div></div>
             <div className="card"><div className="card-head"><h2>Histórico por pessoa</h2></div><div className="card-body row">
               {people.map((e) => <Link key={e.id} className="btn btn-sm" href={`/avaliacoes/pessoa/${e.id}`}>{e.full_name}</Link>)}</div></div>
@@ -122,7 +123,7 @@ export default async function AvaliacoesPage({ searchParams }: { searchParams: P
         const edit = templates.find((t) => t.id === sp.modelo);
         return (
           <div className="stack">
-            <div className="card"><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>
               {templates.length ? <table className="table"><thead><tr><th>Modelo</th><th>Tipo</th><th>Escala</th><th>Critérios</th><th>Situação</th><th></th></tr></thead>
                 <tbody>{templates.map((t) => (
                   <tr key={t.id} className={t.status === 'INATIVO' ? 'row-muted' : undefined}>
@@ -162,7 +163,7 @@ export default async function AvaliacoesPage({ searchParams }: { searchParams: P
         return (
           <div className="stack">
             <div className="alert alert-info small">As avaliações programadas são criadas automaticamente pela rotina diária, com a antecedência definida, e atribuídas à coordenação do setor (ou à Substituta/Oficial). Prazos — inclusive os do período de experiência — são definidos pela serventia; o sistema não altera contratos. Pendentes geradas: {counts[0]!.n}.</div>
-            <div className="card"><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>
               {rows.length ? <table className="table"><thead><tr><th>Programação</th><th>Modelo</th><th>Quando</th><th>Setor</th><th className="num">Geradas</th><th>Situação</th></tr></thead>
                 <tbody>{rows.map((s) => <tr key={s.id} className={s.active ? undefined : 'row-muted'}><td>{s.name}</td><td className="small">{name(s.template_family)}</td>
                   <td className="small">{s.trigger === 'ANUAL' ? `Anual em ${String(s.annual_day).padStart(2, '0')}/${String(s.annual_month).padStart(2, '0')}` : `${s.days_after} dias após a admissão`} · criada {s.lead_days} dia(s) antes</td>
@@ -192,3 +193,5 @@ export default async function AvaliacoesPage({ searchParams }: { searchParams: P
     </div>
   );
 }
+
+export default withGuard(AvaliacoesPage);

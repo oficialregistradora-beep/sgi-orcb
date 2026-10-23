@@ -7,6 +7,7 @@ import { fmtDate, fmtDateTime, label } from '@/ui/format.ts';
 import { PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { expenseAction } from '../../../../actions/phase4b.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Despesa' };
@@ -25,7 +26,7 @@ function Op({ id, op, label: l, cls = 'btn btn-sm', children, confirm, reset }: 
   return <ActionForm action={expenseAction} submitLabel={l} submitClass={cls} inline confirm={confirm} resetOnSuccess={reset}><input type="hidden" name="expenseId" value={id} /><input type="hidden" name="op" value={op} />{children ? <div className="row">{children}</div> : null}</ActionForm>;
 }
 
-export default async function DespesaPage({ params }: { params: Promise<{ id: string }> }) {
+async function DespesaPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requirePageCtx();
   const { id } = await params;
   const { expense: e, quotes, attachments, events, can } = await getExpense(ctx, id);
@@ -73,7 +74,7 @@ export default async function DespesaPage({ params }: { params: Promise<{ id: st
 
       {e.kind === 'COMPRA' || quotes.length ? (
         <div className="card"><div className="card-head"><h2>Cotações</h2><p>A aprovação de compra exige a cotação escolhida; escolher outra que não a de menor valor exige justificativa.</p></div>
-          <div className="card-body flush table-wrap"><table className="table"><tbody>{quotes.map((q) => (
+          <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><tbody>{quotes.map((q) => (
             <tr key={q.id}><td>{q.supplier_name}{q.chosen ? <span className="tag tag-ok" style={{ marginLeft: 6 }}>Escolhida</span> : null}</td><td className="num">{brl(q.amount)}</td>
               <td className="small">{q.file_id ? <a href={`/api/v1/financeiro/arquivos/${q.file_id}`}>orçamento</a> : '—'}</td>
               <td>{can.quote && !q.chosen ? <Op id={id} op="escolher" label="Escolher"><input type="hidden" name="quoteId" value={q.id} /><input name="reason" className="input" placeholder="Justificativa (se não for a menor)" aria-label="Justificativa" /></Op> : null}</td></tr>
@@ -113,10 +114,12 @@ export default async function DespesaPage({ params }: { params: Promise<{ id: st
       {can.cancel ? <div className="card"><div className="card-body"><details className="disclosure small"><summary><a>Cancelar despesa</a></summary><Op id={id} op="cancelar" label="Cancelar" cls="btn btn-sm btn-danger"><input name="reason" className="input" placeholder="Motivo" aria-label="Motivo do cancelamento" required minLength={3} /></Op></details></div></div> : null}
 
       <div className="card"><div className="card-head"><h2>Histórico</h2></div>
-        <div className="card-body flush table-wrap"><table className="table"><tbody>{events.map((ev) => (
+        <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><tbody>{events.map((ev) => (
           <tr key={ev.id}><td className="small nowrap">{fmtDateTime(ev.created_at)}</td><td className="small">{EVENTS[ev.event] ?? ev.event}<div className="muted">{ev.user_name ?? 'Rotina automática'}</div></td><td className="small muted" style={{ wordBreak: 'break-word' }}>{Object.keys(ev.details).length ? JSON.stringify(ev.details) : ''}</td></tr>
         ))}</tbody></table></div>
       </div>
     </div>
   );
 }
+
+export default withGuard(DespesaPage);

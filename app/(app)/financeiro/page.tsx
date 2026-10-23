@@ -12,6 +12,7 @@ import { fmtDate, label } from '@/ui/format.ts';
 import { Empty, PageHead, Stat } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { financeAdminAction, requestExpenseAction } from '../../actions/phase4b.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Financeiro' };
@@ -41,7 +42,7 @@ function ExpenseTable({ rows }: { rows: ExpenseRow[] }) {
   );
 }
 
-export default async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ aba?: string; situacao?: string; mes?: string; centro?: string; q?: string; de?: string; ate?: string; ano?: string }> }) {
+async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ aba?: string; situacao?: string; mes?: string; centro?: string; q?: string; de?: string; ate?: string; ano?: string }> }) {
   const ctx = await requirePageCtx();
   const sp = await searchParams;
   const p = ctx.principal;
@@ -86,26 +87,26 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
             </div>
             {blockers.length ? <div className="alert alert-danger small"><strong>Segregação de funções:</strong> {blockers.length} despesa(s) aprovada(s) não têm quem as pague, porque todas as pessoas com permissão de pagamento solicitaram ou aprovaram cada uma ({blockers.slice(0, 3).map((b) => b.description).join('; ')}). Designe mais uma pessoa com a permissão “Registrar pagamentos” em Usuários e permissões.</div> : null}
             {alerts.length ? <div className="alert alert-warn small">{alerts.map((a) => <div key={a.id}>Contrato <strong>{a.object}</strong> ({a.supplier_name}) {a.daysLeft < 0 ? `venceu há ${-a.daysLeft} dia(s)` : `termina em ${a.daysLeft} dia(s)`} — {fmtDate(a.end_date)}.</div>)}</div> : null}
-            {toDecide.length ? <div className="card"><div className="card-head"><h2>Para sua aprovação</h2></div><div className="card-body flush table-wrap"><ExpenseTable rows={toDecide} /></div></div> : null}
-            {toPay.length ? <div className="card"><div className="card-head"><h2>Para pagamento</h2></div><div className="card-body flush table-wrap"><ExpenseTable rows={toPay} /></div></div> : null}
+            {toDecide.length ? <div className="card"><div className="card-head"><h2>Para sua aprovação</h2></div><div className="card-body flush table-wrap" tabIndex={0}><ExpenseTable rows={toDecide} /></div></div> : null}
+            {toPay.length ? <div className="card"><div className="card-head"><h2>Para pagamento</h2></div><div className="card-body flush table-wrap" tabIndex={0}><ExpenseTable rows={toPay} /></div></div> : null}
             <div className="card">
               <div className="card-head"><h2>Fluxo de caixa gerencial</h2><p>{o.full ? 'Regime de caixa: receitas lançadas × pagamentos registrados.' : 'Somente as saídas dos centros de custo do seu setor.'}</p></div>
-              <div className="card-body flush table-wrap"><table className="table"><thead><tr><th>Mês</th><th className="num">Entradas</th><th className="num">Saídas</th><th className="num">Resultado</th><th className="num">Saldo acumulado</th><th className="num">A pagar (vencimento)</th></tr></thead>
+              <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><thead><tr><th>Mês</th><th className="num">Entradas</th><th className="num">Saídas</th><th className="num">Resultado</th><th className="num">Saldo acumulado</th><th className="num">A pagar (vencimento)</th></tr></thead>
                 <tbody>{o.flow.map((r) => <tr key={r.month}><td>{monthLabel(r.month)}</td><td className="num">{formatCents(r.inflow)}</td><td className="num">{formatCents(r.outflow)}</td><td className={`num ${r.net < 0 ? 'neg' : ''}`}>{formatCents(r.net)}</td><td className="num">{formatCents(r.balance)}</td><td className="num">{formatCents(r.payable)}</td></tr>)}</tbody></table></div>
             </div>
             <div className="grid grid-2">
               <div className="card"><div className="card-head"><h2>Projeção de saídas</h2><p>Maior entre orçamento e o já conhecido (lançado + contratos).</p></div>
-                <div className="card-body flush table-wrap"><table className="table"><thead><tr><th>Mês</th><th className="num">Orçamento</th><th className="num">Contratos</th><th className="num">Lançado</th><th className="num">Projetado</th></tr></thead>
+                <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><thead><tr><th>Mês</th><th className="num">Orçamento</th><th className="num">Contratos</th><th className="num">Lançado</th><th className="num">Projetado</th></tr></thead>
                   <tbody>{o.projection.map((r) => <tr key={r.month}><td>{monthLabel(r.month)}</td><td className="num">{formatCents(r.budget)}</td><td className="num">{formatCents(r.contractual)}</td><td className="num">{formatCents(r.scheduled)}</td><td className="num"><strong>{formatCents(r.projected)}</strong></td></tr>)}</tbody></table></div>
               </div>
               <div className="card"><div className="card-head"><h2>Despesas por setor (6 meses)</h2></div>
-                <div className="card-body flush table-wrap"><table className="table"><thead><tr><th>Setor</th><th className="num">Pago</th><th className="num">Comprometido</th></tr></thead>
+                <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><thead><tr><th>Setor</th><th className="num">Pago</th><th className="num">Comprometido</th></tr></thead>
                   <tbody>{o.bySector.map((r) => <tr key={r.name}><td>{r.name}</td><td className="num">{formatCents(r.paid)}</td><td className="num">{formatCents(r.committed)}</td></tr>)}</tbody></table></div>
               </div>
             </div>
             {o.personnel ? (
               <div className="card"><div className="card-head"><h2>Custo de pessoal (salários vigentes)</h2><p>Somente salários-base cadastrados; encargos e benefícios dependem de validação contábil.</p></div>
-                <div className="card-body flush table-wrap"><table className="table"><thead><tr><th>Setor</th><th className="num">Pessoas</th><th className="num">Salários/mês</th></tr></thead>
+                <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><thead><tr><th>Setor</th><th className="num">Pessoas</th><th className="num">Salários/mês</th></tr></thead>
                   <tbody>{o.personnel.map((r) => <tr key={r.sector}><td>{r.sector}</td><td className="num">{r.employees}</td><td className="num">{formatCents(r.monthly)}</td></tr>)}
                     <tr><td><strong>Total</strong></td><td className="num">{o.personnel.reduce((a, r) => a + r.employees, 0)}</td><td className="num"><strong>{formatCents(o.personnel.reduce((a, r) => a + r.monthly, 0))}</strong></td></tr></tbody></table></div>
               </div>
@@ -132,7 +133,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
               </form>
               <span className="small muted">{rows.length} despesa(s) · {formatCents(total)}</span>
             </div>
-            <div className="card-body flush table-wrap"><ExpenseTable rows={rows} /></div>
+            <div className="card-body flush table-wrap" tabIndex={0}><ExpenseTable rows={rows} /></div>
           </div>
         );
       })() : null}
@@ -167,7 +168,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
         return (
           <div className="stack">
             {alerts.length ? <div className="alert alert-warn small">{alerts.length} contrato(s) dentro do prazo de aviso de término.</div> : null}
-            <div className="card"><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>
               {rows.length ? <table className="table"><thead><tr><th>Contrato</th><th>Vigência</th><th className="num">Mensal</th><th>Vencimento</th><th>Reajuste</th><th>Situação</th>{admin ? <th></th> : null}</tr></thead>
                 <tbody>{rows.map((k) => (
                   <tr key={k.id} className={k.status === 'VIGENTE' ? undefined : 'row-muted'}>
@@ -215,7 +216,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
         const rows = await listSuppliers(ctx);
         return (
           <div className="stack">
-            <div className="card"><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>
               {rows.length ? <table className="table"><thead><tr><th>Fornecedor</th><th>Documento</th><th>Contato</th><th className="num">Contratos vigentes</th></tr></thead>
                 <tbody>{rows.map((s) => <tr key={s.id} className={s.active ? undefined : 'row-muted'}><td>{s.name}</td><td className="small mono">{s.document_type} ••••{s.document_last4}</td><td className="small">{s.email ?? ''} {s.phone ?? ''}</td><td className="num">{s.contracts}</td></tr>)}</tbody></table> : <Empty>Nenhum fornecedor.</Empty>}
             </div></div>
@@ -245,7 +246,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
           <div className="stack">
             <div className="row"><a className="btn btn-sm" href={`/financeiro?aba=orcamento&ano=${year - 1}`}>‹ {year - 1}</a><strong>{year}</strong><a className="btn btn-sm" href={`/financeiro?aba=orcamento&ano=${year + 1}`}>{year + 1} ›</a></div>
             <div className="card"><div className="card-head"><h2>Previsto × realizado — {year}</h2><p>Realizado = pago; comprometido = aprovado a pagar.</p></div>
-              <div className="card-body flush table-wrap">{o.budgetVsActual.length ? <table className="table"><thead><tr><th>Centro de custo</th><th>Categoria</th><th className="num">Previsto</th><th className="num">Realizado</th><th className="num">Comprometido</th><th className="num">Disponível</th><th className="num">Uso</th></tr></thead>
+              <div className="card-body flush table-wrap" tabIndex={0}>{o.budgetVsActual.length ? <table className="table"><thead><tr><th>Centro de custo</th><th>Categoria</th><th className="num">Previsto</th><th className="num">Realizado</th><th className="num">Comprometido</th><th className="num">Disponível</th><th className="num">Uso</th></tr></thead>
                 <tbody>{o.budgetVsActual.map((r) => (
                   <tr key={`${r.cost_center_id}${r.category_id}`}><td className="small">{ccName.get(r.cost_center_id)}</td><td className="small">{catName.get(r.category_id)}</td><td className="num">{formatCents(r.budget)}</td><td className="num">{formatCents(r.paid)}</td>
                     <td className="num">{formatCents(r.committed)}</td><td className={`num ${r.available < 0 ? 'neg' : ''}`}>{formatCents(r.available)}</td>
@@ -276,7 +277,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
         return (
           <div className="stack">
             <div className="alert alert-info small">Registro gerencial para o fluxo de caixa. Não substitui os livros, a escrituração nem os relatórios oficiais de emolumentos.</div>
-            <div className="card"><div className="card-body flush table-wrap">{rows.length ? <table className="table"><thead><tr><th>Recebido em</th><th>Competência</th><th>Descrição</th><th>Categoria</th><th className="num">Valor</th><th></th></tr></thead>
+            <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>{rows.length ? <table className="table"><thead><tr><th>Recebido em</th><th>Competência</th><th>Descrição</th><th>Categoria</th><th className="num">Valor</th><th></th></tr></thead>
               <tbody>{rows.map((r) => <tr key={r.id} className={r.reversed ? 'row-muted' : undefined}><td className="small">{fmtDate(r.received_on)}</td><td className="small">{monthLabel(r.competence)}</td><td className="small">{r.description}</td><td className="small">{r.category}</td>
                 <td className={`num ${r.reverses_id ? 'neg' : ''}`}>{r.reverses_id ? '−' : ''}{brl(r.amount)}</td>
                 <td>{!r.reverses_id && !r.reversed ? <details className="disclosure small"><summary><a>Estornar</a></summary><ActionForm action={financeAdminAction} submitLabel="Estornar" submitClass="btn btn-sm btn-danger"><input type="hidden" name="op" value="estornar_receita" /><input type="hidden" name="id" value={r.id} /><input name="reason" className="input" placeholder="Motivo" aria-label="Motivo" required minLength={3} /></ActionForm></details> : null}</td></tr>)}</tbody></table> : <Empty>Nenhum lançamento.</Empty>}</div></div>
@@ -304,7 +305,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
           const total = rows.reduce((a, r) => a + r.paid, 0);
           return (
             <div className="card"><div className="card-head"><h2>{title}</h2></div>
-              <div className="card-body flush table-wrap"><table className="table"><thead><tr><th>Item</th><th className="num">Pago</th><th className="num">%</th><th className="num">Comprometido</th><th className="num">Solicitado</th></tr></thead>
+              <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><thead><tr><th>Item</th><th className="num">Pago</th><th className="num">%</th><th className="num">Comprometido</th><th className="num">Solicitado</th></tr></thead>
                 <tbody>{rows.map((r) => <tr key={r.name}><td>{r.name}</td><td className="num">{formatCents(r.paid)}</td><td className="num">{pct(r.paid, total) ?? '—'}</td><td className="num">{formatCents(r.committed)}</td><td className="num">{formatCents(r.requested)}</td></tr>)}</tbody></table></div>
             </div>
           );
@@ -335,7 +336,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
         return (
           <div className="grid grid-2">
             <div className="card"><div className="card-head"><h2>Centros de custo</h2></div>
-              <div className="card-body flush table-wrap"><table className="table"><tbody>{ccs.map((c) => <tr key={c.id} className={c.active ? undefined : 'row-muted'}><td className="mono small">{c.code}</td><td>{c.name}</td><td className="small">{c.sector_name}</td></tr>)}</tbody></table></div>
+              <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><tbody>{ccs.map((c) => <tr key={c.id} className={c.active ? undefined : 'row-muted'}><td className="mono small">{c.code}</td><td>{c.name}</td><td className="small">{c.sector_name}</td></tr>)}</tbody></table></div>
               <div className="card-body"><ActionForm action={financeAdminAction} submitLabel="Incluir centro" resetOnSuccess>
                 <input type="hidden" name="op" value="centro" /><input type="hidden" name="active" value="on" />
                 <div className="form-grid"><div className="field"><label>Código<input name="code" className="input mono" required /></label></div><div className="field"><label>Nome<input name="name" className="input" required /></label></div>
@@ -343,7 +344,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
               </ActionForm></div>
             </div>
             <div className="card"><div className="card-head"><h2>Categorias</h2><p>Gerenciais; não constituem plano de contas contábil.</p></div>
-              <div className="card-body flush table-wrap"><table className="table"><tbody>{cats.map((c) => <tr key={c.id} className={c.active ? undefined : 'row-muted'}><td className="mono small">{c.code}</td><td>{c.name}</td><td className="small">{c.kind.replace('_', ' ').toLowerCase()}</td></tr>)}</tbody></table></div>
+              <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><tbody>{cats.map((c) => <tr key={c.id} className={c.active ? undefined : 'row-muted'}><td className="mono small">{c.code}</td><td>{c.name}</td><td className="small">{c.kind.replace('_', ' ').toLowerCase()}</td></tr>)}</tbody></table></div>
               <div className="card-body"><ActionForm action={financeAdminAction} submitLabel="Incluir categoria" resetOnSuccess>
                 <input type="hidden" name="op" value="categoria" /><input type="hidden" name="active" value="on" />
                 <div className="form-grid"><div className="field"><label>Código<input name="code" className="input mono" required /></label></div><div className="field"><label>Nome<input name="name" className="input" required /></label></div>
@@ -356,3 +357,5 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
     </div>
   );
 }
+
+export default withGuard(FinanceiroPage);

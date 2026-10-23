@@ -8,11 +8,12 @@ import { fmtDate, fmtDateTime, label, statusTone } from '@/ui/format.ts';
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { qualityAction, securityAction } from '../../../../actions/phase5a.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Incidente' };
 
-export default async function IncidentePage({ params }: { params: Promise<{ id: string }> }) {
+async function IncidentePage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requirePageCtx();
   const { id } = await params;
   const { incident: i, events, ncs, actions, canManage } = await getIncident(ctx, id);
@@ -79,13 +80,13 @@ export default async function IncidentePage({ params }: { params: Promise<{ id: 
       ) : null}
 
       {ncs.length || actions.length ? (
-        <div className="card"><div className="card-head"><h2>Não conformidades e ações</h2></div><div className="card-body flush table-wrap"><table className="table"><tbody>
+        <div className="card"><div className="card-head"><h2>Não conformidades e ações</h2></div><div className="card-body flush table-wrap" tabIndex={0}><table className="table"><tbody>
           {ncs.map((n) => <tr key={n.id}><td><Link href={`/qualidade/nc/${n.id}`}>{n.code}</Link></td><td>Não conformidade</td><td></td><td><span className={statusTone(n.status)}>{label(n.status)}</span></td></tr>)}
           {actions.map((a) => <tr key={a.id}><td><Link href={`/tarefas/${a.task_id}`}>{a.title}</Link></td><td className="small">{label(a.kind)} · {a.assignee_name ?? '—'}</td><td className="small">{fmtDate(a.due_date)}</td><td><span className={statusTone(a.status)}>{label(a.status)}</span></td></tr>)}
         </tbody></table></div></div>
       ) : null}
 
-      <div className="card"><div className="card-head"><h2>Linha do tempo</h2></div><div className="card-body flush table-wrap">
+      <div className="card"><div className="card-head"><h2>Linha do tempo</h2></div><div className="card-body flush table-wrap" tabIndex={0}>
         {events.length ? <table className="table"><tbody>{events.map((e, k) => <tr key={k}><td className="small nowrap">{fmtDateTime(e.created_at)}</td><td className="small">{label(e.event)}</td><td className="small">{e.notes ?? ''}</td><td className="small">{e.user_name ?? 'Sistema'}</td></tr>)}</tbody></table> : <Empty>Sem eventos.</Empty>}
       </div></div>
 
@@ -97,3 +98,5 @@ export default async function IncidentePage({ params }: { params: Promise<{ id: 
     </div>
   );
 }
+
+export default withGuard(IncidentePage);

@@ -17,7 +17,7 @@ export async function ModelosChecklist({ ctx, modelo }: { ctx: Ctx; modelo?: str
     <div className="stack">
       <div className="card">
         <div className="card-head"><h2>Modelos de checklist</h2><p>Publicar substitui a versão anterior; checklists já iniciados mantêm a versão usada</p></div>
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           <table className="table">
             <thead><tr><th>Modelo</th><th>Tipo</th><th>Versão</th><th>Situação</th><th className="num">Itens</th><th className="num">Em uso</th><th>Publicação</th></tr></thead>
             <tbody>{templates.map((t) => (
@@ -78,7 +78,7 @@ export async function ModelosChecklist({ ctx, modelo }: { ctx: Ctx; modelo?: str
               ) : null}
             </div>
             {draft ? <p className="small muted">Rascunho: alterações não afetam checklists existentes até a publicação.</p> : <p className="small muted">Versão {label(selected.template.status).toLowerCase()} — somente leitura. Para alterar, crie nova versão.</p>}
-            <div className="table-wrap">
+            <div className="table-wrap" tabIndex={0}>
               <table className="table">
                 <thead><tr><th>#</th><th>Item</th><th>Prazo</th><th>Exigências</th><th>Responsável</th>{draft ? <th></th> : null}</tr></thead>
                 <tbody>{selected.items.map((it) => (

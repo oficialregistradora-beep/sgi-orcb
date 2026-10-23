@@ -6,11 +6,12 @@ import { fmtDate, fmtDateTime, label, statusTone } from '@/ui/format.ts';
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { qualityAction } from '../../../../actions/phase5a.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Auditoria' };
 
-export default async function AuditoriaPage({ params }: { params: Promise<{ id: string }> }) {
+async function AuditoriaPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requirePageCtx();
   const { id } = await params;
   const { audit: a, items, canConduct } = await getAudit(ctx, id);
@@ -32,7 +33,7 @@ export default async function AuditoriaPage({ params }: { params: Promise<{ id: 
       ) : null}
 
       <div className="card"><div className="card-head"><h2>Checklist ({items.length} itens{running ? `, ${pending} pendente(s)` : ''})</h2><p>Não conforme abre automaticamente uma não conformidade vinculada ao item.</p></div>
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           {items.length ? <table className="table"><thead><tr><th>#</th><th>Item</th><th>Resultado</th><th>Evidência</th>{canConduct && running ? <th></th> : null}</tr></thead>
             <tbody>{items.map((i) => (
               <tr key={i.id}>
@@ -74,3 +75,5 @@ export default async function AuditoriaPage({ params }: { params: Promise<{ id: 
     </div>
   );
 }
+
+export default withGuard(AuditoriaPage);

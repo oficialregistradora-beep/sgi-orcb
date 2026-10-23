@@ -35,7 +35,7 @@ export async function Integracoes({ ctx }: { ctx: Ctx }) {
     <div className="stack">
       <div className="card">
         <div className="card-head"><h2>Integrações</h2><p>Situação verificada agora. Credenciais: variáveis de ambiente / Secret Manager (ver docs/23-guia-integracoes-google-antivirus.md).</p></div>
-        <div className="card-body flush table-wrap"><table className="table"><thead><tr><th>Integração</th><th>Situação</th><th>Detalhe</th></tr></thead>
+        <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><thead><tr><th>Integração</th><th>Situação</th><th>Detalhe</th></tr></thead>
           <tbody>{rows.map((r) => <tr key={r.name}><td>{r.name}</td><td><span className={r.ok ? 'tag tag-ok' : 'tag tag-warn'}>{r.ok ? 'Ativa' : 'Atenção'}</span></td><td className="small">{r.detail}</td></tr>)}</tbody></table></div>
       </div>
       {manage ? (
@@ -61,7 +61,7 @@ export async function Integracoes({ ctx }: { ctx: Ctx }) {
         </div>
       ) : null}
       <div className="card"><div className="card-head"><h2>Escopos de acesso solicitados ao Google</h2><p>Somente o estritamente necessário. Nenhuma senha Google é armazenada.</p></div>
-        <div className="card-body flush table-wrap"><table className="table"><thead><tr><th>API</th><th>Escopo</th><th>Uso</th></tr></thead>
+        <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><thead><tr><th>API</th><th>Escopo</th><th>Uso</th></tr></thead>
           <tbody>{o.scopes.map((s) => <tr key={s.api}><td>{s.api}</td><td className="mono small">{s.scope}</td><td className="small">{s.uso}</td></tr>)}</tbody></table></div>
       </div>
     </div>

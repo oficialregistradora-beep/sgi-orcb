@@ -13,6 +13,7 @@ import { RegrasJuridicas } from './RegrasJuridicas.tsx';
 import { Integracoes } from './Integracoes.tsx';
 import { ModelosChecklist } from './ModelosChecklist.tsx';
 import { closePeriodAction, reopenPeriodAction } from '../../actions/bank.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Configurações' };
@@ -22,7 +23,7 @@ const TABS = {
   regras: 'Regras jurídicas', checklists: 'Modelos de checklist', integracoes: 'Integrações',
 } as const;
 
-export default async function ConfigPage({ searchParams }: { searchParams: Promise<{ aba?: string; ano?: string; modelo?: string }> }) {
+async function ConfigPage({ searchParams }: { searchParams: Promise<{ aba?: string; ano?: string; modelo?: string }> }) {
   const ctx = await requirePageCtx();
   const sp0 = await searchParams;
   // Modelos de checklist e regras jurídicas têm permissões próprias (podem ser delegadas sem acesso às demais configurações).
@@ -54,7 +55,7 @@ async function Sectors() {
     <div className="grid grid-2">
       <div className="card">
         <div className="card-head"><h2>Setores</h2></div>
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           <table className="table"><thead><tr><th>Código</th><th>Nome</th><th className="num">Pessoas</th><th>Ativo</th></tr></thead>
             <tbody>{sectors.map((s) => <tr key={s.id}><td className="mono">{s.code}</td><td>{s.name}</td><td className="num">{s.employees}</td><td>{s.active ? 'Sim' : 'Não'}</td></tr>)}</tbody>
           </table>
@@ -73,7 +74,7 @@ async function Sectors() {
       </div>
       <div className="card">
         <div className="card-head"><h2>Cargos</h2></div>
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           <table className="table"><thead><tr><th>Nome</th><th>Ativo</th></tr></thead>
             <tbody>{jobs.map((j) => <tr key={j.id}><td>{j.name}</td><td>{j.active ? 'Sim' : 'Não'}</td></tr>)}</tbody>
           </table>
@@ -98,7 +99,7 @@ async function Schedules() {
     <div className="stack">
       <div className="card">
         <div className="card-head"><h2>Jornadas cadastradas</h2></div>
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           <table className="table"><thead><tr><th>Nome</th><th>Dias</th><th>Tolerância (art. 58 §1º)</th></tr></thead>
             <tbody>{schedules.map((s) => (
               <tr key={s.id}>
@@ -121,7 +122,7 @@ async function Schedules() {
               <div className="field"><label htmlFor="sc-td">Tolerância diária (min)</label><input id="sc-td" name="toleranceDaily" type="number" min="0" max="30" defaultValue="10" className="input" /></div>
             </div>
             <label className="check" style={{ margin: '10px 0' }}><input type="checkbox" name="toleranceEnabled" defaultChecked /> Aplicar tolerância (dependente de validação jurídica)</label>
-            <div className="table-wrap"><table className="table">
+            <div className="table-wrap" tabIndex={0}><table className="table">
               <thead><tr><th>Dia</th><th>Trabalha</th><th>Entrada</th><th>Início intervalo</th><th>Fim intervalo</th><th>Saída</th></tr></thead>
               <tbody>{[1, 2, 3, 4, 5, 6, 0].map((d) => (
                 <tr key={d}>
@@ -150,7 +151,7 @@ async function Holidays({ year }: { year: number }) {
           <h2>Feriados de {year}</h2>
           <div className="row"><a className="btn btn-sm" href={`/configuracoes?aba=feriados&ano=${year - 1}`}>‹</a><a className="btn btn-sm" href={`/configuracoes?aba=feriados&ano=${year + 1}`}>›</a></div>
         </div>
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           <table className="table"><thead><tr><th>Data</th><th>Nome</th><th>Âmbito</th><th></th></tr></thead>
             <tbody>{rows.map((h) => (
               <tr key={h.id}><td>{fmtDate(h.date)}</td><td>{h.name}{h.is_day_off ? '' : <span className="tag" style={{ marginLeft: 6 }}>sem dispensa</span>}</td><td className="small">{h.scope}</td>
@@ -181,7 +182,7 @@ async function Params({ ctx }: { ctx: Awaited<ReturnType<typeof requirePageCtx>>
   return (
     <div className="card">
       <div className="card-head"><h2>Parâmetros institucionais</h2><p>Alterações exigem reautenticação</p></div>
-      <div className="card-body flush table-wrap">
+      <div className="card-body flush table-wrap" tabIndex={0}>
         <table className="table"><thead><tr><th>Parâmetro</th><th>Descrição</th><th>Valor</th><th>Atualizado</th></tr></thead>
           <tbody>{rows.map((r) => (
             <tr key={r.key}>
@@ -213,7 +214,7 @@ async function Closings({ canClose }: { canClose: boolean }) {
     <div className="grid grid-2">
       <div className="card">
         <div className="card-head"><h2>Competências fechadas</h2></div>
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           <table className="table"><thead><tr><th>Competência</th><th>Fechada por</th><th>Situação</th></tr></thead>
             <tbody>{rows.map((r) => <tr key={r.id}><td>{r.period}</td><td className="small">{r.closed_by_name} · {fmtDateTime(r.closed_at)}</td><td className="small">{r.reopened_at ? `Reaberta: ${r.reopen_reason}` : 'Fechada'}</td></tr>)}</tbody>
           </table>
@@ -238,3 +239,5 @@ async function Closings({ canClose }: { canClose: boolean }) {
     </div>
   );
 }
+
+export default withGuard(ConfigPage);

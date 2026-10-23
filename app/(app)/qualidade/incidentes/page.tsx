@@ -7,11 +7,12 @@ import { fmtDateTime, label, statusTone } from '@/ui/format.ts';
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { securityAction } from '../../../actions/phase5a.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Incidentes' };
 
-export default async function IncidentesPage() {
+async function IncidentesPage() {
   const ctx = await requirePageCtx();
   const p = ctx.principal;
   const manage = can(p, 'incidentes.gerenciar');
@@ -42,7 +43,7 @@ export default async function IncidentesPage() {
         </ActionForm>
       </div></div>
 
-      <div className="card"><div className="card-head"><h2>{manage ? 'Incidentes' : 'Incidentes que você comunicou'}</h2></div><div className="card-body flush table-wrap">
+      <div className="card"><div className="card-head"><h2>{manage ? 'Incidentes' : 'Incidentes que você comunicou'}</h2></div><div className="card-body flush table-wrap" tabIndex={0}>
         {rows.length ? <table className="table"><thead><tr><th>Incidente</th><th>Categoria</th><th>Gravidade</th><th>Detectado</th><th>Comunicado por</th><th>Situação</th></tr></thead>
           <tbody>{rows.map((i) => (
             <tr key={i.id} className={i.status === 'ENCERRADO' ? 'row-muted' : undefined}>
@@ -55,3 +56,5 @@ export default async function IncidentesPage() {
     </div>
   );
 }
+
+export default withGuard(IncidentesPage);

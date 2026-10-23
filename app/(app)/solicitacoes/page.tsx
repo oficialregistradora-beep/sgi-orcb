@@ -6,6 +6,7 @@ import { fmtDate, fmtDateTime, label, statusTone } from '@/ui/format.ts';
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { cancelRequestAction, decideAction } from '../../actions/journey.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Solicitações' };
@@ -61,7 +62,7 @@ function Table({ rows, mode }: { rows: RequestRow[]; mode: 'minhas' | 'aprovar' 
   );
 }
 
-export default async function SolicitacoesPage({ searchParams }: { searchParams: Promise<{ aba?: string }> }) {
+async function SolicitacoesPage({ searchParams }: { searchParams: Promise<{ aba?: string }> }) {
   const ctx = await requirePageCtx();
   const { aba = 'minhas' } = await searchParams;
   const approver = Object.values(REQUEST_TYPES).some((t) => can(ctx.principal, t.approve));
@@ -75,8 +76,10 @@ export default async function SolicitacoesPage({ searchParams }: { searchParams:
         {approver ? <Link href="/solicitacoes?aba=aprovar" aria-current={tab === 'aprovar' ? 'page' : undefined}>Para decidir</Link> : null}
         {approver ? <Link href="/solicitacoes?aba=decididas" aria-current={tab === 'decididas' ? 'page' : undefined}>Decididas</Link> : null}
       </nav>
-      <div className="card"><div className="card-body flush table-wrap"><Table rows={rows} mode={tab as 'minhas'} /></div></div>
+      <div className="card"><div className="card-body flush table-wrap" tabIndex={0}><Table rows={rows} mode={tab as 'minhas'} /></div></div>
       {tab === 'minhas' ? <p className="small muted">Para abrir correções, use <Link href="/jornada">Minha jornada</Link>; para compensações, <Link href="/banco-de-horas">Banco de horas</Link>.</p> : null}
     </div>
   );
 }
+
+export default withGuard(SolicitacoesPage);

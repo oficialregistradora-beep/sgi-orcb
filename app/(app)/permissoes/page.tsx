@@ -12,10 +12,12 @@ import {
   assignRoleAction, createRoleAction, createUserAction, resetMfaAction, revokeRoleAction, rolePermissionAction, userStatusAction,
 } from '../../actions/admin.ts';
 
+import { withGuard } from '@/server/web/guard.ts';
+
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Usuários e permissões' };
 
-export default async function PermissoesPage({ searchParams }: { searchParams: Promise<{ aba?: string; usuario?: string }> }) {
+async function PermissoesPage({ searchParams }: { searchParams: Promise<{ aba?: string; usuario?: string }> }) {
   const ctx = await requirePageCtx();
   if (!can(ctx.principal, 'permissoes.gerenciar') && !can(ctx.principal, 'usuarios.gerenciar')) throw new ForbiddenError();
   const sp = await searchParams;
@@ -39,7 +41,7 @@ export default async function PermissoesPage({ searchParams }: { searchParams: P
         <div className="grid grid-2">
           <div className="card">
             <div className="card-head"><h2>Usuários</h2><p>{users.length} cadastrado(s)</p></div>
-            <div className="card-body flush table-wrap">
+            <div className="card-body flush table-wrap" tabIndex={0}>
               <table className="table"><thead><tr><th>Usuário</th><th>MFA</th><th>Último acesso</th><th>Situação</th></tr></thead>
                 <tbody>{users.map((u) => (
                   <tr key={u.id} className={selected?.id === u.id ? 'row-muted' : undefined}>
@@ -119,7 +121,7 @@ export default async function PermissoesPage({ searchParams }: { searchParams: P
         <div className="stack">
           <div className="card">
             <div className="card-head"><h2>Matriz de permissões por papel</h2><p>A Oficial Registradora possui todas as permissões e seu papel não é editável</p></div>
-            <div className="card-body flush table-wrap">
+            <div className="card-body flush table-wrap" tabIndex={0}>
               <table className="table">
                 <thead><tr><th>Permissão</th>{roles.map((r) => <th key={r.id}>{r.name}</th>)}</tr></thead>
                 <tbody>
@@ -168,3 +170,5 @@ export default async function PermissoesPage({ searchParams }: { searchParams: P
     </div>
   );
 }
+
+export default withGuard(PermissoesPage);

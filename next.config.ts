@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ['pg'],
   // Anexos documentais (limite da aplicação: parâmetro documentos.arquivo_max_mb, padrão 15 MB) chegam por Server Action.
-  experimental: { serverActions: { bodySizeLimit: '16mb' } },
+  experimental: { serverActions: { bodySizeLimit: '16mb' }, authInterrupts: true },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

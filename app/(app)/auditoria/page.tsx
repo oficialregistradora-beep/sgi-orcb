@@ -4,11 +4,12 @@ import { fmtDateTime } from '@/ui/format.ts';
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { verifyAuditAction } from '../../actions/admin.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Auditoria' };
 
-export default async function AuditoriaPage({ searchParams }: { searchParams: Promise<{ q?: string; antes?: string }> }) {
+async function AuditoriaPage({ searchParams }: { searchParams: Promise<{ q?: string; antes?: string }> }) {
   const ctx = await requirePageCtx();
   const sp = await searchParams;
   const rows = await listAudit(ctx, { q: sp.q, before: sp.antes ? Number(sp.antes) : undefined, limit: 100 });
@@ -25,7 +26,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
         <button className="btn" type="submit">Buscar</button>
       </form>
       <div className="card">
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           {rows.length ? (
             <table className="table">
               <thead><tr><th>#</th><th>Data/hora</th><th>Autor</th><th>Ação</th><th>Resumo</th><th>IP</th><th>Hash</th></tr></thead>
@@ -50,3 +51,5 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
     </div>
   );
 }
+
+export default withGuard(AuditoriaPage);

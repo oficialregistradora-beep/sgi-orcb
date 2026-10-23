@@ -8,11 +8,12 @@ import { Empty, PageHead, Stat } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { compensationAction, justifyAction } from '../../actions/journey.ts';
 import { paymentAction } from '../../actions/bank.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Banco de horas' };
 
-export default async function BancoPage({ searchParams }: { searchParams: Promise<{ funcionario?: string }> }) {
+async function BancoPage({ searchParams }: { searchParams: Promise<{ funcionario?: string }> }) {
   const ctx = await requirePageCtx();
   const sp = await searchParams;
   const employeeId = sp.funcionario ?? ctx.principal.employeeId;
@@ -49,7 +50,7 @@ export default async function BancoPage({ searchParams }: { searchParams: Promis
       <div className="grid grid-2">
         <div className="card">
           <div className="card-head"><h2>Créditos por vencimento</h2><p>Consumo na ordem do vencimento (PEPS)</p></div>
-          <div className="card-body flush table-wrap">
+          <div className="card-body flush table-wrap" tabIndex={0}>
             {ov.lots.length ? (
               <table className="table">
                 <thead><tr><th>Origem</th><th>Vence em</th><th className="num">Crédito</th><th className="num">Utilizado</th><th className="num">Restante</th><th>Situação</th></tr></thead>
@@ -68,7 +69,7 @@ export default async function BancoPage({ searchParams }: { searchParams: Promis
         </div>
         <div className="card">
           <div className="card-head"><h2>Ocorrências</h2><p>Horas extras e diferenças aguardam análise — nada é descontado automaticamente</p></div>
-          <div className="card-body flush table-wrap">
+          <div className="card-body flush table-wrap" tabIndex={0}>
             {occurrences.length ? (
               <table className="table">
                 <thead><tr><th>Data</th><th>Tipo</th><th className="num">Minutos</th><th>Situação</th></tr></thead>
@@ -102,7 +103,7 @@ export default async function BancoPage({ searchParams }: { searchParams: Promis
 
       <div className="card">
         <div className="card-head"><h2>Extrato de lançamentos</h2><p>Lançamentos são imutáveis; correções aparecem como estorno</p></div>
-        <div className="card-body flush table-wrap">
+        <div className="card-body flush table-wrap" tabIndex={0}>
           {ov.lines.length ? (
             <table className="table">
               <thead><tr><th>Competência</th><th>Tipo</th><th className="num">Minutos</th><th>Vencimento</th><th>Observação</th><th>Registrado em</th></tr></thead>
@@ -163,3 +164,5 @@ export default async function BancoPage({ searchParams }: { searchParams: Promis
     </div>
   );
 }
+
+export default withGuard(BancoPage);

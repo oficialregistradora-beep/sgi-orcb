@@ -9,6 +9,7 @@ import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { EVAL_STATUS, PdiList } from '@/ui/development.tsx';
 import { evaluationAction } from '../../../actions/phase5b.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Avaliação' };
@@ -17,7 +18,7 @@ const ACTS: Record<string, string> = { CIENCIA: 'Ciência', CONCORDANCIA: 'Conco
 type Snapshot = { criterios: { criterio: string; grupo: string; peso: number; nota: number; comentario: string | null; autoavaliacao: number | null }[]; resultadoPonderado: number | null;
   pontosFortes: string | null; aDesenvolver: string | null; feedback: string; pdi: { goal: string; action: string; due_date: string }[]; modelo: string; escala: string };
 
-export default async function AvaliacaoPage({ params }: { params: Promise<{ id: string }> }) {
+async function AvaliacaoPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requirePageCtx();
   const { id } = await params;
   const { evaluation: v, role, criteria, scores, versions, signatures, pdi, ackDays } = await getEvaluation(ctx, id);
@@ -41,7 +42,7 @@ export default async function AvaliacaoPage({ params }: { params: Promise<{ id: 
         <div className="card"><div className="card-head"><h2>Preenchimento</h2><p>Escala de 1 a {v.scale_max}. {v.self_assessment ? (v.self_submitted_at ? 'Autoavaliação entregue (ao lado).' : 'Aguardando a autoavaliação para enviar.') : ''}</p></div><div className="card-body">
           <ActionForm action={evaluationAction} submitLabel="Confirmar">
             <input type="hidden" name="id" value={v.id} />
-            <div className="table-wrap"><table className="table"><thead><tr><th>Critério</th><th>Nota</th><th>Comentário</th>{v.self_assessment ? <th>Autoavaliação</th> : null}</tr></thead>
+            <div className="table-wrap" tabIndex={0}><table className="table"><thead><tr><th>Critério</th><th>Nota</th><th>Comentário</th>{v.self_assessment ? <th>Autoavaliação</th> : null}</tr></thead>
               <tbody>{criteria.map((k) => (
                 <tr key={k.id}><td>{k.title}<div className="small muted">{label(k.grp)}{k.weight > 1 ? ` · peso ${k.weight}` : ''}{k.description ? ` · ${k.description}` : ''}</div><input type="hidden" name="criterionId" value={k.id} /></td>
                   <td><select name={`score_${k.id}`} className="input" aria-label={`Nota: ${k.title}`} defaultValue={score(k.id, 'AVALIADOR')?.score ?? ''}><option value="">—</option>{scale.map((n) => <option key={n} value={n}>{n}</option>)}</select></td>
@@ -78,7 +79,7 @@ export default async function AvaliacaoPage({ params }: { params: Promise<{ id: 
 
       {snap && !pending ? (
         <div className="card"><div className="card-head"><h2>Avaliação enviada (versão {latest!.version_number})</h2><p>Enviada em {fmtDateTime(latest!.created_at)} · sha256 {latest!.content_sha256.slice(0, 16)}… · escala {snap.escala}</p></div>
-          <div className="card-body flush table-wrap"><table className="table"><thead><tr><th>Critério</th><th className="num">Nota</th><th>Comentário</th><th className="num">Autoavaliação</th></tr></thead>
+          <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><thead><tr><th>Critério</th><th className="num">Nota</th><th>Comentário</th><th className="num">Autoavaliação</th></tr></thead>
             <tbody>{snap.criterios.map((k, i) => <tr key={i}><td>{k.criterio}<div className="small muted">{label(k.grupo)}{k.peso > 1 ? ` · peso ${k.peso}` : ''}</div></td><td className="num">{k.nota}</td><td className="small">{k.comentario ?? ''}</td><td className="num">{k.autoavaliacao ?? '—'}</td></tr>)}
               <tr><td><strong>Resultado ponderado</strong></td><td className="num"><strong>{snap.resultadoPonderado != null ? `${snap.resultadoPonderado.toLocaleString('pt-BR')}%` : '—'}</strong></td><td colSpan={2} /></tr></tbody></table></div>
           <div className="card-body stack small">
@@ -103,7 +104,7 @@ export default async function AvaliacaoPage({ params }: { params: Promise<{ id: 
       ) : null}
 
       {lead || role.self ? (
-        <div className="card"><div className="card-head"><h2>Plano de desenvolvimento (PDI)</h2></div><div className="card-body flush table-wrap">
+        <div className="card"><div className="card-head"><h2>Plano de desenvolvimento (PDI)</h2></div><div className="card-body flush table-wrap" tabIndex={0}>
           <PdiList items={pdi} action={evaluationAction} canProgress={role.self} canClose={lead && !role.self} />
         </div>
           {pending && role.evaluator ? (
@@ -133,7 +134,7 @@ export default async function AvaliacaoPage({ params }: { params: Promise<{ id: 
       ) : null}
 
       {versions.length > 1 ? (
-        <div className="card"><div className="card-head"><h2>Versões anteriores</h2></div><div className="card-body flush table-wrap"><table className="table"><tbody>
+        <div className="card"><div className="card-head"><h2>Versões anteriores</h2></div><div className="card-body flush table-wrap" tabIndex={0}><table className="table"><tbody>
           {versions.slice(1).map((x) => <tr key={x.id}><td>Versão {x.version_number}</td><td className="small">{fmtDateTime(x.created_at)}</td><td className="small">sha256 {x.content_sha256.slice(0, 16)}…</td>
             <td className="small">{signatures.filter((s) => s.version_id === x.id).map((s) => ACTS[s.act]).join(', ') || 'sem manifestação'}</td></tr>)}
         </tbody></table></div></div>
@@ -147,3 +148,5 @@ export default async function AvaliacaoPage({ params }: { params: Promise<{ id: 
     </div>
   );
 }
+
+export default withGuard(AvaliacaoPage);

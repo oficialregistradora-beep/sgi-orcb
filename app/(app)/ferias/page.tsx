@@ -9,11 +9,12 @@ import { ActionForm } from '@/ui/ActionForm.tsx';
 import { cancelVacationAction, requestVacationAction } from '../../actions/phase2b.ts';
 import { reviewPeriodAction } from '../../actions/phase2c.ts';
 import { ART130_BANDS } from '@/domain/vacation.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Férias' };
 
-export default async function FeriasPage({ searchParams }: { searchParams: Promise<{ funcionario?: string }> }) {
+async function FeriasPage({ searchParams }: { searchParams: Promise<{ funcionario?: string }> }) {
   const ctx = await requirePageCtx();
   const sp = await searchParams;
   const employeeId = sp.funcionario ?? ctx.principal.employeeId;
@@ -33,7 +34,7 @@ export default async function FeriasPage({ searchParams }: { searchParams: Promi
         <div className="grid grid-2">
           <div className="card">
             <div className="card-head"><h2>Períodos aquisitivos</h2><p>Admissão em {fmtDate(overview.employee.admission_date)}</p></div>
-            <div className="card-body flush table-wrap">
+            <div className="card-body flush table-wrap" tabIndex={0}>
               <table className="table">
                 <thead><tr><th>#</th><th>Aquisição</th><th>Gozar até</th><th className="num">Direito</th><th className="num">Gozados</th><th className="num">Abono</th><th className="num">Saldo</th><th>Faltas (art. 130)</th><th>Situação</th></tr></thead>
                 <tbody>{overview.periods.map((p) => {
@@ -115,7 +116,7 @@ export default async function FeriasPage({ searchParams }: { searchParams: Promi
       {overview ? (
         <div className="card">
           <div className="card-head"><h2>Solicitações</h2></div>
-          <div className="card-body flush table-wrap">
+          <div className="card-body flush table-wrap" tabIndex={0}>
             {overview.requests.length ? (
               <table className="table">
                 <thead><tr><th>Pedido em</th><th>Período</th><th>Situação</th><th>Observação</th></tr></thead>
@@ -137,7 +138,7 @@ export default async function FeriasPage({ searchParams }: { searchParams: Promi
         <div className="grid grid-2">
           <div className="card">
             <div className="card-head"><h2>Alertas de vencimento</h2><p>Saldos a gozar perto do fim do período concessivo ou vencidos</p></div>
-            <div className="card-body flush table-wrap">
+            <div className="card-body flush table-wrap" tabIndex={0}>
               {team.alerts.length ? (
                 <table className="table"><thead><tr><th>Funcionário</th><th>Período</th><th className="num">Saldo</th><th>Gozar até</th><th>Situação</th></tr></thead>
                   <tbody>{team.alerts.map((a) => (
@@ -149,7 +150,7 @@ export default async function FeriasPage({ searchParams }: { searchParams: Promi
           </div>
           <div className="card">
             <div className="card-head"><h2>Programação de férias</h2></div>
-            <div className="card-body flush table-wrap">
+            <div className="card-body flush table-wrap" tabIndex={0}>
               {team.scheduled.length ? (
                 <table className="table"><thead><tr><th>Funcionário</th><th>Período</th><th className="num">Dias</th>{team.canApprove ? <th></th> : null}</tr></thead>
                   <tbody>{team.scheduled.map((s) => (
@@ -175,3 +176,5 @@ export default async function FeriasPage({ searchParams }: { searchParams: Promi
     </div>
   );
 }
+
+export default withGuard(FeriasPage);

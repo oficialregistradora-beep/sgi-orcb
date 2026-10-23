@@ -11,11 +11,12 @@ import { Empty, PageHead, Stat } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { trainingAction } from '../../actions/phase5b.ts';
 import { KIND_LABEL, Situation, TrainingFields } from '@/ui/development.tsx';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Treinamentos' };
 
-export default async function TreinamentosPage({ searchParams }: { searchParams: Promise<{ aba?: string }> }) {
+async function TreinamentosPage({ searchParams }: { searchParams: Promise<{ aba?: string }> }) {
   const ctx = await requirePageCtx();
   const p = ctx.principal;
   const sp = await searchParams;
@@ -44,7 +45,7 @@ export default async function TreinamentosPage({ searchParams }: { searchParams:
               <Stat label="Em dia" value={rows.filter((r) => r.situation === 'VALIDO' || r.situation === 'A_VENCER').length} />
               <Stat label="Carga horária concluída" value={fmtMin(rows.flatMap((r) => r.records).filter((x) => x.status === 'CONCLUIDO').reduce((a, x) => a + (x.minutes ?? 0), 0))} />
             </div>
-            <div className="card"><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>
               {rows.length ? <table className="table"><thead><tr><th>Treinamento</th><th>Tipo</th><th>Situação</th><th>Concluído</th><th>Validade</th><th></th></tr></thead>
                 <tbody>{rows.map((r) => (
                   <tr key={r.training.id}>
@@ -69,7 +70,7 @@ export default async function TreinamentosPage({ searchParams }: { searchParams:
               <Stat label="Treinamentos vencidos" value={m.summary.expired} tone={m.summary.expired ? 'neg' : undefined} />
               <Stat label="Pessoas" value={m.rows.length} />
             </div>
-            <div className="card"><div className="card-head"><h2>Matriz de capacitação obrigatória</h2></div><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-head"><h2>Matriz de capacitação obrigatória</h2></div><div className="card-body flush table-wrap" tabIndex={0}>
               {m.trainings.length ? <table className="table"><thead><tr><th>Pessoa</th>{m.trainings.map((t) => <th key={t.id} title={t.title}>{t.code}</th>)}</tr></thead>
                 <tbody>{m.rows.map((r) => <tr key={r.person.id}><td>{r.person.full_name}<div className="small muted">{r.person.sector_name}</div></td>
                   {r.cells.map((c, i) => <td key={i}>{c ? <Situation s={c} /> : <span className="muted small">n/a</span>}</td>)}</tr>)}</tbody></table> : <Empty>Nenhum treinamento obrigatório cadastrado.</Empty>}
@@ -85,7 +86,7 @@ export default async function TreinamentosPage({ searchParams }: { searchParams:
         const docs = manage && can(p, 'documentos.ver') ? (await listDocuments(ctx, {})).filter((d) => d.status === 'VIGENTE') : [];
         return (
           <div className="stack">
-            <div className="card"><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>
               {rows.length ? <table className="table"><thead><tr><th>Treinamento</th><th>Tipo</th><th>Público</th><th>Carga</th><th>Reciclagem</th><th>Avaliação</th></tr></thead>
                 <tbody>{rows.map((t) => (
                   <tr key={t.id} className={t.active ? undefined : 'row-muted'}>
@@ -113,7 +114,7 @@ export default async function TreinamentosPage({ searchParams }: { searchParams:
       {tab === 'validacoes' ? await (async () => {
         const rows = await pendingValidations(ctx);
         return (
-          <div className="card"><div className="card-head"><h2>Certificados aguardando validação</h2><p>Confira o certificado antes de validar. Ninguém valida o próprio registro.</p></div><div className="card-body flush table-wrap">
+          <div className="card"><div className="card-head"><h2>Certificados aguardando validação</h2><p>Confira o certificado antes de validar. Ninguém valida o próprio registro.</p></div><div className="card-body flush table-wrap" tabIndex={0}>
             {rows.length ? <table className="table"><thead><tr><th>Pessoa</th><th>Treinamento</th><th>Conclusão</th><th>Certificado</th><th></th></tr></thead>
               <tbody>{rows.map((r) => (
                 <tr key={r.id}><td>{r.full_name}</td><td>{r.training_code} — {r.training_title}{r.notes ? <div className="small muted">{r.notes}</div> : null}</td><td className="small">{fmtDate(r.completed_on)}{r.minutes ? ` · ${fmtMin(r.minutes)}` : ''}</td>
@@ -130,3 +131,5 @@ export default async function TreinamentosPage({ searchParams }: { searchParams:
     </div>
   );
 }
+
+export default withGuard(TreinamentosPage);

@@ -9,6 +9,7 @@ import { fmtDate, fmtDateTime, fmtMin, label, statusTone } from '@/ui/format.ts'
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { prepareDocumentAction, signAction } from '../../actions/bank.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Documentos' };
@@ -33,7 +34,7 @@ function EspelhoView({ c }: { c: Espelho }) {
         <span className="small muted">Matrícula {c.funcionario.matricula} · {c.funcionario.cargo} · {c.funcionario.setor} · Jornada: {c.jornadaContratual ?? '—'}</span>
         <span className="small">{c.ressalva}</span>
       </header>
-      <div className="table-wrap">
+      <div className="table-wrap" tabIndex={0}>
         <table className="table">
           <thead><tr><th>Data</th><th>Situação</th><th>Marcações</th><th className="num">Previsto</th><th className="num">Trabalhado</th><th className="num">Diferença</th><th>Ocorrências / alertas</th></tr></thead>
           <tbody>
@@ -105,7 +106,7 @@ function ExtratoView({ c }: { c: Extrato }) {
 
 const OWNER_ACTS: Act[] = ['CIENCIA', 'CONCORDANCIA', 'CONTESTACAO'];
 
-export default async function DocumentosPage({ searchParams }: { searchParams: Promise<{ doc?: string; aba?: string }> }) {
+async function DocumentosPage({ searchParams }: { searchParams: Promise<{ doc?: string; aba?: string }> }) {
   const ctx = await requirePageCtx();
   const sp = await searchParams;
   const isApprover = can(ctx.principal, 'espelho.aprovar');
@@ -189,7 +190,7 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
         <div className="grid grid-2">
           <div className="card">
             <div className="card-head"><h2>Meus documentos</h2></div>
-            <div className="card-body flush table-wrap">
+            <div className="card-body flush table-wrap" tabIndex={0}>
               {mine.length ? (
                 <table className="table">
                   <thead><tr><th>Documento</th><th>Versão</th><th>Minha manifestação</th><th>Aprovação</th></tr></thead>
@@ -225,7 +226,7 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
         </div>
       ) : (
         <div className="card">
-          <div className="card-body flush table-wrap">
+          <div className="card-body flush table-wrap" tabIndex={0}>
             {pending.length ? (
               <table className="table">
                 <thead><tr><th>Documento</th><th>Funcionário</th><th>Manifestação</th><th>Em</th></tr></thead>
@@ -247,3 +248,5 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
     </div>
   );
 }
+
+export default withGuard(DocumentosPage);

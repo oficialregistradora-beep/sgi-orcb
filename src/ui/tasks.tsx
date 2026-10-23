@@ -91,8 +91,8 @@ export function TaskCalendar({ tasks, period }: { tasks: TaskRow[]; period: stri
   const today = todayLocal();
   return (
     <div className="cal" role="grid" aria-label="Calendário de prazos">
-      {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((d) => <div key={d} className="cal-head" role="columnheader">{d}</div>)}
-      {days.map((d) => {
+      <div role="row" style={{ display: 'contents' }}>{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((d) => <div key={d} className="cal-head" role="columnheader">{d}</div>)}</div>
+      {[0, 1, 2, 3, 4, 5].map((w) => <div key={w} role="row" style={{ display: 'contents' }}>{days.slice(w * 7, w * 7 + 7).map((d) => {
         const list = tasks.filter((t) => t.due_date === d);
         return (
           <div key={d} role="gridcell" className={`${d.slice(0, 7) !== period ? 'cal-out' : ''} ${d === today ? 'cal-today' : ''}`}>
@@ -101,7 +101,7 @@ export function TaskCalendar({ tasks, period }: { tasks: TaskRow[]; period: stri
             {list.length > 4 ? <span className="muted">+{list.length - 4}</span> : null}
           </div>
         );
-      })}
+      })}</div>)}
     </div>
   );
 }

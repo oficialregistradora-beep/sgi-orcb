@@ -1,0 +1,81 @@
+{
+  "executadoEm": "2026-10-23T10:23:04.014Z",
+  "metricas": {
+    "antes": {
+      "notificacoes": 48,
+      "tarefas": 23,
+      "avaliacoes": 2,
+      "fila": 0,
+      "automacoes": 0,
+      "lembretes": 0
+    },
+    "primeiraExecucao": {
+      "processados": 9,
+      "avisosDeRevisao": 0,
+      "tarefasDeRotina": 0,
+      "avisosDePrazo": 15,
+      "avisosDeVencimento": 1,
+      "avisosDeQualidade": 3,
+      "avisosDeTreinamento": 8,
+      "avaliacoesGeradas": 7,
+      "avisosDeAvaliacao": 7,
+      "automacoes": {
+        "rules": 2,
+        "fired": 7
+      },
+      "envio": {
+        "sent": 0,
+        "failed": 0,
+        "retried": 0,
+        "discarded": 0
+      },
+      "agenda": {
+        "skipped": "desativada",
+        "created": 0,
+        "updated": 0,
+        "deleted": 0,
+        "failed": 0
+      }
+    },
+    "depoisDaPrimeira": {
+      "notificacoes": 102,
+      "tarefas": 23,
+      "avaliacoes": 9,
+      "fila": 0,
+      "automacoes": 7,
+      "lembretes": 18
+    },
+    "segundaExecucao": {
+      "processados": 9,
+      "avisosDeRevisao": 0,
+      "tarefasDeRotina": 0,
+      "avisosDePrazo": 0,
+      "avisosDeVencimento": 0,
+      "avisosDeQualidade": 0,
+      "avisosDeTreinamento": 0,
+      "avaliacoesGeradas": 0,
+      "avisosDeAvaliacao": 0,
+      "automacoes": {
+        "rules": 2,
+        "fired": 0
+      },
+      "envio": {
+        "sent": 0,
+        "failed": 0,
+        "retried": 0,
+        "discarded": 0
+      },
+      "agenda": {
+        "skipped": "desativada",
+        "created": 0,
+        "updated": 0,
+        "deleted": 0,
+        "failed": 0
+      }
+    },
+    "versoes": 5,
+    "assinaturas": 3,
+    "arquivos": 3,
+    "registrosDeAuditoria": 85
+  }
+}

@@ -11,6 +11,7 @@ import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { KIND_LABEL, Situation, TrainingFields } from '@/ui/development.tsx';
 import { trainingAction } from '../../../actions/phase5b.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Treinamento' };
@@ -18,7 +19,7 @@ export const metadata = { title: 'Treinamento' };
 const hm = (m: number | null) => (m == null ? '' : `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
 const REC_LABEL: Record<string, string> = { INSCRITO: 'Inscrito', PENDENTE_VALIDACAO: 'Aguardando validação', CONCLUIDO: 'Concluído', NAO_CONCLUIDO: 'Não concluído', RECUSADO: 'Recusado', CANCELADO: 'Cancelado', ANULADO: 'Anulado' };
 
-export default async function TreinamentoPage({ params }: { params: Promise<{ id: string }> }) {
+async function TreinamentoPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requirePageCtx();
   const p = ctx.principal;
   const { id } = await params;
@@ -89,7 +90,7 @@ export default async function TreinamentoPage({ params }: { params: Promise<{ id
       ) : taking && passed ? <div className="alert alert-info small">Você foi aprovado(a) na avaliação de aprendizagem ({Math.max(...taking.attempts.filter((a) => a.passed).map((a) => a.score))}%).</div> : null}
 
       {(manage || registrar) ? (
-        <div className="card"><div className="card-head"><h2>Turmas</h2><p>Cada turma aparece na agenda institucional.</p></div><div className="card-body flush table-wrap">
+        <div className="card"><div className="card-head"><h2>Turmas</h2><p>Cada turma aparece na agenda institucional.</p></div><div className="card-body flush table-wrap" tabIndex={0}>
           {sessions.length ? <table className="table"><thead><tr><th>Data</th><th>Local / instrutor</th><th className="num">Inscritos</th><th>Situação</th><th></th></tr></thead>
             <tbody>{sessions.map((s) => {
               const enrolled = records.filter((r) => r.session_id === s.id && r.status === 'INSCRITO');
@@ -145,7 +146,7 @@ export default async function TreinamentoPage({ params }: { params: Promise<{ id
       ) : null}
 
       {registrar ? (
-        <div className="card"><div className="card-head"><h2>Registros</h2></div><div className="card-body flush table-wrap">
+        <div className="card"><div className="card-head"><h2>Registros</h2></div><div className="card-body flush table-wrap" tabIndex={0}>
           {records.length ? <table className="table"><thead><tr><th>Pessoa</th><th>Situação</th><th>Conclusão</th><th>Validade</th><th>Origem</th><th>Validado por</th><th></th></tr></thead>
             <tbody>{records.map((r) => (
               <tr key={r.id} className={['CANCELADO', 'ANULADO', 'RECUSADO'].includes(r.status) ? 'row-muted' : undefined}>
@@ -191,3 +192,5 @@ export default async function TreinamentoPage({ params }: { params: Promise<{ id
     </div>
   );
 }
+
+export default withGuard(TreinamentoPage);

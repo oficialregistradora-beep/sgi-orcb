@@ -8,6 +8,7 @@ import { fmtDate, fmtDateTime, label, statusTone } from '@/ui/format.ts';
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { processInstanceAction, processTemplateAction, routineAction } from '../../actions/phase4a.ts';
+import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Rotinas e processos' };
@@ -56,7 +57,7 @@ function RoutineFields({ r, dir, prefix }: { r?: Routine; dir: Dir; prefix: stri
   );
 }
 
-export default async function RotinasPage({ searchParams }: { searchParams: Promise<{ aba?: string }> }) {
+async function RotinasPage({ searchParams }: { searchParams: Promise<{ aba?: string }> }) {
   const ctx = await requirePageCtx();
   const sp = await searchParams;
   const tab = (sp.aba && sp.aba in TABS ? sp.aba : 'rotinas') as keyof typeof TABS;
@@ -73,7 +74,7 @@ export default async function RotinasPage({ searchParams }: { searchParams: Prom
         const routines = await listRoutines(ctx);
         return (
           <div className="stack">
-            <div className="card"><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>
               {routines.length ? <table className="table"><thead><tr><th>Rotina</th><th>Quando</th><th>Responsável</th><th>Prioridade</th><th className="num">Geradas</th>{canManage ? <th></th> : null}</tr></thead>
                 <tbody>{routines.map((r) => (
                   <tr key={r.id} className={r.active ? undefined : 'row-muted'}>
@@ -99,7 +100,7 @@ export default async function RotinasPage({ searchParams }: { searchParams: Prom
         const [instances, templates] = await Promise.all([listProcessInstances(ctx), listProcessTemplates()]);
         return (
           <div className="stack">
-            <div className="card"><div className="card-body flush table-wrap">
+            <div className="card"><div className="card-body flush table-wrap" tabIndex={0}>
               {instances.length ? <table className="table"><thead><tr><th>Processo</th><th>Situação</th><th>Etapas</th><th>Etapa atual</th><th>Início</th><th></th></tr></thead>
                 <tbody>{instances.map((i) => (
                   <tr key={i.id}><td>{i.title}<div className="small muted">{i.template_name} · {i.started_by_name}</div></td>
@@ -164,3 +165,5 @@ export default async function RotinasPage({ searchParams }: { searchParams: Prom
     </div>
   );
 }
+
+export default withGuard(RotinasPage);
