@@ -198,6 +198,35 @@ try {
   check('Processos: instância em andamento com etapa atual', await page.locator('text=Admissão — Pessoa Fictícia').first().isVisible());
   await page.screenshot({ path: `${SHOTS}/20-processos.png`, fullPage: true });
 
+  // 6f. Fase 4b — financeiro gerencial (Oficial)
+  await page.goto(`${BASE}/financeiro`);
+  check('Financeiro: painel com fluxo de caixa, projeção e custo de pessoal', await page.locator('h2:has-text("Fluxo de caixa gerencial")').isVisible() && await page.locator('h2:has-text("Custo de pessoal")').isVisible());
+  check('Financeiro: alerta de contrato próximo do término', await page.locator('text=Locação da sede').first().isVisible());
+  await page.screenshot({ path: `${SHOTS}/22-financeiro-painel.png`, fullPage: true });
+  await page.click('a:has-text("Manutenção da impressora")');
+  await page.waitForURL(/\/financeiro\/despesas\/[0-9a-f-]+$/);
+  check('Despesa: pagamento disponível para quem não solicitou nem aprovou', await page.locator('h2:has-text("Registrar pagamento")').isVisible());
+  await page.selectOption('select[name=kind]', 'COMPROVANTE');
+  await page.setInputFiles('input[name=file]', { name: 'comprovante.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%comprovante E2E\n%%EOF') });
+  await page.click('button:has-text("Anexar")');
+  await page.waitForSelector('a:has-text("comprovante.pdf")', { timeout: 15000 });
+  page.once('dialog', (d) => d.accept());
+  await page.click('button:has-text("Registrar pagamento")');
+  await page.waitForSelector('.tag:has-text("Paga")', { timeout: 15000 });
+  check('Despesa: comprovante anexado e pagamento registrado pela interface', true);
+  await page.screenshot({ path: `${SHOTS}/23-despesa-paga.png`, fullPage: true });
+  await page.goto(`${BASE}/financeiro?aba=pagar`);
+  await page.click('a:has-text("Scanner de mesa")');
+  await page.waitForURL(/\/financeiro\/despesas\/[0-9a-f-]+$/);
+  check('Compra: cotações com a escolhida destacada', await page.locator('.tag:has-text("Escolhida")').isVisible());
+  await page.click('button:has-text("Aprovar")');
+  await page.waitForSelector('.tag:has-text("Aprovada")', { timeout: 15000 });
+  check('Compra aprovada pela Oficial (não solicitante)', true);
+  await page.goto(`${BASE}/financeiro?aba=orcamento`);
+  check('Orçamento: previsto × realizado', await page.locator('h2:has-text("Previsto × realizado")').isVisible() && (await page.locator('tbody tr').count()) >= 2);
+  const csv = await page.request.get(`${BASE}/api/v1/financeiro/relatorio?de=${new Date().toISOString().slice(0, 7)}&ate=${new Date().toISOString().slice(0, 7)}`);
+  check('Relatório CSV exportado como anexo', csv.status() === 200 && /attachment/.test(csv.headers()['content-disposition'] ?? '') && (await csv.text()).includes('Papel A4'));
+
   await page.goto(`${BASE}/configuracoes?aba=integracoes`);
   check('Integrações: antivírus ativo e armazenamento informado', await page.locator('tr:has-text("Antivírus") >> text=Ativa').isVisible() && await page.locator('text=Armazenamento dos arquivos').isVisible());
   await page.screenshot({ path: `${SHOTS}/17-integracoes.png`, fullPage: true });
@@ -243,6 +272,12 @@ try {
   check('Colaborador: cria, inicia e conclui a própria tarefa', true);
   const pqta = await page.request.get(`${BASE}/projetos`);
   check('Colaborador não vê projeto da diretoria de que não participa', pqta.ok() && !(await pqta.text()).includes('PQTA-2027'));
+
+  check('Colaborador não vê o menu Financeiro', !(await page.locator('nav >> text=Financeiro').count()));
+  await page.goto(`${BASE}/financeiro`);
+  check('Colaborador sem acesso ao financeiro', await page.locator('text=não tem acesso ao módulo financeiro').isVisible());
+  const finFile = await page.request.get(`${BASE}/api/v1/financeiro/relatorio?de=2026-01&ate=2026-12`);
+  check('Colaborador não exporta relatório financeiro', [403, 404].includes(finFile.status()), `HTTP ${finFile.status()}`);
 
   await page.goto(`${BASE}/documentos`);
   check('Colaborador vê documentos do seu público e não vê o confidencial', await page.locator('tbody a:has-text("Código de Ética")').isVisible() && !(await page.locator('tbody a:has-text("Plano de Continuidade")').count()));

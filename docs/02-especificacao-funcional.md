@@ -87,5 +87,12 @@ Criar, editar (nova versão em rascunho), duplicar, ordenar, remover itens, publ
 - **Processos:** modelos com etapas (prazo, papel responsável, entradas, saídas, documentos exigidos, aprovação); a execução cria as etapas como tarefas encadeadas e encerra ao fim.
 - **Avisos:** atribuição, bloqueio, aprovação pendente, devolução, encaminhamento, etapa liberada e prazo (uma vez por prazo).
 
+## F15. Financeiro gerencial (Fase 4b)
+- **Painel:** pago, comprometido, contas vencidas, pendências do usuário, alertas de contrato e de bloqueio por segregação, fluxo de caixa de 6 meses, projeção de 6 meses, despesas por setor e custo de pessoal (só para quem vê salários).
+- **Contas a pagar:** filtros por situação, competência, centro e texto; detalhe com decisão, pagamento, cotações, anexos e histórico.
+- **Solicitar despesa/compra:** tipo, valor, centro, categoria, fornecedor, projeto, competência, vencimento, anexo e justificativa (obrigatória em compras).
+- **Contratos:** vigência, valor mensal/total, vencimento, reajuste (texto), aviso de término, arquivo; lançamento das mensalidades do mês para aprovação.
+- **Fornecedores, orçamento (mensal ou anual), receitas (com estorno), relatórios por categoria/centro/setor com CSV, centros e categorias.**
+
 ## Pendentes
 Avaliações de desempenho e treinamentos (Fase 5); reinício automático do período aquisitivo (art. 133); leitura integral da CCT 2026/2027 e cadastro das regras validadas correspondentes (J-14); prazos de retenção documental (J-15); integração com o Google Drive (P-03).

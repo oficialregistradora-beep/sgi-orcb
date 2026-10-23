@@ -70,6 +70,8 @@ export const LABELS: Record<string, string> = {
   DIARIA: 'Diária', SEMANAL: 'Semanal', MENSAL: 'Mensal', ANUAL: 'Anual',
   ATENDIMENTO: 'Atendimento', RI: 'RI', RCPN: 'RCPN', RTD: 'RTD', RCPJ: 'RCPJ', ADMINISTRACAO: 'Administração', DIRETORIA: 'Diretoria', PESSOAL: 'Gestão de pessoal',
   SUBSTITUTA: 'Substituta Legal', OFICIAL: 'Oficial',
+  FIXA: 'Despesa fixa', VARIAVEL: 'Despesa variável', COMPRA: 'Compra', NOTA_FISCAL: 'Nota fiscal', COMPROVANTE: 'Comprovante', CONTRATO: 'Contrato', ORCAMENTO: 'Orçamento',
+  PIX: 'PIX', BOLETO: 'Boleto', TRANSFERENCIA: 'Transferência', DEBITO_AUTOMATICO: 'Débito automático', CARTAO: 'Cartão', DINHEIRO: 'Dinheiro',
   VIGENTE: 'Vigente', EM_APROVACAO: 'Em aprovação', OBSOLETO: 'Obsoleto', ARQUIVADO: 'Arquivado',
   INTERNO: 'Interno', RESTRITO: 'Restrito', CONFIDENCIAL: 'Confidencial',
   FOLGA_INTEGRAL: 'Folga integral', COMPENSACAO_PARCIAL: 'Compensação parcial', ENTRADA_POSTERIOR: 'Entrada posterior', SAIDA_ANTECIPADA: 'Saída antecipada',

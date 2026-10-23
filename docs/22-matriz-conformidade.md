@@ -19,6 +19,7 @@
 | Provimento CNJ nº 74/2018 e normas do Código Nacional de Normas (Foro Extrajudicial) | Segurança da informação, backup, continuidade | Controles e planos documentados | Pendente de conferência com o texto vigente (J-11) |
 | Código de Normas da CGJ/SC | Normas locais | — | Pendente de consulta (J-11) |
 | Tabela de temporalidade / conservação de documentos (normas do CNJ e da CGJ/SC aplicáveis) | Prazos de retenção do acervo **administrativo** | Prazo por categoria, com fundamento obrigatório; nenhum prazo presumido; descarte bloqueado sem prazo | Pendente de definição e validação (J-15). Acervo registral fora do escopo |
+| Normas do CNJ e da CGJ/SC sobre escrituração e Livro Diário Auxiliar | Controles financeiros formais | Financeiro apenas gerencial, com aviso em todas as telas; sem integração | Pendente de validação jurídica e contábil (J-16) |
 | PQTA | Qualidade | Fase 5 | Planejado |
 
 Fonte das atualizações de 22/10/2026: documento "Validação Jurídica — Requisitos do Sistema", consolidação de pesquisa apresentada pela Oficial Registradora. O próprio documento ressalva que não constitui validação integral das cláusulas da CCT vigente.

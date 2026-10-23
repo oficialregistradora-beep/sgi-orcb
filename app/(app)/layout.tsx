@@ -42,7 +42,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           { href: '/projetos', label: 'Projetos', icon: <I.IconChart /> },
           { href: '/rotinas', label: 'Rotinas e processos', icon: <I.IconCalendar /> },
         ] : []),
-        { href: '#financeiro', label: 'Financeiro', icon: <I.IconWallet />, planned: 'Fase 4' },
+        ...(['financeiro.ver', 'financeiro.solicitar', 'financeiro.aprovar', 'financeiro.pagar', 'financeiro.cadastros', 'financeiro.receitas'].some((x) => can(p, x)) ? [{ href: '/financeiro', label: 'Financeiro', icon: <I.IconWallet /> }] : []),
         { href: '#qualidade', label: 'Qualidade', icon: <I.IconCheck />, planned: 'Fase 5' },
       ],
     },

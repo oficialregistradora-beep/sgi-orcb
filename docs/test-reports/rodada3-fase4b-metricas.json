@@ -1,0 +1,16 @@
+{
+  "executadoEm": "2026-10-22T23:58:25.435Z",
+  "periodo": "2026-01 a 2026-09",
+  "metricas": {
+    "despesas_solicitadas": 108,
+    "mensalidades_de_contrato": 15,
+    "aprovadas": 108,
+    "rejeitadas": 15,
+    "pagas": 106,
+    "pago_centavos": 5167750,
+    "comprometido_centavos": 55357,
+    "orcamento_centavos": 4050000,
+    "receitas_centavos": 14565796,
+    "eventos_auditoria": 365
+  }
+}

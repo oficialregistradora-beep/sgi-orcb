@@ -192,14 +192,19 @@ export async function listContracts(ctx: Ctx) {
   return { rows, alerts: contractAlerts(rows, todayLocal()) };
 }
 
-/** Lança, para a competência, as mensalidades dos contratos vigentes (idempotente; seguem para aprovação). */
+const maxDate = (a: string, b: string) => (a > b ? a : b);
+
+/**
+ * Lança, para a competência, as mensalidades dos contratos vigentes (idempotente; seguem para aprovação).
+ * O vencimento nunca é anterior ao início do contrato. Valor integral: proporcionalidade, se houver, é ajustada antes da aprovação.
+ */
 export async function generateContractExpenses(ctx: Ctx, month: string): Promise<number> {
   requirePermission(ctx, 'financeiro.cadastros');
   const comp = competenceDate(z.string().regex(/^\d{4}-\d{2}$/).parse(month));
   const last = addDays(addMonths(comp, 1), -1);
   return tx(async (c) => {
-    const contracts = await query<{ id: string; object: string; supplier_id: string; cost_center_id: string; category_id: string; monthly_amount: string; due_day: number }>(
-      c, `SELECT id, object, supplier_id, cost_center_id, category_id, monthly_amount::text, due_day FROM contracts
+    const contracts = await query<{ id: string; object: string; supplier_id: string; cost_center_id: string; category_id: string; monthly_amount: string; due_day: number; start_date: string }>(
+      c, `SELECT id, object, supplier_id, cost_center_id, category_id, monthly_amount::text, due_day, start_date FROM contracts
            WHERE status = 'VIGENTE' AND monthly_amount IS NOT NULL AND start_date <= $2 AND (end_date IS NULL OR end_date >= $1)`, [comp, last]);
     let n = 0;
     for (const k of contracts) {
@@ -208,7 +213,7 @@ export async function generateContractExpenses(ctx: Ctx, month: string): Promise
         `INSERT INTO expenses (kind, origin, description, supplier_id, contract_id, cost_center_id, category_id, amount, competence, due_date, requested_by)
          VALUES ('FIXA','CONTRATO',$1,$2,$3,$4,$5,$6,$7,$8,$9)
          ON CONFLICT (contract_id, competence) WHERE origin = 'CONTRATO' AND status <> 'CANCELADA' DO NOTHING RETURNING id`,
-        [`${k.object} — ${comp.slice(5, 7)}/${comp.slice(0, 4)}`, k.supplier_id, k.id, k.cost_center_id, k.category_id, k.monthly_amount, comp, dueDateIn(comp, k.due_day), ctx.principal.userId]);
+        [`${k.object} — ${comp.slice(5, 7)}/${comp.slice(0, 4)}`, k.supplier_id, k.id, k.cost_center_id, k.category_id, k.monthly_amount, comp, maxDate(dueDateIn(comp, k.due_day), k.start_date), ctx.principal.userId]);
       if (r.length) {
         n++;
         await query(c, "INSERT INTO expense_events (expense_id, user_id, event, details) VALUES ($1,$2,'SOLICITADA',$3)", [r[0]!.id, ctx.principal.userId, JSON.stringify({ origem: 'contrato' })]);
@@ -666,4 +671,21 @@ export async function processFinanceReminders(db: Db = getPool()): Promise<numbe
     });
   }
   return rows.length;
+}
+
+/**
+ * Despesas aprovadas que ninguém pode pagar sem violar a segregação (todos os que têm permissão de pagamento
+ * solicitaram ou aprovaram). Indica que a serventia precisa designar mais uma pessoa com a permissão de pagamento.
+ */
+export async function paymentBlockers(ctx: Ctx) {
+  if (!ctx.principal.isOwner && !can(ctx.principal, 'financeiro.aprovar') && !can(ctx.principal, 'financeiro.cadastros')) return [];
+  const db = getPool();
+  const rows = await query<{ id: string; description: string; sector_id: string; requested_by: string; decided_by: string }>(db,
+    `SELECT e.id, e.description, cc.sector_id, e.requested_by, e.decided_by FROM expenses e JOIN cost_centers cc ON cc.id = e.cost_center_id WHERE e.status = 'APROVADA'`);
+  const out: { id: string; description: string }[] = [];
+  for (const r of rows) {
+    const payers = (await usersWithPermission(db, 'financeiro.pagar', r.sector_id)).filter((u) => u !== r.requested_by && u !== r.decided_by);
+    if (!payers.length) out.push({ id: r.id, description: r.description });
+  }
+  return out;
 }

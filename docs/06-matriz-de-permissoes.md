@@ -46,9 +46,17 @@ Configurável em **Usuários e permissões → Matriz** sem alterar código. A O
 | tarefas.gerenciar | T | T | S | — |
 | projetos.gerenciar | T | T | S | — |
 | rotinas.gerenciar | T | T | — | — |
+| financeiro.ver ★ | T | T | S | — |
+| financeiro.solicitar | T | T | S | — |
+| financeiro.aprovar ★ | T | T | — | — |
+| financeiro.pagar ★ | T | T | — | — |
+| financeiro.cadastros ★ | T | T | — | — |
+| financeiro.receitas ★ | T | — | — | — |
 
 ★ permissão sensível. Papéis se acumulam: a Escrevente Substituta recebe *Coordenação de setor* e *Colaborador*.
 
 **Regras adicionais (codificadas, não configuráveis):** ninguém decide a própria solicitação nem analisa a própria ocorrência; ninguém atribui papel a si mesmo; o funcionário não aprova o próprio espelho; a aprovação de espelho exige a manifestação prévia do titular (dupla conferência); operações ★ e assinaturas exigem reautenticação. A Oficial pode decidir pedidos próprios, e isso fica registrado expressamente na auditoria.
 
 **Documentos (Fase 3):** `documentos.ver` dá acesso apenas aos documentos **vigentes** cujo público inclui a pessoa. Quem elaborou ou submeteu uma versão não a aprova — **nem a Oficial**. Documento **confidencial** só é visto pela Oficial, pelo responsável, pelo autor e pelas pessoas da lista; as permissões de gestão, edição e aprovação não o alcançam sem inclusão na lista. Aprovação, ciência e descarte exigem reautenticação.
+
+**Financeiro (Fase 4b):** quem solicita não aprova; quem solicita ou aprova não paga (regra também garantida no banco). Para que toda despesa possa ser paga, designe ao menos **três pessoas** com papéis financeiros (ex.: coordenação solicita, Substituta aprova, auxiliar administrativo paga — crie um papel próprio para o pagador, sem as demais permissões da Substituta).

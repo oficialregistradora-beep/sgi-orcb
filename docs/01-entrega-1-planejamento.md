@@ -268,6 +268,7 @@ A matriz completa, com status, está em `docs/22-matriz-conformidade.md`. Pontos
 | J-11 | Provimento CNJ nº 74/2018 e normativos posteriores; Código de Normas da CGJ/SC | Funcionalidades de apoio (Fase 5); nenhuma conformidade é declarada | Pendente de consulta às versões oficiais vigentes |
 | J-13 | Redução de férias por faltas injustificadas (CLT art. 130) | Faixas implementadas com conferência obrigatória (Fase 2c) | Base legal identificada (22/10/2026); art. 133 manual |
 | J-14 | Regras de férias e de plantão previstas na CCT | CCT SC000957/2026 cadastrada; regras da CCT anterior como histórico, sem aplicação | Instrumento identificado; leitura das cláusulas pendente |
+| J-16 | Relação do financeiro gerencial com a escrituração obrigatória e o Livro Diário Auxiliar; tratamento contábil de encargos | Módulo gerencial, sem integração e sem encargos presumidos (Fase 4b) | Pendente de validação jurídica e contábil |
 | J-15 | Prazos de retenção e descarte do acervo administrativo (tabela de temporalidade; normas do CNJ e da CGJ/SC aplicáveis) | Prazo por categoria com fundamento obrigatório; descarte bloqueado sem prazo (Fase 3) | Pendente: nenhum prazo foi presumido |
 | J-12 | Intervalos (CLT arts. 66 e 71) e limite de 2 h extras diárias (art. 59) | O sistema gera **alertas**, sem bloquear o registro | Dependente de validação jurídica |
 

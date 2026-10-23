@@ -4,6 +4,7 @@ import { ensureProcessedAll } from '@/server/modules/timeclock.ts';
 import { processReviewReminders } from '@/server/modules/repository.ts';
 import { generateRoutineTasks } from '@/server/modules/routines.ts';
 import { processTaskReminders } from '@/server/modules/tasks.ts';
+import { processFinanceReminders } from '@/server/modules/finance.ts';
 import { addDays, todayLocal } from '@/domain/time.ts';
 
 export const dynamic = 'force-dynamic';
@@ -23,5 +24,6 @@ export async function POST(req: Request) {
   const revisoes = await processReviewReminders();
   const rotinas = await generateRoutineTasks(todayLocal(), addDays(todayLocal(), 1));
   const prazos = await processTaskReminders();
-  return NextResponse.json({ processados: n, avisosDeRevisao: revisoes, tarefasDeRotina: rotinas, avisosDePrazo: prazos });
+  const vencimentos = await processFinanceReminders();
+  return NextResponse.json({ processados: n, avisosDeRevisao: revisoes, tarefasDeRotina: rotinas, avisosDePrazo: prazos, avisosDeVencimento: vencimentos });
 }

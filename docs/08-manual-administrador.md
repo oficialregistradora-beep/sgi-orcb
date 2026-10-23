@@ -41,3 +41,12 @@
 - **Processos** (*Modelos de processo*): uma etapa por linha (título | prazo | papel | aprovação s/n | documentos). Ao iniciar, as etapas viram tarefas em sequência.
 - **Encaminhamentos:** questões ordinárias chegam à Substituta Legal; complexas, à Oficial. Registre a decisão na própria tarefa.
 - **Projetos:** sugestões do planejamento (POPs, PQTA 2027, Segurança da Informação…) aparecem ao digitar o nome.
+
+## Fase 4b — financeiro gerencial
+- **Antes de usar:** cadastre centros de custo e fornecedores; ajuste categorias; registre o orçamento do ano (*Orçamento*).
+- **Três pessoas:** quem solicita não aprova; quem solicita ou aprova não paga. Designe uma pessoa para *Registrar pagamentos* (papel próprio, criado em *Usuários e permissões*), diferente de quem aprova. O painel avisa quando uma despesa aprovada não tem quem a pague.
+- **Limite de aprovação** (*Configurações → Parâmetros*, `financeiro.limite_aprovacao_delegada`): acima do valor, só a Oficial aprova. Padrão: desativado.
+- **Mensalidades:** em *Contratos → Lançar despesas fixas do mês*, uma vez por mês (não duplica). Elas seguem para aprovação.
+- **Pagamento:** anexe o comprovante e registre data, valor (igual ao aprovado) e forma. O registro é definitivo.
+- **Receitas:** lançamento gerencial para o fluxo de caixa; correções por estorno.
+- O módulo é gerencial e não substitui a escrituração nem o Livro Diário Auxiliar.

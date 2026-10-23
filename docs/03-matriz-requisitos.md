@@ -34,7 +34,9 @@
 | §14 Projetos (fases, marcos, custos, responsáveis, indicadores) e projetos iniciais sugeridos | `projects.ts`, `/projetos` | phase4a + E2E | Implementado · Testado |
 | §15 Processos (etapas, responsáveis, entradas, saídas, documentos exigidos, aprovações, prazos, alertas, exceções, auditoria, encerramento) | `routines.ts` (modelos e instâncias), `/rotinas` | phase4a (rodadas 1–3) | Implementado · Testado |
 | §15 Rotinas diárias/semanais/mensais/anuais; centrais 4×/dia; bloco 16–17 h; prioridade imediata; escalonamento Substituta/Oficial | `routines.ts`, `domain/recurrence.ts`, `escalate` | unit + rodadas 1–3 | Implementado · Testado |
-| §16 Financeiro | — | — | Planejado (Fase 4b) |
+| §16 Fornecedores, contratos, despesas fixas e variáveis, compras, orçamentos (cotações), centros de custo, contas a pagar, pagamentos, fluxo de caixa, despesas por setor, custos de pessoal, previsão orçamentária, projeção, relatórios mensais, previsto × realizado, aprovações, anexos | `finance.ts`, `domain/money.ts`, `domain/finance.ts`, `/financeiro` | unit + phase4b (rodadas 1–3) + E2E | Implementado · Testado |
+| §16 Segregação solicitação / aprovação / pagamento | serviço + CHECK + gatilho no banco | rodadas 1–3 | Implementado · Testado (exige 3 pessoas com papéis financeiros) |
+| §16 Integração com escrituração / Livro Diário Auxiliar | não integrado (gerencial) | — | Dependente de validação jurídica e contábil (J-16) |
 | §17 Qualidade e conformidade | — | — | Planejado (Fase 5) |
 | §18 Calendar, Chat, Gmail | notificações internas | — | Planejado (Fase 4) |
 | §19 Identidade visual e design system | `app/globals.css`, `src/ui` | E2E (inclui 390 px) | Implementado |

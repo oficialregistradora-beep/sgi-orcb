@@ -11,6 +11,10 @@ import { createDocument, decideVersion, saveDraft, submitForApproval } from '../
 import { addChecklistItem, createTask, escalate, setStatus } from '../src/server/modules/tasks.ts';
 import { addMilestone, addPhase, createProject, saveIndicator, setMember } from '../src/server/modules/projects.ts';
 import { generateRoutineTasks, saveProcessTemplate, saveRoutine, startProcess } from '../src/server/modules/routines.ts';
+import {
+  addFinanceAttachment, addQuote, addRevenue, chooseQuote, decideExpense, generateContractExpenses, listFinanceCategories, registerPayment, requestExpense, saveContract,
+  saveCostCenter, saveSupplier, setBudget,
+} from '../src/server/modules/finance.ts';
 import { addDays, localToInstant, todayLocal, weekdayOf, formatHHMM } from '../src/domain/time.ts';
 
 const cfg = getConfig();
@@ -191,6 +195,35 @@ const tpl = await saveProcessTemplate(cBeatriz, { name: 'Admissão — rotina ad
 ] });
 await startProcess(cBeatriz, tpl, 'Admissão — Pessoa Fictícia');
 console.log('✓ rotinas, projetos, tarefas e processo fictícios');
+
+// Financeiro gerencial fictício (Fase 4b). Segregação: Camila solicita, Beatriz aprova, Helena paga.
+const fcat = Object.fromEntries((await listFinanceCategories()).map((c) => [c.code, c.id]));
+const ccRI = await saveCostCenter(cBeatriz, { code: 'RI', name: 'Registro de Imóveis', sectorId: ri, active: true });
+const ccADM = await saveCostCenter(cBeatriz, { code: 'ADM', name: 'Administração', sectorId: await sector('DIR'), active: true });
+await saveCostCenter(cBeatriz, { code: 'ATD', name: 'Atendimento', sectorId: await sector('ATD'), active: true });
+const forn1 = await saveSupplier(cBeatriz, { name: 'Imobiliária Fictícia Ltda', document: '11.222.333/0001-81' });
+const forn2 = await saveSupplier(cBeatriz, { name: 'Papelaria Exemplo Ltda', document: '45.723.174/0001-10' });
+const ym = today.slice(0, 7);
+const year = Number(ym.slice(0, 4));
+await saveContract(cBeatriz, { supplierId: forn1, object: 'Locação da sede (fictício)', costCenterId: ccADM, categoryId: fcat.ALUGUEL!, startDate: addDays(today, -300),
+  endDate: addDays(today, 45), monthlyCents: 420000, dueDay: 10, readjustment: 'Índice previsto no contrato (fictício)', noticeDays: 60 });
+await setBudget(cBeatriz, { year, months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], costCenterId: ccADM, categoryId: fcat.ALUGUEL!, amountCents: 420000 });
+await setBudget(cBeatriz, { year, months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], costCenterId: ccRI, categoryId: fcat.MATERIAL!, amountCents: 80000 });
+await generateContractExpenses(cBeatriz, ym);
+const PDF = (t: string) => ({ name: `${t}.pdf`, bytes: new TextEncoder().encode(`%PDF-1.4\n%${t} (fictício)\n%%EOF`) });
+const paid = await requestExpense(cCamila, { kind: 'VARIAVEL', description: 'Papel A4 e toner (fictício)', supplierId: forn2, costCenterId: ccRI, categoryId: fcat.MATERIAL!, amountCents: 45990, competence: ym, dueDate: today });
+await decideExpense(cBeatriz, paid, true);
+await addFinanceAttachment(cHelena, { expenseId: paid }, 'COMPROVANTE', PDF('comprovante'));
+await registerPayment(cHelena, paid, { paidOn: today, amountCents: 45990, method: 'PIX', reference: 'FICT-0001' });
+const toPay = await requestExpense(cCamila, { kind: 'VARIAVEL', description: 'Manutenção da impressora (fictício)', supplierId: forn2, costCenterId: ccRI, categoryId: fcat.MANUTENCAO!, amountCents: 32000, competence: ym, dueDate: addDays(today, 3) });
+await decideExpense(cBeatriz, toPay, true);
+const compra = await requestExpense(cCamila, { kind: 'COMPRA', description: 'Scanner de mesa (fictício)', justification: 'Digitalização administrativa', projectId: pops, costCenterId: ccRI, categoryId: fcat.EQUIPAMENTOS!, amountCents: 300000, competence: ym, dueDate: addDays(today, 20) });
+await addQuote(cCamila, compra, { supplierName: 'Loja A (fictícia)', amountCents: 289000 });
+await addQuote(cCamila, compra, { supplierName: 'Loja B (fictícia)', amountCents: 305000 });
+const quotes = await query<{ id: string }>(db, 'SELECT id FROM expense_quotes WHERE expense_id = $1 ORDER BY amount LIMIT 1', [compra]);
+await chooseQuote(cCamila, quotes[0]!.id);
+await addRevenue(cHelena, { competence: ym, receivedOn: today, categoryId: fcat.RECEITA_EMOL!, description: 'Receitas do período (valor fictício)', amountCents: 2500000 });
+console.log('✓ financeiro fictício (centros, fornecedores, contrato, orçamento, despesas, compra, receita)');
 
 console.log('Apurando jornadas…');
 await ensureProcessedAll();

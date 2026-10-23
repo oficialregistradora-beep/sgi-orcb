@@ -104,7 +104,7 @@ p { margin: 0; }
 .muted { color: var(--text-3); }
 .small { font-size: 12.5px; }
 .nowrap { white-space: nowrap; }
-.num { font-variant-numeric: tabular-nums; text-align: right; }
+.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .pos { color: var(--ok); }
 .neg { color: var(--danger); }
 

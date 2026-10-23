@@ -222,3 +222,28 @@ Capturas: [16-antivirus-bloqueio.png](telas/16-antivirus-bloqueio.png), [17-inte
 | — | E2E | Verificação esperava mensagem de um botão que some após a mudança de situação | Passou a esperar a nova situação na tela |
 
 Capturas: [18-quadro-tarefas.png](telas/18-quadro-tarefas.png), [19-gantt.png](telas/19-gantt.png), [20-processos.png](telas/20-processos.png), [21-minhas-tarefas.png](telas/21-minhas-tarefas.png).
+
+
+---
+
+# Fase 4b — financeiro gerencial — execução de 22/10/2026 (branch `fase-4b`)
+
+| Conjunto | Resultado |
+|---|---|
+| Unitário (`phase4b.test.ts`, 9 casos: centavos sem ponto flutuante, digitação brasileira, CNPJ, vencimentos, alertas de contrato, fluxo de caixa, previsto × realizado, projeção) | aprovado |
+| Rodada 1 — Funcional (`phase4b.test.ts`, 14 casos) | aprovado |
+| Rodada 2 — Segurança (`phase4b-security.test.ts`, 9 casos: segregação no banco, imutabilidade, CPF cifrado fora da trilha, reautenticação, IDOR, bloqueio por falta de pagador, pagamentos/decisões/lançamentos simultâneos) | aprovado |
+| Rodada 3 — Simulação de 9 meses (`phase4b-cycle.test.ts`: 108 despesas, 15 mensalidades, 106 pagamentos; totais conferidos com SQL independente, em centavos exatos) | aprovado · [métricas](rodada3-fase4b-metricas.json) |
+| **Suíte completa** | **342/342** |
+| Ponta a ponta | **67/67** (11 verificações novas: painel, pagamento com comprovante, compra com cotações, orçamento, CSV, bloqueio do colaborador) |
+| Backup/restauração | contagens idênticas em 77 tabelas; cadeia de auditoria íntegra |
+| `npm audit` | 0 vulnerabilidades |
+
+## Defeitos e achados da Fase 4b
+| # | Origem | Achado | Tratamento |
+|---|---|---|---|
+| D19 | Rodada 3 | Mensalidade de contrato iniciado no meio do mês era lançada com **vencimento anterior ao início do contrato** | Vencimento nunca antes do início; verificação incluída na simulação |
+| A1 | Seed / inspeção | Com segregação em três papéis, se só Oficial e Substituta tiverem permissões financeiras, despesa solicitada por uma e aprovada pela outra **não tem quem pague** | Regra mantida; aviso no painel e orientação para designar um terceiro papel (pagador) |
+| — | Revisão dos testes | Dois valores esperados errados nos próprios testes (últimos dígitos de um CPF; número de competências de um contrato) | Corrigidos |
+
+Capturas: [22-financeiro-painel.png](telas/22-financeiro-painel.png), [23-despesa-paga.png](telas/23-despesa-paga.png).

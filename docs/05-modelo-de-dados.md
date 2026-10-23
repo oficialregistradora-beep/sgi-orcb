@@ -42,5 +42,10 @@ DDL executável: `db/migrations/0001_fundacao.sql`, `0002_pessoas_jornada.sql` e
 | `routines` | Rotinas recorrentes | Ocorrência única por (rotina, data/horário) |
 | `process_templates`, `process_template_steps`, `process_instances` | Modelos e execuções de processo | Instância guarda cópia das etapas |
 
+| `cost_centers`, `finance_categories`, `budget_lines` | Centros de custo, categorias gerenciais e orçamento mensal | Orçamento único por ano/mês/centro/categoria |
+| `suppliers`, `contracts` | Fornecedores (documento cifrado + HMAC) e contratos | Mensal exige dia de vencimento; encerramento com motivo |
+| `expenses`, `expense_payments`, `expense_quotes`, `finance_attachments`, `expense_events` | Despesas, pagamento (1 por despesa), cotações, anexos e histórico | Segregação no banco; pagamento, anexos e histórico imutáveis; despesa encerrada imutável |
+| `revenue_entries` | Receitas gerenciais | Imutáveis; estorno por lançamento vinculado |
+
 ## Entidades previstas (Fases 2b–5)
-`oncall_schedules` / `oncall_shifts` / `oncall_calls` (plantões RCPN, com sobreaviso, trabalho efetivo e banco **separados**), `vacation_requests`, `drive_files` (se o Drive for adotado — ADR 0009), `suppliers`, `contracts`, `expenses`, `cost_centers`, `budgets`, `payments` (com segregação solicitante/aprovador/pagador), `trainings`, `training_records`, `evaluations`, `audits`, `nonconformities`, `corrective_actions`, `risks`, `incidents`, `assets`, `automations`.
+`oncall_schedules` / `oncall_shifts` / `oncall_calls` (plantões RCPN, com sobreaviso, trabalho efetivo e banco **separados**), `vacation_requests`, `drive_files` (se o Drive for adotado — ADR 0009), `trainings`, `training_records`, `evaluations`, `audits`, `nonconformities`, `corrective_actions`, `risks`, `incidents`, `assets`, `automations`.
