@@ -17,6 +17,7 @@ export default async function MfaPage() {
   const st = await getSessionState();
   if (st.status === 'ANONIMO') redirect('/login');
   if (st.status === 'AUTENTICADO') redirect('/painel');
+  if (st.status === 'REDE_BLOQUEADA') redirect('/acesso-restrito');
   const db = getPool();
   const status = await mfaStatus(db, st.session.user_id);
   const enrollment = status === 'PENDENTE_CADASTRO' ? await beginEnrollment(db, st.session.user_id) : null;

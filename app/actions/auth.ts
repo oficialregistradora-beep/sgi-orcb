@@ -23,7 +23,7 @@ export async function stepUpAction(code: string): Promise<ActionState> {
 export async function mfaAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const st = await getSessionState();
   if (st.status === 'ANONIMO') return { ok: false, message: 'Sessão expirada. Entre novamente.' };
-  if (st.status === 'AUTENTICADO') redirect('/painel');
+  if (st.status === 'AUTENTICADO' || st.status === 'REDE_BLOQUEADA') redirect('/painel');
   const code = String(fd.get('code') ?? '').trim();
   try {
     if (fd.get('mode') === 'cadastro') await confirmEnrollment(getPool(), st.session, code);

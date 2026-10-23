@@ -14,6 +14,7 @@ import {
   type Tolerance,
 } from '../../domain/journey.ts';
 import { addDays, parseHHMM, todayLocal, toLocalParts, weekdayOf } from '../../domain/time.ts';
+import { assertPunchNetwork } from './network.ts';
 import { activeAgreement, insertCredit, reverseEntry } from './ledger.ts';
 
 // Controle ADMINISTRATIVO INTERNO de frequência (J-01): não constitui REP-P nos termos da Portaria MTP 671/2021.
@@ -58,6 +59,7 @@ export async function punch(ctx: Ctx): Promise<{ id: string; punchedAt: Date; ki
   const e = await employeeBasics(getPool(), employeeId);
   requirePermission(ctx, 'jornada.registrar', { employeeId, sectorId: e.sector_id });
   if (e.status === 'DESLIGADO') throw new ForbiddenError('Cadastro funcional desligado.');
+  await assertPunchNetwork(getPool(), ctx.ip);
   const minInterval = await getNumberSetting(getPool(), 'jornada.intervalo_minimo_entre_marcacoes_segundos', 60);
   return tx(async (c) => {
     await query(c, "SELECT pg_advisory_xact_lock(hashtext('punch:' || $1))", [employeeId]);

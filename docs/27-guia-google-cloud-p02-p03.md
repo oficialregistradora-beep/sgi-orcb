@@ -9,6 +9,9 @@ Passo a passo para a serventia criar, **na conta Google da própria serventia**,
 - Tenha à mão: CNPJ e dados de faturamento, um cartão para a conta de faturamento e o e-mail institucional da Oficial.
 - Custos estimados (produção): `01-entrega-1-planejamento.md` §4 — cerca de R$ 90 a R$ 310/mês. A homologação usa a mesma estrutura em tamanho mínimo e pode ser desligada depois do aceite.
 
+## Antes de tudo — IP fixo do cartório
+Para restringir o uso à rede da serventia, peça ao provedor de internet um **IP fixo** (endereço que não muda). Muitos planos empresariais já incluem; se não, é um adicional mensal. Anote o endereço informado pelo provedor.
+
 ## P-02 — Aprovar a infraestrutura e o faturamento
 1. **Registrar a aprovação.** A Oficial aprova a Alternativa A (Cloud Run + Cloud SQL, região São Paulo) — um e-mail ou mensagem formal basta. Isso responde ao P-02.
 2. **Conta de faturamento.** Em [console.cloud.google.com](https://console.cloud.google.com) → menu ☰ → **Faturamento** → **Gerenciar contas de faturamento** → **Criar conta**. Tipo de conta: empresa; informe os dados da serventia e o meio de pagamento.

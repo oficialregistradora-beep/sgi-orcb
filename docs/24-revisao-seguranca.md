@@ -43,6 +43,7 @@
 | S-1 | Painel da **coordenação** falhava (erro 500) para perfis com escopo de setor: consulta reaproveitava a lista de parâmetros da anterior (defeito desde a Fase 1, não coberto porque os testes de tela usavam Oficial, Substituta e colaboradores) | Média (indisponibilidade parcial; sem exposição de dados) | Corrigido; criado o teste de matriz de perfis × consultas, que reproduz o defeito sem a correção |
 | S-2 | Recusas de acesso em telas respondiam **500** em vez de 403/404 | Baixa (acesso já era negado) | Páginas envolvidas por `withGuard`: 403 para sem permissão, 404 para inexistente/identificador inválido |
 | S-3 | Dependência de desenvolvimento (vitest) com avisos publicados | Baixa (não vai para produção) | Atualizada para 5.0.5; suíte completa aprovada |
+| S-5 | O endereço do cliente era lido do **primeiro** item de `X-Forwarded-For`, que o navegador pode forjar (afetava limite de tentativas e o IP registrado nas assinaturas) | Média | Lido do item acrescentado pela infraestrutura (o mais à direita, ajustável por `TRUSTED_PROXY_HOPS`); teste com cabeçalho forjado |
 | S-4 | Contraste de cor e acessibilidade (ver relatório de acessibilidade) | — | Corrigido; 0 violações |
 
 ## Riscos residuais e dependências para produção

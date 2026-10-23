@@ -1,3 +1,6 @@
+import { getConfig } from './config.ts';
+import { pickClientIp } from '../domain/network.ts';
+
 // Limitação de taxa em janela deslizante, em memória por instância. Adequado à escala prevista (0–2 instâncias
 // no Cloud Run); com mais instâncias, o limite efetivo se multiplica (documentado no manual de segurança).
 
@@ -18,5 +21,6 @@ export function rateLimit(key: string, max: number, windowMs: number, now = Date
 }
 
 export function clientIp(req: Request): string {
-  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'desconhecido';
+  // O primeiro item de X-Forwarded-For pode ser forjado pelo navegador (o que contornaria o limite): vale o da infraestrutura.
+  return pickClientIp(req.headers.get('x-forwarded-for'), req.headers.get('x-real-ip'), getConfig().trustedProxyHops) ?? 'desconhecido';
 }

@@ -10,6 +10,9 @@ export async function apiHandler(req: Request, fn: (ctx: Ctx) => Promise<unknown
     return NextResponse.json({ erro: 'ORIGEM_INVALIDA', mensagem: 'Origem da requisição não autorizada.' }, { status: 403 });
   }
   const st = await getSessionState();
+  if (st.status === 'REDE_BLOQUEADA') {
+    return NextResponse.json({ erro: 'REDE_BLOQUEADA', mensagem: 'Acesso permitido apenas na rede da serventia.' }, { status: 403 });
+  }
   if (st.status !== 'AUTENTICADO') {
     return NextResponse.json({ erro: 'NAO_AUTENTICADO', mensagem: 'Autenticação necessária.' }, { status: 401 });
   }

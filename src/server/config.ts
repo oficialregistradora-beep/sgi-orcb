@@ -19,6 +19,8 @@ const schema = z.object({
   HMAC_KEY: base64Key,
   AUTH_DEV_LOGIN: z.enum(['true', 'false']).default('false'),
   // Antivírus (ClamAV/clamd). Em produção, sem antivírus configurado, anexos são recusados.
+  // Proxies da própria infraestrutura além do primeiro (0 = Cloud Run direto ou Caddy/Nginx; 1 = balanceador + Cloud Run).
+  TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(3).default(0),
   CLAMAV_HOST: z.string().default(''),
   CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
   CLAMAV_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(30000),
@@ -54,6 +56,7 @@ export type AppConfig = {
   fieldKey: Buffer;
   hmacKey: Buffer;
   devLogin: boolean;
+  trustedProxyHops: number;
   clamav: { host: string; port: number; timeoutMs: number } | null;
   storage: 'banco' | 'drive';
   drive: { sharedDriveId: string; folderId: string; saKey: string; apiUrl: string; tokenUrl: string };
@@ -107,6 +110,7 @@ export function getConfig(): AppConfig {
     fieldKey: Buffer.from(e.FIELD_ENCRYPTION_KEY, 'base64'),
     hmacKey: Buffer.from(e.HMAC_KEY, 'base64'),
     devLogin,
+    trustedProxyHops: e.TRUSTED_PROXY_HOPS,
     clamav: e.CLAMAV_HOST ? { host: e.CLAMAV_HOST, port: e.CLAMAV_PORT, timeoutMs: e.CLAMAV_TIMEOUT_MS } : null,
     storage: e.DOCUMENT_STORAGE,
     drive: {

@@ -59,6 +59,13 @@
 - **Incidentes:** trate (contenção, causa raiz), registre a avaliação LGPD quando houver dados pessoais e encerre.
 - **Ativos, backups e vulnerabilidades:** mantenha o inventário (inclua certificados digitais e licenças com validade), registre backups e testes de restauração e as vulnerabilidades. Ajuste os prazos em *Configurações* (chaves `seguranca.*`).
 
+## Restrição à rede da serventia
+*Configurações → Rede*: cadastre o **IP fixo** da internet do cartório (e o da conexão reserva), marque “Restringir o uso do sistema a estes endereços” e salve (pede o código do autenticador). A tela mostra o seu endereço atual — use-o estando no cartório.
+- Fora da rede, o colaborador vê “Acesso permitido apenas na rede da serventia”; a tentativa fica registrada.
+- **Sempre podem acessar de fora:** a Oficial; quem tem a permissão “Acesso externo” (por padrão, a Substituta — ajustável em *Usuários e permissões*); quem tiver **liberação temporária** (até 31 dias, com motivo); o **plantonista do RCPN** no horário do plantão (com folga configurável antes e depois).
+- **Ponto:** com a opção marcada, a marcação só é aceita da rede da serventia — para todos.
+- Celular no 4G conta como fora: dentro do cartório, use o Wi-Fi da serventia.
+
 ## Fase 5b — treinamentos, avaliações, painel e automações
 - **Treinamentos:** cadastre no *Catálogo* (público obrigatório, reciclagem, avaliação de aprendizagem — questões no formato `Pergunta | a | *correta | c`). Crie turmas (vão para a agenda) e encerre com a lista de presença. Valide certificados na aba *Validações*. Acompanhe a *Matriz de capacitação*.
 - **Avaliações:** crie modelos (critérios `GRUPO | Critério | peso`), publique e configure a *Programação* (ex.: 30, 60 e 90 dias após a admissão; anual). Defina os prazos do período de experiência conforme o contrato — o sistema não altera contratos nem aplica efeitos.

@@ -20,6 +20,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const st = await getSessionState();
   if (st.status === 'AUTENTICADO') redirect('/painel');
   if (st.status === 'MFA_PENDENTE') redirect('/mfa');
+  if (st.status === 'REDE_BLOQUEADA') redirect('/acesso-restrito');
   const { erro } = await searchParams;
   const cfg = getConfig();
   const devUsers = cfg.devLogin

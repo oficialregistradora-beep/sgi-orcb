@@ -15,6 +15,8 @@
 | — | Definir quem paga (terceiro papel financeiro), prazos de avaliação de experiência, treinamentos obrigatórios e requisitos reais do PQTA | Uso pleno dos módulos |
 
 ## B. Infraestrutura (após P-02/P-03) — guia: `07-manual-instalacao.md` e `23-guia-integracoes-google-antivirus.md`
+- [ ] **IP fixo** contratado com o provedor de internet do cartório (para a restrição de rede).
+- [ ] Após publicar: confirmar em *Configurações → Rede* que o endereço mostrado é o IP fixo do cartório (valida `TRUSTED_PROXY_HOPS`); cadastrar e ativar a restrição.
 - [ ] Projeto GCP na região de São Paulo; Cloud SQL PostgreSQL 16 com backups automáticos e PITR; Cloud Run com HTTPS.
 - [ ] Segredos no Secret Manager: `FIELD_ENCRYPTION_KEY`, `HMAC_KEY` (gerados uma única vez e guardados com cópia segura), `GOOGLE_CLIENT_SECRET`, `CRON_SECRET` (≥ 32 caracteres).
 - [ ] `APP_ENV=producao`, `AUTH_DEV_LOGIN=false`, cookies seguros, `GOOGLE_WORKSPACE_DOMAIN` institucional.

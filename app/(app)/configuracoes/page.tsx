@@ -11,6 +11,7 @@ import { holidayAction, jobTitleAction, removeHolidayAction, scheduleAction, sec
 import { booleanSettingAction } from '../../actions/phase2b.ts';
 import { RegrasJuridicas } from './RegrasJuridicas.tsx';
 import { Integracoes } from './Integracoes.tsx';
+import { Rede } from './Rede.tsx';
 import { ModelosChecklist } from './ModelosChecklist.tsx';
 import { closePeriodAction, reopenPeriodAction } from '../../actions/bank.ts';
 import { withGuard } from '@/server/web/guard.ts';
@@ -20,7 +21,7 @@ export const metadata = { title: 'Configurações' };
 
 const TABS = {
   setores: 'Setores e cargos', jornadas: 'Jornadas', feriados: 'Feriados', parametros: 'Parâmetros', competencias: 'Competências',
-  regras: 'Regras jurídicas', checklists: 'Modelos de checklist', integracoes: 'Integrações',
+  regras: 'Regras jurídicas', checklists: 'Modelos de checklist', integracoes: 'Integrações', rede: 'Rede',
 } as const;
 
 async function ConfigPage({ searchParams }: { searchParams: Promise<{ aba?: string; ano?: string; modelo?: string }> }) {
@@ -45,6 +46,7 @@ async function ConfigPage({ searchParams }: { searchParams: Promise<{ aba?: stri
       {tab === 'regras' ? <RegrasJuridicas ctx={ctx} /> : null}
       {tab === 'checklists' ? <ModelosChecklist ctx={ctx} modelo={sp.modelo} /> : null}
       {tab === 'integracoes' ? <Integracoes ctx={ctx} /> : null}
+      {tab === 'rede' ? <Rede ctx={ctx} /> : null}
     </div>
   );
 }

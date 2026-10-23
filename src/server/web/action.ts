@@ -21,6 +21,7 @@ export async function runAction(
   revalidate: string | string[] = [],
 ): Promise<ActionState> {
   const st = await getSessionState();
+  if (st.status === 'REDE_BLOQUEADA') return { ok: false, message: 'Acesso permitido apenas na rede da serventia.', at: Date.now() };
   if (st.status !== 'AUTENTICADO') return { ok: false, message: 'Sessão expirada. Entre novamente.', at: Date.now() };
   try {
     const message = (await fn(st.ctx)) || 'Operação concluída.';

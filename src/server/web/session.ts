@@ -6,6 +6,8 @@ import { getPool } from '../db.ts';
 import { loadPrincipal } from '../authz.ts';
 import { validateSession, type SessionRow } from '../auth/session.ts';
 import type { Ctx } from '../context.ts';
+import { pickClientIp } from '../../domain/network.ts';
+import { logBlocked, networkDecision } from '../modules/network.ts';
 
 export function sessionCookieName(): string {
   // Prefixo __Host- exige HTTPS, path=/ e ausência de domínio: impede sobrescrita por subdomínios.
@@ -18,14 +20,14 @@ export function sessionCookieOptions() {
 
 export async function clientInfo(): Promise<{ ip: string | null; userAgent: string | null }> {
   const h = await headers();
-  // Atrás do balanceador do Cloud Run, o IP do cliente é o primeiro item de X-Forwarded-For.
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || null;
-  return { ip, userAgent: h.get('user-agent') };
+  // O primeiro item de X-Forwarded-For pode ser forjado pelo navegador: vale o acrescentado pela infraestrutura.
+  return { ip: pickClientIp(h.get('x-forwarded-for'), h.get('x-real-ip'), getConfig().trustedProxyHops), userAgent: h.get('user-agent') };
 }
 
 export type SessionState =
   | { status: 'ANONIMO' }
   | { status: 'MFA_PENDENTE'; session: SessionRow }
+  | { status: 'REDE_BLOQUEADA'; session: SessionRow; ip: string | null }
   | { status: 'AUTENTICADO'; session: SessionRow; ctx: Ctx };
 
 /** Estado da sessão da requisição atual (memoizado por requisição). */
@@ -40,6 +42,11 @@ export const getSessionState = cache(async (): Promise<SessionState> => {
   const principal = await loadPrincipal(db, s.user_id);
   if (!principal) return { status: 'ANONIMO' };
   const { ip, userAgent } = await clientInfo();
+  // Restrição à rede da serventia (quando ativada): vale para páginas, ações e API.
+  if (!(await networkDecision(db, principal, ip)).allowed) {
+    await logBlocked(db, principal, s.id, ip);
+    return { status: 'REDE_BLOQUEADA', session: s, ip };
+  }
   return {
     status: 'AUTENTICADO',
     session: s,
@@ -52,6 +59,7 @@ export async function requirePageCtx(): Promise<Ctx> {
   const st = await getSessionState();
   if (st.status === 'ANONIMO') redirect('/login');
   if (st.status === 'MFA_PENDENTE') redirect('/mfa');
+  if (st.status === 'REDE_BLOQUEADA') redirect('/acesso-restrito');
   return st.ctx;
 }
 
