@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { importPKCS8, SignJWT } from 'jose';
+import { googleFetch, resetGoogleTokens, SCOPES } from './google.ts';
 import { getConfig } from './config.ts';
 import { AppError } from './errors.ts';
 
@@ -8,46 +8,13 @@ import { AppError } from './errors.ts';
 // e os arquivos nunca são compartilhados por link. O hash SHA-256 fica no banco e é conferido a cada leitura.
 // Autenticação: chave da conta de serviço (GOOGLE_DRIVE_SA_KEY) ou, no Cloud Run, a identidade do serviço (sem chave).
 
-const SCOPE = 'https://www.googleapis.com/auth/drive';
-const METADATA_TOKEN_URL = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token';
-
-let token: { value: string; expiresAt: number } | null = null;
-
 /** Somente para testes. */
 export function resetDriveToken(): void {
-  token = null;
-}
-
-async function accessToken(): Promise<string> {
-  if (token && token.expiresAt > Date.now() + 60_000) return token.value;
-  const { drive } = getConfig();
-  let res: Response;
-  if (drive.saKey) {
-    const key = JSON.parse(Buffer.from(drive.saKey, 'base64').toString('utf8')) as { client_email: string; private_key: string };
-    const now = Math.floor(Date.now() / 1000);
-    const assertion = await new SignJWT({ scope: SCOPE })
-      .setProtectedHeader({ alg: 'RS256', typ: 'JWT' })
-      .setIssuer(key.client_email).setAudience(drive.tokenUrl).setIssuedAt(now).setExpirationTime(now + 3600)
-      .sign(await importPKCS8(key.private_key, 'RS256'));
-    res = await fetch(drive.tokenUrl, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion }),
-    });
-  } else {
-    res = await fetch(`${METADATA_TOKEN_URL}?scopes=${encodeURIComponent(SCOPE)}`, { headers: { 'Metadata-Flavor': 'Google' } });
-  }
-  if (!res.ok) throw new Error(`token do Google recusado (HTTP ${res.status})`);
-  const j = (await res.json()) as { access_token: string; expires_in: number };
-  token = { value: j.access_token, expiresAt: Date.now() + j.expires_in * 1000 };
-  return token.value;
+  resetGoogleTokens();
 }
 
 async function call(path: string, init: RequestInit = {}): Promise<Response> {
-  const { drive } = getConfig();
-  const res = await fetch(`${drive.apiUrl}${path}`, { ...init, headers: { ...init.headers, authorization: `Bearer ${await accessToken()}` } });
-  if (res.status === 401) token = null;
-  return res;
+  return googleFetch(`${getConfig().drive.apiUrl}${path}`, SCOPES.drive, init);
 }
 
 function unavailable(op: string, err: unknown): AppError {

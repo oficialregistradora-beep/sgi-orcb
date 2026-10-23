@@ -30,6 +30,14 @@ const schema = z.object({
   GOOGLE_DRIVE_SA_KEY: z.string().default(''),
   GOOGLE_DRIVE_API_URL: z.url().default('https://www.googleapis.com'),
   GOOGLE_OAUTH_TOKEN_URL: z.url().default('https://oauth2.googleapis.com/token'),
+  // Conta de serviço comum às integrações (Drive, Agenda, Gmail). Vazio no Cloud Run: usa a identidade do serviço.
+  GOOGLE_SERVICE_ACCOUNT_KEY: z.string().default(''),
+  GOOGLE_CALENDAR_ID: z.string().default(''),
+  GMAIL_SENDER: z.string().default(''),             // caixa institucional remetente (delegação em todo o domínio, escopo gmail.send)
+  GOOGLE_CHAT_WEBHOOK_URL: z.string().default(''),  // webhook de entrada do espaço do Chat (segredo)
+  GOOGLE_CALENDAR_API_URL: z.url().default('https://www.googleapis.com'),
+  GOOGLE_GMAIL_API_URL: z.url().default('https://gmail.googleapis.com'),
+  GOOGLE_IAM_API_URL: z.url().default('https://iamcredentials.googleapis.com'),
 });
 
 export type AppConfig = {
@@ -49,6 +57,7 @@ export type AppConfig = {
   clamav: { host: string; port: number; timeoutMs: number } | null;
   storage: 'banco' | 'drive';
   drive: { sharedDriveId: string; folderId: string; saKey: string; apiUrl: string; tokenUrl: string };
+  google: { saKey: string; tokenUrl: string; iamUrl: string; calendarId: string; calendarApiUrl: string; gmailSender: string; gmailApiUrl: string; chatWebhook: string };
 };
 
 let cached: AppConfig | null = null;
@@ -73,8 +82,16 @@ export function getConfig(): AppConfig {
   if (e.DOCUMENT_STORAGE === 'drive' && !e.GOOGLE_DRIVE_SHARED_DRIVE_ID) {
     throw new Error('DOCUMENT_STORAGE=drive exige GOOGLE_DRIVE_SHARED_DRIVE_ID.');
   }
-  if (appEnv === 'producao' && (e.GOOGLE_DRIVE_API_URL !== 'https://www.googleapis.com' || e.GOOGLE_OAUTH_TOKEN_URL !== 'https://oauth2.googleapis.com/token')) {
+  if (appEnv === 'producao' && (e.GOOGLE_DRIVE_API_URL !== 'https://www.googleapis.com' || e.GOOGLE_OAUTH_TOKEN_URL !== 'https://oauth2.googleapis.com/token'
+    || e.GOOGLE_CALENDAR_API_URL !== 'https://www.googleapis.com' || e.GOOGLE_GMAIL_API_URL !== 'https://gmail.googleapis.com'
+    || e.GOOGLE_IAM_API_URL !== 'https://iamcredentials.googleapis.com')) {
     throw new Error('Endereços da API do Google não podem ser substituídos em produção.');
+  }
+  if (e.GOOGLE_CHAT_WEBHOOK_URL && appEnv === 'producao' && !e.GOOGLE_CHAT_WEBHOOK_URL.startsWith('https://chat.googleapis.com/')) {
+    throw new Error('GOOGLE_CHAT_WEBHOOK_URL deve ser um webhook de https://chat.googleapis.com/.');
+  }
+  if (e.GMAIL_SENDER && !e.GMAIL_SENDER.toLowerCase().endsWith(`@${e.GOOGLE_WORKSPACE_DOMAIN.toLowerCase()}`)) {
+    throw new Error('GMAIL_SENDER deve ser uma caixa do domínio institucional.');
   }
   cached = {
     env: e.NODE_ENV,
@@ -95,6 +112,11 @@ export function getConfig(): AppConfig {
     drive: {
       sharedDriveId: e.GOOGLE_DRIVE_SHARED_DRIVE_ID, folderId: e.GOOGLE_DRIVE_FOLDER_ID, saKey: e.GOOGLE_DRIVE_SA_KEY,
       apiUrl: e.GOOGLE_DRIVE_API_URL.replace(/\/$/, ''), tokenUrl: e.GOOGLE_OAUTH_TOKEN_URL,
+    },
+    google: {
+      saKey: e.GOOGLE_SERVICE_ACCOUNT_KEY || e.GOOGLE_DRIVE_SA_KEY, tokenUrl: e.GOOGLE_OAUTH_TOKEN_URL, iamUrl: e.GOOGLE_IAM_API_URL.replace(/\/$/, ''),
+      calendarId: e.GOOGLE_CALENDAR_ID, calendarApiUrl: e.GOOGLE_CALENDAR_API_URL.replace(/\/$/, ''),
+      gmailSender: e.GMAIL_SENDER.toLowerCase(), gmailApiUrl: e.GOOGLE_GMAIL_API_URL.replace(/\/$/, ''), chatWebhook: e.GOOGLE_CHAT_WEBHOOK_URL,
     },
   };
   return cached;

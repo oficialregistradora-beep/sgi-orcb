@@ -11,6 +11,7 @@ import { addDays, addMonths, todayLocal } from '../../domain/time.ts';
 import { recordSignature } from './documents.ts';
 import { discardUnsaved, insertStoredFile, loadStoredFile, prepareFile, purgeStoredFile, readStoredFile, rescan, type PreparedFile } from './fileStore.ts';
 import { notifyUsers, usersWithPermission } from './notifications.ts';
+import { enqueueChat } from './integrations.ts';
 
 // Repositório institucional de documentos (Fase 3).
 // Ciclo: RASCUNHO → (submissão) EM_APROVACAO → (aprovação por outra pessoa, com assinatura simples e reautenticação) VIGENTE
@@ -460,6 +461,8 @@ export async function decideVersion(ctx: Ctx, id: string, input: z.input<typeof 
     });
     if (doc.requires_acknowledgement) {
       const audience = await audienceUserIds(c, { ...doc, status: 'VIGENTE' });
+      // Chat é um espaço coletivo: só documentos internos destinados a todos (título de restrito/confidencial não sai).
+      if (doc.confidentiality === 'INTERNO' && doc.audience_type === 'TODOS') await enqueueChat(c, `documento:${v.id}`, `📄 Novo documento institucional vigente para ciência: ${doc.title} (versão ${v.version_number}). Registre a ciência no SGI.`);
       await notifyUsers(c, audience, { kind: 'DOCUMENTO_PARA_CIENCIA', title: 'Documento para ciência', body: `${doc.title} — versão ${v.version_number}`, link: `/documentos/${id}`, priority: 'ALTA' });
     }
   });

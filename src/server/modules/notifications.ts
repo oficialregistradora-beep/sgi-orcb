@@ -1,19 +1,22 @@
 import { type Db, getPool, query, queryOne } from '../db.ts';
 import type { Ctx } from '../context.ts';
+import { enqueueNotificationEmails } from './integrations.ts';
 
-// Notificações internas. Envio por Google Chat/Gmail: Fase 4 (dependente de configuração e autorização de escopos).
+// Notificações internas; cópia por e-mail institucional (Gmail) quando a integração está ativa (Fase 4c).
 
 export type NotificationInput = { kind: string; title: string; body?: string; link?: string; priority?: 'BAIXA' | 'NORMAL' | 'ALTA' };
 
 export async function notifyUsers(db: Db, userIds: string[], n: NotificationInput): Promise<void> {
   const unique = [...new Set(userIds)];
   if (!unique.length) return;
-  await query(
+  const rows = await query<{ id: string; user_id: string; title: string; link: string | null; priority: string }>(
     db,
     `INSERT INTO notifications (user_id, kind, title, body, link, priority)
-     SELECT u, $2, $3, $4, $5, $6 FROM unnest($1::uuid[]) AS u`,
+     SELECT u, $2, $3, $4, $5, $6 FROM unnest($1::uuid[]) AS u RETURNING id, user_id, title, link, priority`,
     [unique, n.kind, n.title, n.body ?? null, n.link ?? null, n.priority ?? 'NORMAL'],
   );
+  // E-mail institucional (Gmail), na mesma transação: só sai se a operação que gerou o aviso for confirmada.
+  await enqueueNotificationEmails(db, rows);
 }
 
 export async function notifyEmployee(db: Db, employeeId: string, n: NotificationInput): Promise<void> {
