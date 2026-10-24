@@ -58,6 +58,24 @@ Para restringir o uso à rede da serventia, peça ao provedor de internet um **I
 
    Uma **nova sessão** passa a enxergar esses valores. Pelo chat, informe apenas o domínio institucional e os e-mails de quem vai homologar (Oficial e Substituta). Esses dados não são segredos.
 
+## Caminho sem chave (recomendado) — publicação pelo Cloud Shell
+Usado quando a organização bloqueia chaves de conta de serviço (`iam.managed.disableServiceAccountKeyCreation`, padrão em organizações novas — **não alterar a política**). Substitui os passos 8 e 9: nenhuma chave é criada e nenhum segredo passa pelo chat ou pelo ambiente de desenvolvimento.
+
+1. Baixar o pacote do código (`sgi-orcb.zip`) entregue pelo desenvolvimento, ou o ZIP do repositório no GitHub.
+2. No console, com o projeto `sgi-orcb-homolog` selecionado, abrir o **Cloud Shell** (ícone `>_` no topo) → menu **⋮** → **Fazer upload** → escolher o ZIP.
+3. No terminal do Cloud Shell:
+   ```bash
+   unzip -q sgi-orcb.zip -d sgi-orcb && cd sgi-orcb && bash deploy/gcp-homolog.sh
+   ```
+4. Responder às perguntas: e-mail de quem fará a Oficial (e, se quiser, a Substituta), o **ID do cliente** OAuth e, uma única vez, a **chave secreta do cliente** (não aparece ao colar; vai direto para o Secret Manager).
+5. Ao final (≈ 25 min na primeira vez), o script mostra o endereço do sistema e a **URI de redirecionamento** para acrescentar no cliente OAuth (passo 6).
+
+O que o script cria, tudo em `southamerica-east1`: rede privada `sgi-vpc`; Cloud SQL PostgreSQL 16 `sgi-homolog` **sem IP público**, com backups diários e recuperação pontual de 7 dias; segredos gerados no próprio Secret Manager; contas de serviço `sgi-app` (aplicação) e `sgi-setup` (preparação do banco), cada uma com acesso só aos seus segredos; imagens no Artifact Registry `sgi`; jobs `sgi-setup` (migrations + papel `sgi_app` restrito) e `sgi-seed` (dados **fictícios**, com os e-mails reais apenas de quem testa); serviço Cloud Run `sgi-orcb` com antivírus ClamAV junto; rotina diária `sgi-rotina-diaria` às 06:10. Login de teste desligado: entra-se só com a conta Google @domínio + código do autenticador.
+
+Reexecutar o script (mesmo comando) publica uma nova versão; o que já existe é mantido. A conta `sgi-implantacao` criada no passo 8 não é usada nesse caminho e pode ser excluída.
+
+Limitações conhecidas da homologação: instância mínima do banco (db-f1-micro); conexão do banco sem TLS, apenas dentro da rede privada (rever para a produção); o antivírus leva 2–3 min para carregar quando o sistema "acorda" e, nesse intervalo, anexos são recusados (comportamento seguro). Validado aqui: a preparação do banco e o seed com e-mails reais, e o sistema completo rodando com o papel restrito `sgi_app` (E2E 99/99); o fluxo do script foi exercitado com simulação dos comandos do Google. **A execução real no Google Cloud ainda não foi feita.**
+
 ## O que acontece depois (feito pelo desenvolvimento)
 1. Habilitar as APIs.
 2. Criar o banco Cloud SQL (com backups e recuperação pontual) e os segredos do sistema: chaves de cifragem geradas no próprio Google, sem passar pelo chat.

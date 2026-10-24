@@ -42,6 +42,15 @@ function rand(): number {
 }
 const jitter = (max: number) => Math.round((rand() * 2 - 1) * max);
 
+// Homologação com login Google real: SEED_EMAILS="oficial=fulana@dominio;substituta=beltrana@dominio" troca o e-mail
+// fictício dessas personagens pelo da pessoa que vai testar (os nomes e os dados continuam fictícios).
+const emailOverrides = new Map((process.env.SEED_EMAILS ?? '').split(/[;,]/).map((x) => x.trim()).filter(Boolean).map((x) => {
+  const [k, v] = x.split('=').map((y) => y?.trim().toLowerCase());
+  if (!k || !v || !v.endsWith(`@${cfg.workspaceDomain}`)) throw new Error(`SEED_EMAILS inválido (use personagem=email@${cfg.workspaceDomain}): ${x}`);
+  return [k, v] as const;
+}));
+const emailOf = (local: string) => emailOverrides.get(local) ?? `${local}@${cfg.workspaceDomain}`;
+
 const id = async (sql: string, p: unknown[] = []) => (await queryOne<{ id: string }>(db, sql, p))!.id;
 const sector = (code: string) => id('SELECT id FROM sectors WHERE code = $1', [code]);
 const job = (name: string) => id('SELECT id FROM job_titles WHERE name = $1', [name]);
@@ -69,7 +78,7 @@ const holidays = new Set((await query<{ date: string }>(db, 'SELECT date FROM ho
 
 for (const p of people) {
   seq += 1;
-  const userId = await id('INSERT INTO users (email, display_name, is_owner) VALUES ($1,$2,$3) RETURNING id', [`${p.local}@${cfg.workspaceDomain}`, p.name, !!p.owner]);
+  const userId = await id('INSERT INTO users (email, display_name, is_owner) VALUES ($1,$2,$3) RETURNING id', [emailOf(p.local), p.name, !!p.owner]);
   if (p.owner) ownerId = userId;
   const employeeId = await id(
     `INSERT INTO employees (user_id, registration_code, full_name, job_title_id, sector_id, admission_date, contract_type, weekly_hours, created_by)
@@ -108,7 +117,7 @@ for (const p of people) {
       ]);
     }
   }
-  console.log(`✓ ${p.name} (${p.local}@${cfg.workspaceDomain})`);
+  console.log(`✓ ${p.name} (${emailOf(p.local)})`);
 }
 
 // Plantões RCPN fictícios das últimas 6 semanas (rodízio), com alguns chamados — deixados abertos para o roteiro de fechamento.
@@ -139,7 +148,7 @@ console.log(`✓ ${k} plantões RCPN fictícios`);
 await query(db, `INSERT INTO audit_log (actor_user_id, action, entity_type, summary, prev_hash, hash) VALUES ($1,'CARGA_HOMOLOGACAO','sistema','Carga de dados fictícios de homologação','','')`, [ownerId]);
 // Documentos institucionais fictícios, criados pelos próprios serviços (com versões, aprovações e assinaturas).
 async function seedCtx(local: string): Promise<Ctx> {
-  const u = await id('SELECT id FROM users WHERE email = $1', [`${local}@${cfg.workspaceDomain}`]);
+  const u = await id('SELECT id FROM users WHERE email = $1', [emailOf(local)]);
   const { sessionId } = await createSession(db, u, 'DEV', '127.0.0.1', 'seed');
   await markMfaVerified(db, sessionId);
   await query(db, 'UPDATE sessions SET step_up_at = now() WHERE id = $1', [sessionId]);
