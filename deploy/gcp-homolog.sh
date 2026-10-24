@@ -2,6 +2,7 @@
 # SGI-ORCB — publicação da HOMOLOGAÇÃO no Google Cloud, sem chave de conta de serviço.
 # Executar no Cloud Shell (console.cloud.google.com → ícone ">_"), logado como administrador, na pasta do código:
 #   bash deploy/gcp-homolog.sh
+# Para trocar a chave secreta do cliente OAuth (após gerar outra no console): bash deploy/gcp-homolog.sh --trocar-chave-oauth
 # Usa o login de quem executa (nenhuma chave é criada). Pode ser executado de novo a qualquer momento:
 # o que já existe é mantido; a imagem é reconstruída e republicada.
 # Segredos são gerados aqui e gravados direto no Secret Manager; nada é exibido na tela.
@@ -56,6 +57,8 @@ pergunta_email EMAIL_OFICIAL "E-mail Google de quem fará o papel da OFICIAL nos
 pergunta_email EMAIL_SUBSTITUTA "E-mail Google de quem fará o papel da SUBSTITUTA (Enter para pular)" 0
 while [[ "${GOOGLE_CLIENT_ID:-}" != *.apps.googleusercontent.com ]]; do
   read -r -p "    ID do cliente OAuth \"SGI homologação\" (termina em .apps.googleusercontent.com): " GOOGLE_CLIENT_ID
+  GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID//[[:space:]]/}"
+  [[ "$GOOGLE_CLIENT_ID" == GOCSPX* ]] && { echo "    Isso é a CHAVE SECRETA, não o ID. Ela será pedida depois, sem aparecer na tela."; GOOGLE_CLIENT_ID=""; }
 done
 printf 'EMAIL_OFICIAL=%q\nEMAIL_SUBSTITUTA=%q\nGOOGLE_CLIENT_ID=%q\n' "$EMAIL_OFICIAL" "${EMAIL_SUBSTITUTA:-}" "$GOOGLE_CLIENT_ID" > "$CONF"
 ok "Respostas guardadas em $CONF"
@@ -100,10 +103,17 @@ segredo sgi-cron-secret "$(openssl rand -hex 32)"
 segredo sgi-db-owner-password "$(openssl rand -hex 24)"
 segredo sgi-db-app-password "$(openssl rand -hex 24)"
 segredo sgi-db-root-password "$(openssl rand -hex 24)"
-if ! gcloud secrets describe sgi-google-client-secret >/dev/null 2>&1; then
+ler_chave_oauth() {
   CS=""
-  while [ ${#CS} -lt 10 ]; do read -r -s -p "    Chave secreta do cliente OAuth (não aparece ao digitar/colar; Enter): " CS; echo; done
+  while [ ${#CS} -lt 10 ]; do read -r -s -p "    $1 (não aparece ao digitar/colar; Enter): " CS; echo; CS="${CS//[[:space:]]/}"; done
+}
+if ! gcloud secrets describe sgi-google-client-secret >/dev/null 2>&1; then
+  ler_chave_oauth "Chave secreta do cliente OAuth"
   segredo sgi-google-client-secret "$CS"; unset CS
+elif [ "${1:-}" = "--trocar-chave-oauth" ]; then
+  ler_chave_oauth "NOVA chave secreta do cliente OAuth"
+  printf '%s' "$CS" | gcloud secrets versions add sgi-google-client-secret --data-file=- --quiet >/dev/null; unset CS
+  ok "Nova chave secreta gravada; a publicação abaixo passa a usá-la"
 fi
 ok "Segredos prontos"
 
@@ -208,13 +218,12 @@ ok "Dados fictícios carregados (Oficial: $EMAIL_OFICIAL${EMAIL_SUBSTITUTA:+; Su
 
 # ---------------------------------------------------------------------------
 passo "9/10 Publicando o sistema (Cloud Run, com antivírus junto)"
-gcloud run deploy "$SERVICE" --region="$REGION" --service-account="$SA_APP" "${REDE[@]}" \
+gcloud run deploy "$SERVICE" --quiet --region="$REGION" --service-account="$SA_APP" "${REDE[@]}" \
   --execution-environment=gen2 --no-cpu-throttling --min-instances=0 --max-instances=2 --timeout=300 \
   --ingress=all --no-invoker-iam-check \
   --container=app --image="$REG/app:$TAG" --port=8080 --cpu=1 --memory=1Gi --env-vars-file="$TMP/app.yaml" \
   --set-secrets=DATABASE_URL=sgi-database-url-app:latest,FIELD_ENCRYPTION_KEY=sgi-field-key:latest,HMAC_KEY=sgi-hmac-key:latest,GOOGLE_CLIENT_SECRET=sgi-google-client-secret:latest,CRON_SECRET=sgi-cron-secret:latest \
-  --container=clamav --image="$REG/clamav:1.4" --cpu=1 --memory=3Gi \
-  --quiet >/dev/null
+  --container=clamav --image="$REG/clamav:1.4" --cpu=1 --memory=3Gi >/dev/null
 for _ in $(seq 1 30); do curl -sf "$APP_URL/api/v1/health" | grep -q '"banco":"ok"' && break; sleep 5; done
 curl -sf "$APP_URL/api/v1/health" | grep -q '"banco":"ok"' && ok "No ar: $APP_URL" || aviso "Publicado, mas a verificação de saúde ainda não respondeu. Teste $APP_URL/api/v1/health em 2 min."
 
