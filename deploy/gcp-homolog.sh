@@ -147,10 +147,19 @@ gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet >/dev/null 2>&1
 REG="$REGION-docker.pkg.dev/$PROJECT/$REPO"
 TAG="$(date +%Y%m%d-%H%M)"
 docker build -q -t "$REG/app:$TAG" . >/dev/null
-docker push -q "$REG/app:$TAG" >/dev/null
-docker pull -q clamav/clamav:1.4 >/dev/null
+# Envio com novas tentativas: falhas momentâneas de rede no Cloud Shell são comuns logo após criar o repositório.
+tenta() {
+  local n=1
+  until "$@" >/dev/null; do
+    [ $n -ge 5 ] && erro "Falha de rede repetida em: ${*:1:3}. Aguarde alguns minutos e execute o mesmo comando de novo."
+    aviso "Falha de rede (tentativa $n de 5); nova tentativa em $((n * 15)) s…"
+    sleep $((n * 15)); n=$((n + 1))
+  done
+}
+tenta docker push -q "$REG/app:$TAG"
+tenta docker pull -q clamav/clamav:1.4
 docker tag clamav/clamav:1.4 "$REG/clamav:1.4"
-docker push -q "$REG/clamav:1.4" >/dev/null
+tenta docker push -q "$REG/clamav:1.4"
 ok "app:$TAG e clamav:1.4 publicadas no Artifact Registry"
 
 # ---------------------------------------------------------------------------
