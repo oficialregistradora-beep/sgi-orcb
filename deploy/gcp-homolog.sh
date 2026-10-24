@@ -25,7 +25,6 @@ erro()  { printf '\n\033[1;31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 trap 'printf "\n\033[1;31m✗ Parou na linha %s. Copie as últimas linhas acima (sem senhas) e envie ao desenvolvimento.\033[0m\n" "$LINENO" >&2' ERR
 
 [ -f Dockerfile ] && [ -f scripts/cloud-setup.ts ] || erro "Execute dentro da pasta do código (onde estão Dockerfile e scripts/)."
-command -v docker >/dev/null || erro "Docker indisponível: execute no Cloud Shell."
 
 # ---------------------------------------------------------------------------
 passo "1/10 Conferências"
@@ -64,7 +63,7 @@ ok "Respostas guardadas em $CONF"
 # ---------------------------------------------------------------------------
 passo "2/10 Ativando as APIs (pode levar 1–2 min)"
 gcloud services enable run.googleapis.com sqladmin.googleapis.com secretmanager.googleapis.com artifactregistry.googleapis.com \
-  compute.googleapis.com servicenetworking.googleapis.com cloudscheduler.googleapis.com --quiet
+  compute.googleapis.com servicenetworking.googleapis.com cloudscheduler.googleapis.com cloudbuild.googleapis.com --quiet
 ok "APIs ativas"
 
 # ---------------------------------------------------------------------------
@@ -140,26 +139,41 @@ for s in sgi-database-url-owner sgi-db-app-password sgi-field-key sgi-hmac-key; 
 ok "Permissões dos segredos aplicadas"
 
 # ---------------------------------------------------------------------------
-passo "7/10 Imagens (montagem aqui no Cloud Shell — 5 a 10 min)"
+passo "7/10 Imagens (montagem no Cloud Build — 5 a 10 min)"
+# O Docker do Cloud Shell não alcança o Artifact Registry; a montagem e o envio são feitos pelo Cloud Build,
+# com identidade própria (sgi-build): em organizações novas, a conta padrão do Cloud Build não tem permissões.
 gcloud artifacts repositories describe "$REPO" --location="$REGION" >/dev/null 2>&1 \
   || gcloud artifacts repositories create "$REPO" --repository-format=docker --location="$REGION" --quiet
-gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet >/dev/null 2>&1
+SA_BUILD="sgi-build@$PROJECT.iam.gserviceaccount.com"
+gcloud iam service-accounts describe "$SA_BUILD" >/dev/null 2>&1 \
+  || { gcloud iam service-accounts create sgi-build --display-name="SGI build" --quiet; sleep 20; }
+for r in roles/logging.logWriter roles/storage.objectViewer; do
+  gcloud projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$SA_BUILD" --role="$r" --condition=None --quiet >/dev/null
+done
+gcloud artifacts repositories add-iam-policy-binding "$REPO" --location="$REGION" --member="serviceAccount:$SA_BUILD" \
+  --role=roles/artifactregistry.writer --quiet >/dev/null
 REG="$REGION-docker.pkg.dev/$PROJECT/$REPO"
 TAG="$(date +%Y%m%d-%H%M)"
-docker build -q -t "$REG/app:$TAG" . >/dev/null
-# Envio com novas tentativas: falhas momentâneas de rede no Cloud Shell são comuns logo após criar o repositório.
-tenta() {
-  local n=1
-  until "$@" >/dev/null; do
-    [ $n -ge 5 ] && erro "Falha de rede repetida em: ${*:1:3}. Aguarde alguns minutos e execute o mesmo comando de novo."
-    aviso "Falha de rede (tentativa $n de 5); nova tentativa em $((n * 15)) s…"
-    sleep $((n * 15)); n=$((n + 1))
-  done
-}
-tenta docker push -q "$REG/app:$TAG"
-tenta docker pull -q clamav/clamav:1.4
-docker tag clamav/clamav:1.4 "$REG/clamav:1.4"
-tenta docker push -q "$REG/clamav:1.4"
+BUILD_CFG="$(mktemp --suffix=.yaml)"
+cat > "$BUILD_CFG" <<CFG
+steps:
+- name: gcr.io/cloud-builders/docker
+  args: [build, -t, $REG/app:$TAG, .]
+- name: gcr.io/cloud-builders/docker
+  args: [pull, mirror.gcr.io/clamav/clamav:1.4]
+- name: gcr.io/cloud-builders/docker
+  args: [tag, mirror.gcr.io/clamav/clamav:1.4, $REG/clamav:1.4]
+images: [$REG/app:$TAG, $REG/clamav:1.4]
+options: {logging: CLOUD_LOGGING_ONLY, machineType: E2_HIGHCPU_8}
+timeout: 1800s
+CFG
+# Permissões recém-concedidas levam até 2 min para valer: até 3 tentativas.
+n=1
+until gcloud builds submit . --config="$BUILD_CFG" --service-account="projects/$PROJECT/serviceAccounts/$SA_BUILD" --quiet; do
+  [ $n -ge 3 ] && erro "A montagem no Cloud Build falhou 3 vezes. Veja: console → Cloud Build → Histórico → último build → Registros."
+  aviso "Montagem falhou (tentativa $n de 3); nova tentativa em 60 s…"; sleep 60; n=$((n + 1))
+done
+rm -f "$BUILD_CFG"
 ok "app:$TAG e clamav:1.4 publicadas no Artifact Registry"
 
 # ---------------------------------------------------------------------------
