@@ -74,7 +74,12 @@ O que o script cria, tudo em `southamerica-east1`: rede privada `sgi-vpc`; Cloud
 
 Reexecutar o script (mesmo comando) publica uma nova versão; o que já existe é mantido. A conta `sgi-implantacao` criada no passo 8 não é usada nesse caminho e pode ser excluída.
 
-Limitações conhecidas da homologação: instância mínima do banco (db-f1-micro); conexão do banco sem TLS, apenas dentro da rede privada (rever para a produção); o antivírus leva 2–3 min para carregar quando o sistema "acorda" e, nesse intervalo, anexos são recusados (comportamento seguro). Validado aqui: a preparação do banco e o seed com e-mails reais, e o sistema completo rodando com o papel restrito `sgi_app` (E2E 99/99); o fluxo do script foi exercitado com simulação dos comandos do Google. **A execução real no Google Cloud ainda não foi feita.**
+Limitações conhecidas da homologação: instância mínima do banco (db-f1-micro); conexão do banco sem TLS, apenas dentro da rede privada (rever para a produção); o antivírus leva 2–3 min para carregar quando o sistema "acorda" e, nesse intervalo, anexos são recusados (comportamento seguro). Validado aqui: a preparação do banco e o seed com e-mails reais, e o sistema completo rodando com o papel restrito `sgi_app` (E2E 99/99); o fluxo do script foi exercitado com simulação dos comandos do Google. **Executado no Google Cloud em 24/10/2026** (projeto `sgi-orcb-homolog`), com login Google da Oficial confirmado pela serventia.
+
+Ocorrências da primeira execução, já corrigidas no script:
+- o Docker do Cloud Shell recebia "connection refused" do Artifact Registry → a montagem passou ao Cloud Build (conta `sgi-build`);
+- `--quiet` depois do último `--container` era lido como opção do contêiner → movido para antes;
+- o ID do cliente foi colado em pedaços (e a chave secreta no campo do ID) → o script remove espaços/quebras e recusa a chave nesse campo; a chave exposta foi trocada (`--trocar-chave-oauth`) e a antiga excluída.
 
 ## O que acontece depois (feito pelo desenvolvimento)
 1. Habilitar as APIs.

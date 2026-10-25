@@ -47,4 +47,4 @@ docker compose -f docker-compose.local.yml down -v          # parar e APAGAR tud
 ## Variante VM / instalação local (Alternativas C e "custo mínimo")
 `docker compose up -d` (arquivo `docker-compose.yml`, que já inclui o antivírus ClamAV), atrás de proxy reverso com TLS (Caddy ou Nginx), com backups conforme `12-backup-restauracao.md`. A aplicação **não deve** ser exposta sem HTTPS.
 
-> Status: build de produção e execução local **testados**; imagem Docker e implantação no GCP **não executadas** neste ambiente (dependem de credenciais e autorização).
+> Status: build de produção, execução local e demonstração em Docker **testados**. **Homologação** publicada no Google Cloud em 24/10/2026 pelo caminho sem chave (`deploy/gcp-homolog.sh`, ver `27-guia-google-cloud-p02-p03.md`). **Produção não implantada** (depende do aceite da homologação e de autorização expressa da serventia).
