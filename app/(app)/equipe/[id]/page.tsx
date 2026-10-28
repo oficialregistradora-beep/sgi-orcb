@@ -242,11 +242,16 @@ async function FuncionarioPage({ params, searchParams }: { params: Promise<{ id:
           <div className="card-head"><h2>Itens entregues</h2><p>Uniformes, equipamentos, crachás e chaves — com termo de entrega</p></div>
           <div className="card-body stack">
             {items.length ? (
-              <table className="table"><thead><tr><th>Item</th><th>Entrega</th><th>Devolução</th></tr></thead>
+              <table className="table"><thead><tr><th>Item</th><th>Entrega</th><th>Termo</th><th>Devolução</th></tr></thead>
                 <tbody>{items.map((it) => (
                   <tr key={it.id} className={it.returned_at ? 'row-muted' : undefined}>
                     <td className="small">{label(it.kind)}: {it.quantity}× {it.description}</td>
                     <td className="small nowrap">{fmtDate(it.delivered_at)}</td>
+                    <td className="small">{it.term_version_id ? (
+                      <Link href={`/documentos-pessoais?doc=${it.term_version_id}`}>
+                        {it.term_act ? <span className={statusTone(it.term_act)}>{label(it.term_act)}</span> : <span className="tag tag-warn">Pendente</span>}
+                      </Link>
+                    ) : '—'}{it.term_signed_at ? <div className="muted">{fmtDateTime(it.term_signed_at)}</div> : null}</td>
                     <td className="small">{it.returned_at ? fmtDate(it.returned_at) : canEditPeople ? (
                       <ActionForm action={returnItemAction} submitLabel="Devolvido" submitClass="btn btn-sm" inline>
                         <input type="hidden" name="employeeId" value={id} /><input type="hidden" name="itemId" value={it.id} />

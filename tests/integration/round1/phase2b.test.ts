@@ -5,7 +5,7 @@ import { assignShift, closeShift, generateSchedule, getShift, listShifts, oncall
 import { cancelApprovedVacation, getVacationOverview, requestVacation, reviewVacationPeriod } from '../../../src/server/modules/vacation.ts';
 import { decideRequest } from '../../../src/server/modules/requests.ts';
 import { createEmployee, terminateEmployee, addSalary } from '../../../src/server/modules/people.ts';
-import { deliverItem, listChecklists, returnItem, setChecklistItem } from '../../../src/server/modules/checklists.ts';
+import { deliverItem, listChecklists, listEmployeeItems, returnItem, setChecklistItem } from '../../../src/server/modules/checklists.ts';
 import { signVersion, listPendingApprovals } from '../../../src/server/modules/documents.ts';
 import { updateBooleanSetting } from '../../../src/server/modules/admin.ts';
 import { getBankOverview, listOccurrences } from '../../../src/server/modules/hourbank.ts';
@@ -212,7 +212,10 @@ describe('Fase 2b — checklists e itens entregues', () => {
   it('entrega de uniforme gera termo; ciência sem aprovação (configurável por tipo)', async () => {
     const { termVersionId } = await deliverItem(ctxSubst, newId, { kind: 'UNIFORME', description: 'Camisa institucional', quantity: 2, deliveredAt: today });
     const ctxNew = await ctxFor(newUser);
+    const term = async () => (await listEmployeeItems(ctxSubst, newId)).find((i) => i.term_version_id === termVersionId)!;
+    expect(await term()).toMatchObject({ term_act: null }); // ficha: termo pendente, com link para a versão
     await signVersion(ctxNew, { versionId: termVersionId, act: 'CIENCIA', confirmed: true });
+    expect(await term()).toMatchObject({ term_act: 'CIENCIA' });
     await expect(signVersion(ctxOwner, { versionId: termVersionId, act: 'APROVACAO', confirmed: true })).rejects.toThrow('não exige aprovação');
     expect((await listPendingApprovals(ctxOwner)).some((p) => p.version_id === termVersionId)).toBe(false);
     await updateBooleanSetting(ctxOwner, 'documentos.aprovacao.TERMO_ENTREGA', true);

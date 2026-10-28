@@ -140,8 +140,20 @@ export async function setChecklistItem(ctx: Ctx, input: z.input<typeof itemSchem
 // ---------------------------------------------------------------------------
 export async function listEmployeeItems(ctx: Ctx, employeeId: string) {
   await getEmployeeFor(ctx, 'pessoas.ver', employeeId);
-  return query<{ id: string; kind: string; description: string; quantity: number; delivered_at: string; returned_at: string | null; notes: string | null }>(
-    getPool(), 'SELECT id, kind, description, quantity, delivered_at, returned_at, notes FROM employee_items WHERE employee_id = $1 ORDER BY returned_at NULLS FIRST, delivered_at DESC', [employeeId]);
+  // Termo de entrega: versão mais recente e a manifestação do próprio funcionário (nula = pendente).
+  return query<{ id: string; kind: string; description: string; quantity: number; delivered_at: string; returned_at: string | null; notes: string | null;
+    term_version_id: string | null; term_act: string | null; term_signed_at: Date | null }>(
+    getPool(),
+    `SELECT i.id, i.kind, i.description, i.quantity, i.delivered_at, i.returned_at, i.notes,
+            v.id AS term_version_id, s.act AS term_act, s.signed_at AS term_signed_at
+       FROM employee_items i
+       JOIN employees e ON e.id = i.employee_id
+       LEFT JOIN documents d ON d.reference_type = 'TERMO_ENTREGA' AND d.reference_key = 'item:' || i.id
+       LEFT JOIN LATERAL (SELECT id FROM document_versions WHERE document_id = d.id ORDER BY version_number DESC LIMIT 1) v ON true
+       LEFT JOIN LATERAL (SELECT act, signed_at FROM signatures WHERE document_version_id = v.id AND signer_user_id = e.user_id AND act <> 'APROVACAO'
+                           ORDER BY signed_at DESC LIMIT 1) s ON true
+      WHERE i.employee_id = $1 ORDER BY i.returned_at NULLS FIRST, i.delivered_at DESC`,
+    [employeeId]);
 }
 
 const deliverSchema = z.object({
