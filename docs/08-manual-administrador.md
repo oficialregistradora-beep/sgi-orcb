@@ -49,6 +49,7 @@
 ## Fase 4b — financeiro gerencial
 - **Antes de usar:** cadastre centros de custo e fornecedores; ajuste categorias; registre o orçamento do ano (*Orçamento*).
 - **Três pessoas:** quem solicita não aprova; quem solicita ou aprova não paga. Designe uma pessoa para *Registrar pagamentos* (papel próprio, criado em *Usuários e permissões*), diferente de quem aprova. O painel avisa quando uma despesa aprovada não tem quem a pague.
+- **A Oficial pode fazer tudo** (decisão da serventia na homologação): com `financeiro.oficial_sem_segregacao` = Sim (padrão), a Oficial pode solicitar, aprovar e pagar a mesma despesa; a auditoria registra “segregação dispensada por parâmetro”. Vale só para a Oficial — as demais pessoas seguem a regra das três pessoas — e só ela pode desligar o parâmetro (*Configurações → Parâmetros*). A regra também é aplicada no banco de dados.
 - **Limite de aprovação** (*Configurações → Parâmetros*, `financeiro.limite_aprovacao_delegada`): acima do valor, só a Oficial aprova. Padrão: desativado.
 - **Mensalidades:** em *Contratos → Lançar despesas fixas do mês*, uma vez por mês (não duplica). Elas seguem para aprovação.
 - **Pagamento:** anexe o comprovante e registre data, valor (igual ao aprovado) e forma. O registro é definitivo.

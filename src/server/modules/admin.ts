@@ -456,7 +456,8 @@ const NUMERIC_LIMITS: Record<string, [number, number]> = {
 /** Parâmetros booleanos editáveis (ex.: exigência de aprovação por tipo de documento). */
 export async function updateBooleanSetting(ctx: Ctx, key: string, value: boolean): Promise<void> {
   requirePermission(ctx, 'configuracoes.gerenciar');
-  if (!/^documentos\.aprovacao\.[A-Z_]+$/.test(key)) throw new AppError('Parâmetro não editável por esta tela.');
+  if (!/^documentos\.aprovacao\.[A-Z_]+$/.test(key) && key !== 'financeiro.oficial_sem_segregacao') throw new AppError('Parâmetro não editável por esta tela.');
+  if (key === 'financeiro.oficial_sem_segregacao' && !ctx.principal.isOwner) throw new ForbiddenError('Somente a Oficial altera a dispensa de segregação.');
   await requireStepUp(getPool(), ctx);
   await tx(async (c) => {
     const r = await query(c, 'UPDATE settings SET value = $2, updated_by = $3, updated_at = now() WHERE key = $1 RETURNING key', [key, JSON.stringify(value), ctx.principal.userId]);

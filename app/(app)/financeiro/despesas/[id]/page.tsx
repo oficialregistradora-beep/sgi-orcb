@@ -53,7 +53,7 @@ async function DespesaPage({ params }: { params: Promise<{ id: string }> }) {
       </div></div>
 
       {can.decide ? (
-        <div className="card"><div className="card-head"><h2>Decisão</h2><p>Você não solicitou esta despesa. A decisão exige o código do autenticador.</p></div>
+        <div className="card"><div className="card-head"><h2>Decisão</h2><p>{e.requested_by === ctx.principal.userId ? 'Você solicitou esta despesa e, como Oficial, pode decidi-la (segregação dispensada por parâmetro).' : 'Você não solicitou esta despesa.'} A decisão exige o código do autenticador.</p></div>
           <div className="card-body grid grid-2">
             <Op id={id} op="aprovar" label="Aprovar" cls="btn btn-primary"><input name="notes" className="input" placeholder="Observação (opcional)" aria-label="Observação" /></Op>
             <Op id={id} op="rejeitar" label="Rejeitar" cls="btn btn-danger"><input name="notes" className="input" placeholder="Motivo" aria-label="Motivo da rejeição" required minLength={3} /></Op>
@@ -62,7 +62,7 @@ async function DespesaPage({ params }: { params: Promise<{ id: string }> }) {
       ) : e.status === 'SOLICITADA' && e.requested_by === ctx.principal.userId ? <div className="alert alert-info small">Aguardando decisão de outra pessoa (segregação de funções).</div> : null}
 
       {can.pay ? (
-        <div className="card"><div className="card-head"><h2>Registrar pagamento</h2><p>Anexe o comprovante antes. Você não solicitou nem aprovou esta despesa.</p></div>
+        <div className="card"><div className="card-head"><h2>Registrar pagamento</h2><p>Anexe o comprovante antes. {e.requested_by === ctx.principal.userId || e.decided_by === ctx.principal.userId ? 'Como Oficial, você pode pagar mesmo tendo solicitado ou aprovado (segregação dispensada por parâmetro).' : 'Você não solicitou nem aprovou esta despesa.'}</p></div>
           <div className="card-body"><Op id={id} op="pagar" label="Registrar pagamento" cls="btn btn-primary" confirm="O registro de pagamento é definitivo. Confirma?">
             <input name="paidOn" type="date" className="input" aria-label="Data do pagamento" defaultValue={todayLocal()} required />
             <input name="amount" className="input" aria-label="Valor pago" defaultValue={formatCents(toCents(e.amount)).replace('R$ ', '')} required />

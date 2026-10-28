@@ -343,7 +343,8 @@ export async function decideExpense(ctx: Ctx, id: string, approve: boolean, note
   await tx(async (c) => {
     const e = await loadExpense(c, ctx, id, true);
     if (e.status !== 'SOLICITADA') throw new AppError('A despesa não está aguardando decisão.');
-    if (e.requested_by === ctx.principal.userId) throw new ForbiddenError('Segregação de funções: quem solicitou não aprova.');
+    const selfDecision = e.requested_by === ctx.principal.userId;
+    if (selfDecision && !(await ownerExempt(c, ctx.principal))) throw new ForbiddenError('Segregação de funções: quem solicitou não aprova.');
     const limit = await getNumberSetting(c, 'financeiro.limite_aprovacao_delegada', 0);
     if (approve && limit > 0 && toCents(e.amount) > Math.round(limit * 100) && !ctx.principal.isOwner) {
       throw new ForbiddenError(`Valor acima do limite de aprovação delegada (R$ ${limit.toFixed(2)}): cabe à Oficial.`);
@@ -355,10 +356,10 @@ export async function decideExpense(ctx: Ctx, id: string, approve: boolean, note
     await query(c, 'UPDATE expenses SET status=$2, decided_by=$3, decided_at=now(), decision_notes=$4, updated_at=now() WHERE id=$1',
       [id, approve ? 'APROVADA' : 'REJEITADA', ctx.principal.userId, notes?.trim() || null]);
     await event(c, ctx, id, approve ? 'APROVADA' : 'REJEITADA', { notas: notes?.trim() || undefined });
-    await audit(c, ctx, { action: approve ? 'FIN_DESPESA_APROVADA' : 'FIN_DESPESA_REJEITADA', entityType: 'expense', entityId: id, summary: `${e.description} (${e.amount}) ${approve ? 'aprovada' : 'rejeitada'}` });
+    await audit(c, ctx, { action: approve ? 'FIN_DESPESA_APROVADA' : 'FIN_DESPESA_REJEITADA', entityType: 'expense', entityId: id, summary: `${e.description} (${e.amount}) ${approve ? 'aprovada' : 'rejeitada'}${selfDecision ? ' pela própria solicitante (Oficial — segregação dispensada por parâmetro)' : ''}` });
     await notifyUsers(c, [e.requested_by], { kind: approve ? 'FIN_APROVADA' : 'FIN_REJEITADA', title: approve ? 'Despesa aprovada' : 'Despesa rejeitada', body: e.description, link: `/financeiro/despesas/${id}` });
     if (approve) {
-      const payers = (await usersWithPermission(c, 'financeiro.pagar', e.sector_id)).filter((u) => u !== ctx.principal.userId && u !== e.requested_by);
+      const payers = (await eligiblePayers(c, { sector_id: e.sector_id, requested_by: e.requested_by, decided_by: ctx.principal.userId })).filter((u) => u !== ctx.principal.userId);
       await notifyUsers(c, payers, { kind: 'FIN_A_PAGAR', title: 'Despesa aprovada para pagamento', body: `${e.description} — vence em ${e.due_date}`, link: `/financeiro/despesas/${id}` });
     }
   });
@@ -379,7 +380,8 @@ export async function registerPayment(ctx: Ctx, id: string, input: z.input<typeo
   await tx(async (c) => {
     const e = await loadExpense(c, ctx, id, true);
     if (e.status !== 'APROVADA') throw new AppError('Somente despesa aprovada pode ser paga.');
-    if (e.requested_by === ctx.principal.userId || e.decided_by === ctx.principal.userId) throw new ForbiddenError('Segregação de funções: quem solicitou ou aprovou não registra o pagamento.');
+    const selfPayment = e.requested_by === ctx.principal.userId || e.decided_by === ctx.principal.userId;
+    if (selfPayment && !(await ownerExempt(c, ctx.principal))) throw new ForbiddenError('Segregação de funções: quem solicitou ou aprovou não registra o pagamento.');
     if (d.amountCents !== toCents(e.amount)) throw new AppError('O valor pago deve ser igual ao valor aprovado (pagamentos parciais não são admitidos; ajuste exige nova solicitação).');
     if ((await getSetting<boolean>(c, 'financeiro.comprovante_obrigatorio', true)) && e.receipts === 0) throw new AppError('Anexe o comprovante antes de registrar o pagamento.');
     await query(c, 'INSERT INTO expense_payments (expense_id, paid_on, amount, method, reference, paid_by) VALUES ($1,$2,$3,$4,$5,$6)',
@@ -387,7 +389,7 @@ export async function registerPayment(ctx: Ctx, id: string, input: z.input<typeo
       .catch((err: { code?: string }) => { if (err.code === '23505') throw new ConflictError('Pagamento já registrado.'); throw err; });
     await query(c, "UPDATE expenses SET status='PAGA', updated_at=now() WHERE id=$1", [id]);
     await event(c, ctx, id, 'PAGA', { data: d.paidOn, forma: d.method });
-    await audit(c, ctx, { action: 'FIN_PAGAMENTO', entityType: 'expense', entityId: id, summary: `Pagamento de ${e.description} (${e.amount}) em ${d.paidOn} via ${d.method}` });
+    await audit(c, ctx, { action: 'FIN_PAGAMENTO', entityType: 'expense', entityId: id, summary: `Pagamento de ${e.description} (${e.amount}) em ${d.paidOn} via ${d.method}${selfPayment ? ' (Oficial — segregação dispensada por parâmetro)' : ''}` });
   });
 }
 
@@ -517,11 +519,12 @@ export async function getExpense(ctx: Ctx, id: string) {
       'SELECT e.id, e.event, e.details, e.created_at, u.display_name AS user_name FROM expense_events e LEFT JOIN users u ON u.id = e.user_id WHERE e.expense_id = $1 ORDER BY e.created_at DESC', [id]),
   ]);
   const p = ctx.principal;
+  const exempt = await ownerExempt(db, p);
   return {
-    expense: e, quotes, attachments, events,
+    expense: e, quotes, attachments, events, ownerExempt: exempt,
     can: {
-      decide: e.status === 'SOLICITADA' && can(p, 'financeiro.aprovar') && e.requested_by !== p.userId,
-      pay: e.status === 'APROVADA' && can(p, 'financeiro.pagar') && e.requested_by !== p.userId && e.decided_by !== p.userId,
+      decide: e.status === 'SOLICITADA' && can(p, 'financeiro.aprovar') && (e.requested_by !== p.userId || exempt),
+      pay: e.status === 'APROVADA' && can(p, 'financeiro.pagar') && ((e.requested_by !== p.userId && e.decided_by !== p.userId) || exempt),
       edit: e.status === 'SOLICITADA' && e.requested_by === p.userId,
       quote: e.status === 'SOLICITADA' && (e.requested_by === p.userId || can(p, 'financeiro.cadastros')),
       attach: (e.status === 'SOLICITADA' || e.status === 'APROVADA' || e.status === 'PAGA') && (e.requested_by === p.userId || can(p, 'financeiro.pagar') || can(p, 'financeiro.cadastros') || can(p, 'financeiro.aprovar')),
@@ -654,6 +657,18 @@ export async function financeOverview(ctx: Ctx, fromMonth: string, toMonth: stri
   };
 }
 
+/** Parâmetro da serventia: a Oficial não está sujeita à segregação de funções no financeiro. */
+async function ownerExempt(db: Db, p: Principal): Promise<boolean> {
+  return p.isOwner && (await getSetting<boolean>(db, 'financeiro.oficial_sem_segregacao', false)) === true;
+}
+
+/** Quem pode pagar a despesa: tem a permissão e não solicitou nem aprovou — salvo a Oficial, se dispensada. */
+async function eligiblePayers(db: Db, r: { sector_id: string; requested_by: string; decided_by: string }): Promise<string[]> {
+  const exempt = (await getSetting<boolean>(db, 'financeiro.oficial_sem_segregacao', false)) === true;
+  const owner = exempt ? (await queryOne<{ id: string }>(db, 'SELECT id FROM users WHERE is_owner AND status = \'ATIVO\' LIMIT 1'))?.id : undefined;
+  return (await usersWithPermission(db, 'financeiro.pagar', r.sector_id)).filter((u) => u === owner || (u !== r.requested_by && u !== r.decided_by));
+}
+
 /** Rotina: avisa quem paga sobre despesas aprovadas a vencer (uma vez por vencimento). */
 export async function processFinanceReminders(db: Db = getPool()): Promise<number> {
   const days = await getNumberSetting(db, 'financeiro.aviso_vencimento_dias', 5);
@@ -665,7 +680,7 @@ export async function processFinanceReminders(db: Db = getPool()): Promise<numbe
   for (const r of rows) {
     await tx(async (c) => {
       await query(c, "INSERT INTO expense_events (expense_id, user_id, event, details) VALUES ($1, NULL, 'AVISO_VENCIMENTO', $2)", [r.id, JSON.stringify({ vencimento: r.due_date })]);
-      const payers = (await usersWithPermission(c, 'financeiro.pagar', r.sector_id)).filter((u) => u !== r.requested_by && u !== r.decided_by);
+      const payers = await eligiblePayers(c, r);
       const late = r.due_date < todayLocal();
       await notifyUsers(c, payers, { kind: 'FIN_VENCIMENTO', title: late ? 'Conta vencida' : 'Conta a vencer', body: `${r.description} — ${r.due_date}`, link: `/financeiro/despesas/${r.id}`, priority: late ? 'ALTA' : 'NORMAL' });
     });
@@ -684,7 +699,7 @@ export async function paymentBlockers(ctx: Ctx) {
     `SELECT e.id, e.description, cc.sector_id, e.requested_by, e.decided_by FROM expenses e JOIN cost_centers cc ON cc.id = e.cost_center_id WHERE e.status = 'APROVADA'`);
   const out: { id: string; description: string }[] = [];
   for (const r of rows) {
-    const payers = (await usersWithPermission(db, 'financeiro.pagar', r.sector_id)).filter((u) => u !== r.requested_by && u !== r.decided_by);
+    const payers = await eligiblePayers(db, r);
     if (!payers.length) out.push({ id: r.id, description: r.description });
   }
   return out;

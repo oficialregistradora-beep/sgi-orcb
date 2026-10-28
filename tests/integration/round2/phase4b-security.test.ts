@@ -6,6 +6,7 @@ import {
   paymentBlockers, registerPayment, requestExpense, saveContract, saveCostCenter, saveSupplier,
 } from '../../../src/server/modules/finance.ts';
 import { verifyAuditChain } from '../../../src/server/audit.ts';
+import { invalidateSettingsCache } from '../../../src/server/settings.ts';
 import { todayLocal } from '../../../src/domain/time.ts';
 import { closePool, ctxFor, ids, makePerson, resetDatabase } from '../../helpers.ts';
 
@@ -14,6 +15,10 @@ let cOwner: Ctx, cSubst: Ctx, cPayer: Ctx, cCoord: Ctx, cAtdCoord: Ctx, cColab: 
 let ccRI: string, catMat: string, catAlug: string, catRec: string, supplier: string;
 const today = todayLocal();
 const month = today.slice(0, 7);
+const setExempt = async (v: boolean) => {
+  await query(getPool(), "UPDATE settings SET value = $1 WHERE key = 'financeiro.oficial_sem_segregacao'", [JSON.stringify(v)]);
+  invalidateSettingsCache();
+};
 const RECEIPT = { name: 'c.pdf', bytes: new TextEncoder().encode('%PDF-1.4\n%fictício\n%%EOF') };
 
 async function approved(desc: string, cents = 10000) {
@@ -90,10 +95,32 @@ describe('Rodada 2 (4b) — autorização e segregação', () => {
     const id = await requestExpense(cSubst, { kind: 'VARIAVEL', description: 'Sem pagador?', costCenterId: ccADM, categoryId: catMat, amountCents: 500, competence: month, dueDate: today });
     await decideExpense(cOwner, id, true);
     expect((await paymentBlockers(cOwner)).some((b) => b.id === id)).toBe(false);
-    // Sem o Auxiliar (papel revogado), ninguém pode pagar sem violar a segregação → bloqueio sinalizado.
+    // Sem o Auxiliar (papel revogado): com a dispensa da Oficial (padrão), ela ainda pode pagar → sem bloqueio.
     await query(getPool(), 'UPDATE user_roles SET revoked_at = now() WHERE user_id = $1', [cPayer.principal.userId]);
+    expect((await paymentBlockers(cOwner)).some((b) => b.id === id)).toBe(false);
+    // Sem a dispensa, ninguém pode pagar sem violar a segregação → bloqueio sinalizado.
+    await setExempt(false);
     expect((await paymentBlockers(cOwner)).some((b) => b.id === id)).toBe(true);
+    await setExempt(true);
     await query(getPool(), 'UPDATE user_roles SET revoked_at = NULL WHERE user_id = $1', [cPayer.principal.userId]);
+  });
+
+  it('Oficial pode solicitar, aprovar e pagar a mesma despesa (parâmetro); demais pessoas seguem a segregação', async () => {
+    const cc = (await queryOne<{ id: string }>(getPool(), "SELECT id FROM cost_centers WHERE code = 'ADM'"))!.id;
+    const mine = await requestExpense(cOwner, { kind: 'VARIAVEL', description: 'Tudo pela Oficial', costCenterId: cc, categoryId: catMat, amountCents: 700, competence: month, dueDate: today });
+    await decideExpense(cOwner, mine, true);
+    await addFinanceAttachment(cOwner, { expenseId: mine }, 'COMPROVANTE', RECEIPT);
+    await registerPayment(cOwner, mine, { paidOn: today, amountCents: 700, method: 'PIX' });
+    const a = (await queryOne<{ summary: string }>(getPool(), "SELECT summary FROM audit_log WHERE action = 'FIN_PAGAMENTO' AND entity_id = $1", [mine]))!;
+    expect(a.summary).toContain('segregação dispensada');
+    // A Substituta continua impedida de aprovar o próprio pedido.
+    const subst = await requestExpense(cSubst, { kind: 'VARIAVEL', description: 'Pedido da Substituta', costCenterId: cc, categoryId: catMat, amountCents: 800, competence: month, dueDate: today });
+    await expect(decideExpense(cSubst, subst, true)).rejects.toThrow('Segregação');
+    // Desligada a dispensa, a Oficial volta à regra geral.
+    await setExempt(false);
+    const other = await requestExpense(cOwner, { kind: 'VARIAVEL', description: 'Sem dispensa', costCenterId: cc, categoryId: catMat, amountCents: 900, competence: month, dueDate: today });
+    await expect(decideExpense(cOwner, other, true)).rejects.toThrow('Segregação');
+    await setExempt(true);
   });
 });
 
