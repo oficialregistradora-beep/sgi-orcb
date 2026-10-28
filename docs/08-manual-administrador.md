@@ -65,6 +65,7 @@
 - **Sempre podem acessar de fora:** a Oficial; quem tem a permissão “Acesso externo” (por padrão, a Substituta — ajustável em *Usuários e permissões*); quem tiver **liberação temporária** (até 31 dias, com motivo); o **plantonista do RCPN** no horário do plantão (com folga configurável antes e depois).
 - **Ponto:** com a opção marcada, a marcação só é aceita da rede da serventia — para todos.
 - Celular no 4G conta como fora: dentro do cartório, use o Wi-Fi da serventia.
+- **Endereço sem IP fixo:** se 2 ou mais pessoas forem recusadas a partir do mesmo endereço em 1 hora, a Oficial e quem administra as configurações recebem um aviso (prioridade alta, uma vez por dia por endereço) — sinal de que a internet do cartório mudou de endereço. Estando **no cartório**, abra *Configurações → Rede*, acrescente o endereço atual numa nova linha e salve; dias depois, remova o antigo. Marcações perdidas entram por pedido de correção.
 
 ## Fase 5b — treinamentos, avaliações, painel e automações
 - **Treinamentos:** cadastre no *Catálogo* (público obrigatório, reciclagem, avaliação de aprendizagem — questões no formato `Pergunta | a | *correta | c`). Crie turmas (vão para a agenda) e encerre com a lista de presença. Valide certificados na aba *Validações*. Acompanhe a *Matriz de capacitação*.

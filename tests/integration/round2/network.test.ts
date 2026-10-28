@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { getPool, query, queryOne } from '../../../src/server/db.ts';
 import type { Ctx } from '../../../src/server/context.ts';
 import { invalidateSettingsCache } from '../../../src/server/settings.ts';
-import { addNetworkException, getNetworkConfig, networkDecision, revokeNetworkException, saveNetworkConfig } from '../../../src/server/modules/network.ts';
+import { addNetworkException, getNetworkConfig, logBlocked, networkDecision, revokeNetworkException, saveNetworkConfig } from '../../../src/server/modules/network.ts';
 import { punch } from '../../../src/server/modules/timeclock.ts';
 import { verifyAuditChain } from '../../../src/server/audit.ts';
 import { closePool, ctxFor, ids, makePerson, resetDatabase } from '../../helpers.ts';
@@ -90,6 +90,22 @@ describe('Restrição de rede — decisões', () => {
     invalidateSettingsCache();
     expect((await queryOne<{ value: boolean }>(getPool(), "SELECT value FROM settings WHERE key = 'rede.ponto_somente_interno'"))!.value).toBe(false);
     void colabEmp;
+  });
+
+  it('várias pessoas recusadas do mesmo endereço avisam quem administra (uma vez por dia)', async () => {
+    const db = getPool();
+    const NOVO = '177.9.9.9';
+    const avisos = async () => (await queryOne<{ n: number }>(db, "SELECT count(*)::int AS n FROM notifications WHERE kind = 'REDE_ENDERECO_NOVO'"))!.n;
+    await logBlocked(db, cColab.principal, cColab.sessionId, NOVO);
+    expect(await avisos()).toBe(0); // uma pessoa só pode ser acesso de casa
+    await logBlocked(db, cPlantao.principal, cPlantao.sessionId, NOVO);
+    const dest = await query<{ display_name: string; title: string; link: string }>(db,
+      "SELECT u.display_name, n.title, n.link FROM notifications n JOIN users u ON u.id = n.user_id WHERE n.kind = 'REDE_ENDERECO_NOVO' ORDER BY 1");
+    expect(dest.map((d) => d.display_name)).toEqual(['Oficial', 'Substituta']); // Oficial + permissão de configurações
+    expect(dest[0]).toMatchObject({ link: '/configuracoes?aba=rede' });
+    expect(dest[0]!.title).toContain(NOVO);
+    await logBlocked(db, cSubst.principal, cSubst.sessionId, NOVO); // terceira pessoa: sem novo aviso no mesmo dia
+    expect(await avisos()).toBe(2);
   });
 
   it('desativar devolve o acesso a todos; trilha íntegra', async () => {

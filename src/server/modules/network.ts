@@ -5,6 +5,7 @@ import { can, requirePermission, requireStepUp } from '../authz.ts';
 import { audit } from '../audit.ts';
 import { AppError, ForbiddenError, NotFoundError } from '../errors.ts';
 import { invalidateSettingsCache } from '../settings.ts';
+import { notifyUsers } from './notifications.ts';
 import { ipAllowed, parseAllowList, parseCidr, type Cidr } from '../../domain/network.ts';
 
 // Restrição de acesso à rede da serventia. Fora dos endereços cadastrados, o uso depende de: ser a Oficial,
@@ -64,6 +65,36 @@ export async function logBlocked(db: Db, p: Principal, sessionId: string, ip: st
   lastLogged.set(key, now);
   await audit(db, { userId: p.userId, sessionId, ip }, { action: 'REDE_BLOQUEIO', entityType: 'user', entityId: p.userId, summary: `Acesso fora da rede da serventia recusado (${ip ?? 'endereço desconhecido'})` })
     .catch(() => undefined);
+  await alertPossibleAddressChange(ip).catch(() => undefined);
+}
+
+/** Pessoas distintas recusadas do mesmo endereço, em 1 hora, que indicam troca do IP do cartório (não um acesso isolado de casa). */
+export const ADDRESS_ALERT_MIN_PEOPLE = 2;
+
+/**
+ * Sem IP fixo, o endereço do cartório pode mudar e todos passam a ser recusados. Quando várias pessoas são recusadas
+ * a partir do mesmo endereço, avisa quem pode corrigir (Oficial e quem administra as configurações), uma vez por dia.
+ */
+async function alertPossibleAddressChange(ip: string | null): Promise<void> {
+  if (!ip) return;
+  await tx(async (c) => {
+    const n = (await queryOne<{ n: number }>(c, `SELECT count(DISTINCT actor_user_id)::int AS n FROM audit_log
+      WHERE action = 'REDE_BLOQUEIO' AND ip = $1 AND occurred_at > now() - interval '1 hour'`, [ip]))!.n;
+    if (n < ADDRESS_ALERT_MIN_PEOPLE) return;
+    const key = `rede-endereco-novo:${ip}:${new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' })}`;
+    if (!(await queryOne(c, 'INSERT INTO reminder_log (key) VALUES ($1) ON CONFLICT DO NOTHING RETURNING key', [key]))) return;
+    const admins = await query<{ id: string }>(c, `SELECT DISTINCT u.id FROM users u
+        LEFT JOIN user_roles ur ON ur.user_id = u.id AND ur.revoked_at IS NULL AND ur.valid_from <= current_date
+                               AND (ur.valid_until IS NULL OR ur.valid_until >= current_date)
+        LEFT JOIN role_permissions rp ON rp.role_id = ur.role_id AND rp.permission_code = 'configuracoes.gerenciar'
+       WHERE u.status = 'ATIVO' AND (u.is_owner OR rp.role_id IS NOT NULL)`);
+    await notifyUsers(c, admins.map((a) => a.id), {
+      kind: 'REDE_ENDERECO_NOVO', priority: 'ALTA', link: '/configuracoes?aba=rede',
+      title: `Acessos recusados a partir de um endereço novo (${ip})`,
+      body: `${n} pessoas foram recusadas na última hora a partir de ${ip}, que não está na lista de endereços da serventia. `
+        + 'Se a internet do cartório mudou de endereço, abra Configurações → Rede estando no cartório e acrescente o endereço atual.',
+    });
+  });
 }
 
 /** Marcação de ponto: só da rede da serventia, quando há endereços cadastrados e a regra está ligada (vale para todos). */
