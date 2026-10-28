@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { runAction, str, optStr, int, type ActionState } from '@/server/web/action.ts';
 import {
   addAbsence, addSalary, assignSchedule, cancelAbsence, createAgreement, createEmployee, revokeAgreement,
-  terminateEmployee, updateEmployee, updateSensitiveData,
+  setControlStart, terminateEmployee, updateEmployee, updateSensitiveData,
 } from '@/server/modules/people.ts';
 
 export async function createEmployeeAction(_p: ActionState, fd: FormData): Promise<ActionState> {
@@ -14,7 +14,7 @@ export async function createEmployeeAction(_p: ActionState, fd: FormData): Promi
       registrationCode: str(fd, 'registrationCode'), fullName: str(fd, 'fullName'), socialName: optStr(fd, 'socialName'),
       jobTitleId: str(fd, 'jobTitleId'), functionDescription: optStr(fd, 'functionDescription'), sectorId: str(fd, 'sectorId'),
       admissionDate: str(fd, 'admissionDate'), contractType: str(fd, 'contractType') as 'CLT', weeklyHours: Number(str(fd, 'weeklyHours')),
-      email: optStr(fd, 'email'), scheduleId: optStr(fd, 'scheduleId'),
+      email: optStr(fd, 'email'), scheduleId: optStr(fd, 'scheduleId'), controlStartDate: optStr(fd, 'controlStartDate'),
     });
     return 'Funcionário admitido.';
   }, ['/equipe']);
@@ -32,6 +32,14 @@ export async function updateEmployeeAction(_p: ActionState, fd: FormData): Promi
     });
     return 'Cadastro atualizado.';
   }, [`/equipe/${id}`, '/equipe']);
+}
+
+export async function controlStartAction(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const id = str(fd, 'employeeId');
+  return runAction(async (ctx) => {
+    await setControlStart(ctx, id, { date: str(fd, 'date'), reason: str(fd, 'reason') });
+    return 'Início do controle no sistema atualizado.';
+  }, [`/equipe/${id}`, '/ferias', '/ocorrencias']);
 }
 
 export async function sensitiveAction(_p: ActionState, fd: FormData): Promise<ActionState> {

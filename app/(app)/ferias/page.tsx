@@ -7,7 +7,7 @@ import { fmtDate, fmtDateTime, label, statusTone } from '@/ui/format.ts';
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { cancelVacationAction, requestVacationAction } from '../../actions/phase2b.ts';
-import { reviewPeriodAction } from '../../actions/phase2c.ts';
+import { priorVacationAction, reviewPeriodAction } from '../../actions/phase2c.ts';
 import { ART130_BANDS } from '@/domain/vacation.ts';
 import { withGuard } from '@/server/web/guard.ts';
 
@@ -96,6 +96,10 @@ async function FeriasPage({ searchParams }: { searchParams: Promise<{ funcionari
                   </select>
                 </div>
                 <div className="field"><label htmlFor="rv-n">Observação</label><input id="rv-n" name="notes" className="input" /></div>
+                {overview.periods.some((p) => p.end < today && p.start < overview.controlStart) ? (
+                  <div className="field"><label htmlFor="rv-pf">Faltas injustificadas anteriores à implantação</label><input id="rv-pf" name="priorUnjustifiedDays" type="number" min="0" max="366" defaultValue="0" className="input" />
+                    <span className="hint">Somente para períodos iniciados antes de {fmtDate(overview.controlStart)}, conforme o controle anterior (informe a origem na observação).</span></div>
+                ) : null}
               </div>
               <details className="disclosure small" style={{ marginTop: 10 }}>
                 <summary><a>Perda do direito (art. 133) — tratamento manual</a></summary>
@@ -109,6 +113,47 @@ async function FeriasPage({ searchParams }: { searchParams: Promise<{ funcionari
                 <pre className="mono" style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(rv.calculation, null, 2)}</pre>
               </details>
             ))}
+          </div>
+        </div>
+      ) : null}
+
+      {overview?.canReview && overview.controlStart > overview.employee.admission_date ? (
+        <div className="card">
+          <div className="card-head"><div><h2>Férias anteriores à implantação</h2><p>Gozadas antes de {fmtDate(overview.controlStart)} (início do controle no sistema), conforme o controle anterior — quitam o período aquisitivo</p></div></div>
+          <div className="card-body flush table-wrap" tabIndex={0}>
+            {overview.prior.length ? (
+              <table className="table">
+                <thead><tr><th>Período aquisitivo</th><th>Gozo</th><th className="num">Dias</th><th className="num">Abono</th><th>Origem</th><th></th></tr></thead>
+                <tbody>{overview.prior.map((a) => (
+                  <tr key={a.id}>
+                    <td className="small">{fmtDate(a.period_start)}</td>
+                    <td className="small">{fmtDate(a.start_date)} – {fmtDate(a.end_date)}</td>
+                    <td className="num">{a.enjoyed_days}</td><td className="num">{a.sold_days}</td>
+                    <td className="small">{a.note}</td>
+                    <td><ActionForm action={priorVacationAction} submitLabel="Cancelar" submitClass="btn btn-sm" inline>
+                      <input type="hidden" name="op" value="cancelar" /><input type="hidden" name="id" value={a.id} />
+                      <input name="reason" className="input" placeholder="Motivo" aria-label="Motivo do cancelamento" required minLength={5} />
+                    </ActionForm></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            ) : <Empty>Nenhum lançamento.</Empty>}
+          </div>
+          <div className="card-body">
+            <ActionForm action={priorVacationAction} submitLabel="Registrar" resetOnSuccess>
+              <input type="hidden" name="employeeId" value={overview.employee.id} />
+              <div className="form-grid">
+                <div className="field"><label htmlFor="pv-p">Período aquisitivo</label>
+                  <select id="pv-p" name="periodStart" className="input">
+                    {overview.periods.filter((p) => p.end < overview.controlStart).map((p) => <option key={p.start} value={p.start}>{p.index}: {fmtDate(p.start)} – {fmtDate(p.end)}</option>)}
+                  </select>
+                </div>
+                <div className="field"><label htmlFor="pv-s">Início do gozo</label><input id="pv-s" name="startDate" type="date" className="input" max={addDays(overview.controlStart, -1)} required /></div>
+                <div className="field"><label htmlFor="pv-d">Dias gozados</label><input id="pv-d" name="enjoyedDays" type="number" min="0" max="30" defaultValue="30" className="input" required /></div>
+                <div className="field"><label htmlFor="pv-a">Abono pecuniário (dias)</label><input id="pv-a" name="soldDays" type="number" min="0" max="10" defaultValue="0" className="input" /></div>
+              </div>
+              <div className="field" style={{ marginTop: 10 }}><label htmlFor="pv-n">Origem da informação</label><input id="pv-n" name="note" className="input" placeholder="Ex.: aviso e recibo de férias arquivados na pasta funcional" required minLength={5} /></div>
+            </ActionForm>
           </div>
         </div>
       ) : null}

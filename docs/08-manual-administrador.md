@@ -5,6 +5,10 @@
 2. **Configurações → Jornadas**: conferir a jornada padrão 08–12/13–17 e criar jornadas individuais. A tolerância do art. 58 §1º vem ligada por padrão (pendente de validação jurídica).
 3. **Configurações → Feriados**: incluir feriados estaduais e municipais de Capivari de Baixo (os nacionais de 2026–2027 já constam).
 4. **Equipe → Admitir funcionário**: matrícula, cargo, setor, jornada e e-mail institucional (cria o acesso de Colaborador).
+   - **Quem já trabalhava antes do sistema:** informe a data real de admissão e, em **Início do controle no sistema**, a data da implantação. A apuração da jornada começa nessa data — sem ela, todos os dias desde a admissão apareceriam como faltas (o sistema exige a data quando a admissão tem mais de 31 dias). Pode ser alterada na ficha enquanto não houver marcações ou ocorrências analisadas antes da nova data.
+   - **Férias já gozadas antes da implantação:** em *Férias* (abrindo o funcionário), quadro **Férias anteriores à implantação** — um lançamento por período aquisitivo, com a origem da informação (aviso/recibo de férias). Assim os períodos quitados não aparecem como vencidos.
+   - **Faltas do controle anterior (art. 130):** na *Conferência das faltas* de um período iniciado antes da implantação, informe as faltas injustificadas do controle anterior e a origem na observação; elas entram na memória de cálculo.
+   - **Banco de horas anterior:** o sistema não importa saldo de banco de horas. Recomenda-se quitar (compensar ou pagar) o banco do controle anterior até a implantação, para que todos comecem com saldo zero — decisão da Oficial, a validar com o jurídico.
 5. Na ficha do funcionário: cadastrar o **acordo de banco de horas** com a referência do instrumento assinado, os dados sensíveis e o salário (reautenticação exigida).
 6. **Usuários e permissões**: atribuir *Substituta Legal* e *Coordenação de setor* (com setor coordenado). Para substituições temporárias, informar a data final.
 

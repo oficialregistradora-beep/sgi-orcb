@@ -70,7 +70,7 @@ beforeAll(async () => {
   const mid = addDays(today, -80);
   const gId = await createEmployee(ctxSubst, {
     registrationCode: 'SIM-G', fullName: 'Gustavo Admitido', jobTitleId: I.jobs.atendente, sectorId: I.sectors.ATD,
-    admissionDate: mid, contractType: 'CLT', weeklyHours: 40, email: `gustavo.admitido@${DOMAIN}`, scheduleId: I.schedule,
+    admissionDate: mid, contractType: 'CLT', weeklyHours: 40, email: `gustavo.admitido@${DOMAIN}`, scheduleId: I.schedule, controlStartDate: mid, // histórico simulado desde a admissão
   });
   const gUser = (await queryOne<{ user_id: string }>(getPool(), 'SELECT user_id FROM employees WHERE id = $1', [gId]))!.user_id;
   await createAgreement(ctxOwner, gId, { kind: 'INDIVIDUAL_ESCRITO', compensationMonths: 6, validFrom: mid, documentReference: 'Acordo simulado' });

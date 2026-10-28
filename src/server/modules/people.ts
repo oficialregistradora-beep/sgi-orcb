@@ -19,12 +19,13 @@ export type EmployeeRow = {
   job_title_id: string; job_title: string; function_description: string | null; sector_id: string; sector_name: string;
   admission_date: string; termination_date: string | null; contract_type: string; weekly_hours: string; status: string;
   email: string | null; user_status: string | null;
+  control_start_date: string | null; // início da apuração no sistema (implantação); nulo = desde a admissão
 };
 
 const EMPLOYEE_SELECT = `
   SELECT e.id, e.user_id, e.registration_code, e.full_name, e.social_name, e.job_title_id, j.name AS job_title,
          e.function_description, e.sector_id, s.name AS sector_name, e.admission_date, e.termination_date,
-         e.contract_type, e.weekly_hours, e.status, u.email, u.status AS user_status
+         e.contract_type, e.weekly_hours, e.status, u.email, u.status AS user_status, e.control_start_date
     FROM employees e
     JOIN job_titles j ON j.id = e.job_title_id
     JOIN sectors s ON s.id = e.sector_id
@@ -65,7 +66,11 @@ const createSchema = z.object({
   weeklyHours: z.number().positive().max(44),
   email: z.email().transform((v) => v.trim().toLowerCase()).optional(),
   scheduleId: uuid.optional(),
+  controlStartDate: isoDate.optional(),
 });
+
+/** Admissão anterior a este prazo exige o início do controle (funcionário já em atividade na implantação). */
+export const LEGACY_ADMISSION_DAYS = 31;
 
 /**
  * Admissão: cria o cadastro funcional, o histórico inicial de cargo, a jornada contratual e,
@@ -76,6 +81,11 @@ export async function createEmployee(ctx: Ctx, input: z.input<typeof createSchem
   requirePermission(ctx, 'pessoas.editar', { sectorId: d.sectorId });
   const domain = getConfig().workspaceDomain;
   if (d.email && !d.email.endsWith(`@${domain}`)) throw new AppError(`O e-mail deve pertencer ao domínio @${domain}.`);
+  if (d.controlStartDate && d.controlStartDate < d.admissionDate) throw new AppError('O início do controle não pode ser anterior à admissão.');
+  // Sem esta data, a apuração começaria na admissão e geraria "faltas" em todos os dias anteriores à implantação.
+  if (!d.controlStartDate && d.admissionDate < addDays(todayLocal(), -LEGACY_ADMISSION_DAYS)) {
+    throw new AppError('Funcionário admitido antes da implantação: informe o início do controle no sistema (normalmente a data da implantação).');
+  }
   return tx(async (c) => {
     let userId: string | null = null;
     if (d.email) {
@@ -101,10 +111,10 @@ export async function createEmployee(ctx: Ctx, input: z.input<typeof createSchem
       emp = await queryOne<{ id: string }>(
         c,
         `INSERT INTO employees (user_id, registration_code, full_name, social_name, job_title_id, function_description,
-                                sector_id, admission_date, contract_type, weekly_hours, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+                                sector_id, admission_date, contract_type, weekly_hours, created_by, control_start_date)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
         [userId, d.registrationCode, d.fullName, d.socialName || null, d.jobTitleId, d.functionDescription || null,
-          d.sectorId, d.admissionDate, d.contractType, d.weeklyHours, ctx.principal.userId],
+          d.sectorId, d.admissionDate, d.contractType, d.weeklyHours, ctx.principal.userId, d.controlStartDate ?? null],
       );
     } catch (e) {
       if ((e as { code?: string }).code === '23505') throw new ConflictError('Matrícula já utilizada.');
@@ -167,6 +177,44 @@ export async function updateEmployee(ctx: Ctx, id: string, input: z.input<typeof
     await audit(c, ctx, {
       action: 'FUNCIONARIO_ALTERADO', entityType: 'employee', entityId: id, summary: `Cadastro de ${d.fullName} alterado`,
       data: { before: { jobTitleId: before.job_title_id, sectorId: before.sector_id, weeklyHours: before.weekly_hours }, after: d },
+    });
+  });
+}
+
+const controlStartSchema = z.object({ date: isoDate, reason: z.string().trim().min(5).max(300) });
+
+/**
+ * Define o início do controle no sistema (implantação). Os dias anteriores deixam de ser apurados: apuração e
+ * ocorrências pendentes geradas automaticamente antes da data são descartadas. Recusado se já houver marcações,
+ * ocorrências analisadas ou lançamentos no banco de horas antes da nova data, ou competência fechada no intervalo.
+ */
+export async function setControlStart(ctx: Ctx, id: string, input: z.input<typeof controlStartSchema>): Promise<void> {
+  const d = controlStartSchema.parse(input);
+  const e = await getEmployeeFor(ctx, 'pessoas.editar', id);
+  if (e.status === 'DESLIGADO') throw new AppError('Cadastro de funcionário desligado não pode ser alterado.');
+  if (d.date < e.admission_date) throw new AppError('O início do controle não pode ser anterior à admissão.');
+  const old = e.control_start_date ?? e.admission_date;
+  if (d.date === old) return;
+  await tx(async (c) => {
+    const [lo, hi] = d.date < old ? [d.date, old] : [old, d.date];
+    const blockers = (await queryOne<{ punches: number; resolved: number; ledger: number; closed: number }>(c,
+      `SELECT (SELECT count(*)::int FROM time_punches WHERE employee_id = $1 AND local_date < $2) AS punches,
+              (SELECT count(*)::int FROM daily_occurrences WHERE employee_id = $1 AND work_date < $2 AND status = 'RESOLVIDA') AS resolved,
+              (SELECT count(*)::int FROM hour_bank_entries WHERE employee_id = $1 AND entry_date < $2) AS ledger,
+              (SELECT count(*)::int FROM period_closings WHERE reopened_at IS NULL
+                 AND period BETWEEN to_char($3::date, 'YYYY-MM') AND to_char($4::date - 1, 'YYYY-MM')) AS closed`,
+      [id, d.date, lo, hi]))!;
+    if (blockers.punches || blockers.resolved || blockers.ledger) {
+      throw new AppError('Já há marcações, ocorrências analisadas ou lançamentos no banco de horas antes desta data; o início do controle não pode ser posterior a eles.');
+    }
+    if (blockers.closed) throw new AppError('Há competência fechada a partir desta data. Reabra-a antes de alterar o início do controle.');
+    await query(c, "DELETE FROM daily_occurrences WHERE employee_id = $1 AND work_date < $2 AND status <> 'RESOLVIDA'", [id, d.date]);
+    await query(c, 'DELETE FROM daily_records WHERE employee_id = $1 AND work_date < $2', [id, d.date]);
+    await query(c, 'UPDATE employees SET control_start_date = $2 WHERE id = $1', [id, d.date]);
+    if (d.date < old) await recomputeDays(c, ctx, id, d.date, addDays(old, -1));
+    await audit(c, ctx, {
+      action: 'FUNCIONARIO_INICIO_CONTROLE', entityType: 'employee', entityId: id,
+      summary: `${e.full_name}: início do controle no sistema ${old} → ${d.date}`, data: { before: old, after: d.date, reason: d.reason },
     });
   });
 }

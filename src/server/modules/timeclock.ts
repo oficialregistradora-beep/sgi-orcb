@@ -43,11 +43,15 @@ export async function listPunches(db: Db, employeeId: string, from: string, to: 
   );
 }
 
-type EmployeeBasics = { id: string; user_id: string | null; sector_id: string; admission_date: string; termination_date: string | null; status: string; full_name: string };
+type EmployeeBasics = {
+  id: string; user_id: string | null; sector_id: string; admission_date: string; termination_date: string | null; status: string; full_name: string;
+  control_start: string; // início da apuração no sistema (implantação) ou, se não informado, a admissão
+};
 
 async function employeeBasics(db: Db, employeeId: string): Promise<EmployeeBasics> {
   const e = await queryOne<EmployeeBasics>(
-    db, 'SELECT id, user_id, sector_id, admission_date, termination_date, status, full_name FROM employees WHERE id = $1', [employeeId]);
+    db, `SELECT id, user_id, sector_id, admission_date, termination_date, status, full_name,
+            coalesce(control_start_date, admission_date) AS control_start FROM employees WHERE id = $1`, [employeeId]);
   if (!e) throw new NotFoundError('Funcionário não encontrado.');
   return e;
 }
@@ -236,7 +240,7 @@ export async function recomputeDays(db: Db, who: Ctx | AuditActor | null, employ
   if (from > end) return 0;
   await query(db, "SELECT pg_advisory_xact_lock(hashtext('recompute:' || $1))", [employeeId]);
   const e = await employeeBasics(db, employeeId);
-  const start = from < e.admission_date ? e.admission_date : from;
+  const start = from < e.control_start ? e.control_start : from;
   const stop = e.termination_date && e.termination_date < end ? e.termination_date : end;
   if (start > stop) return 0;
   const days = await computeRange(db, employeeId, start, stop);
@@ -333,7 +337,7 @@ export async function ensureProcessed(employeeId: string): Promise<void> {
   await tx(async (c) => {
     const again = await queryOne<{ d: string | null }>(c, 'SELECT max(work_date) AS d FROM daily_records WHERE employee_id = $1', [employeeId]);
     const e = await employeeBasics(c, employeeId);
-    const from = again?.d ? addDays(again.d, 1) : e.admission_date;
+    const from = again?.d ? addDays(again.d, 1) : e.control_start;
     await recomputeDays(c, null, employeeId, from, yesterday);
   });
 }

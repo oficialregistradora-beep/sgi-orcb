@@ -1,7 +1,7 @@
 'use server';
 
 import { runAction, str, optStr, int, type ActionState } from '@/server/web/action.ts';
-import { reviewVacationPeriod } from '@/server/modules/vacation.ts';
+import { cancelPriorVacation, registerPriorVacation, reviewVacationPeriod } from '@/server/modules/vacation.ts';
 import { closeRule, createRule, RULE_SCHEMAS, setInstrumentStatus, validateRule, type RuleCode } from '@/server/modules/legalRules.ts';
 import {
   createTemplate, discardDraft, duplicateTemplate, inactivateTemplate, moveItem, newVersion, publishTemplate, removeItem, renameDraft, saveItem,
@@ -12,9 +12,24 @@ export async function reviewPeriodAction(_p: ActionState, fd: FormData): Promise
   return runAction(async (ctx) => {
     const r = await reviewVacationPeriod(ctx, {
       employeeId: str(fd, 'employeeId'), periodStart: str(fd, 'periodStart'), art133Loss: fd.get('art133Loss') === 'on',
-      art133Reason: optStr(fd, 'art133Reason'), notes: optStr(fd, 'notes'),
+      art133Reason: optStr(fd, 'art133Reason'), notes: optStr(fd, 'notes'), priorUnjustifiedDays: optStr(fd, 'priorUnjustifiedDays') ? int(fd, 'priorUnjustifiedDays') : 0,
     });
     return `Conferência registrada: direito de ${r.entitlement} dias neste período.`;
+  }, '/ferias');
+}
+
+/** Implantação: férias gozadas antes do início do controle no sistema (lançar ou cancelar). */
+export async function priorVacationAction(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return runAction(async (ctx) => {
+    if (str(fd, 'op') === 'cancelar') {
+      await cancelPriorVacation(ctx, str(fd, 'id'), str(fd, 'reason'));
+      return 'Lançamento cancelado.';
+    }
+    await registerPriorVacation(ctx, {
+      employeeId: str(fd, 'employeeId'), periodStart: str(fd, 'periodStart'), startDate: str(fd, 'startDate'),
+      enjoyedDays: int(fd, 'enjoyedDays'), soldDays: optStr(fd, 'soldDays') ? int(fd, 'soldDays') : 0, note: str(fd, 'note'),
+    });
+    return 'Férias anteriores à implantação registradas.';
   }, '/ferias');
 }
 

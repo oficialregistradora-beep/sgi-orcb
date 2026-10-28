@@ -1,7 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useRef, useState, type ReactNode } from 'react';
-import { useFormStatus } from 'react-dom';
+import { startTransition, useActionState, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ActionState } from '../server/web/action.ts';
 import { stepUpAction } from '../../app/actions/auth.ts';
 
@@ -16,8 +15,7 @@ type Props = {
   inline?: boolean;
 };
 
-export function SubmitButton({ label, className = 'btn btn-primary' }: { label: string; className?: string }) {
-  const { pending } = useFormStatus();
+export function SubmitButton({ label, className = 'btn btn-primary', pending }: { label: string; className?: string; pending: boolean }) {
   return (
     <button type="submit" className={className} disabled={pending} aria-busy={pending}>
       {pending ? 'Processando…' : label}
@@ -28,9 +26,11 @@ export function SubmitButton({ label, className = 'btn btn-primary' }: { label: 
 /**
  * Formulário ligado a uma Server Action. Exibe o resultado e, quando o servidor exige reautenticação,
  * abre o diálogo do código do autenticador e reenvia o formulário após a confirmação.
+ * O envio é feito pelo onSubmit (e não por `<form action>`): assim o React não limpa os campos quando o servidor
+ * recusa (erro ou reautenticação) — só `resetOnSuccess` limpa, e apenas após sucesso.
  */
 export function ActionForm({ action, children, submitLabel = 'Salvar', submitClass, confirm, resetOnSuccess, className, inline }: Props) {
-  const [state, formAction] = useActionState(action, { ok: true, message: '' });
+  const [state, formAction, pending] = useActionState(action, { ok: true, message: '' });
   const formRef = useRef<HTMLFormElement>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
   const [stepUpError, setStepUpError] = useState('');
@@ -62,10 +62,12 @@ export function ActionForm({ action, children, submitLabel = 'Salvar', submitCla
     <>
       <form
         ref={formRef}
-        action={formAction}
         className={className}
         onSubmit={(e) => {
-          if (confirm && !window.confirm(confirm)) e.preventDefault();
+          e.preventDefault();
+          if (pending || (confirm && !window.confirm(confirm))) return;
+          const fd = new FormData(e.currentTarget, (e.nativeEvent as SubmitEvent).submitter);
+          startTransition(() => formAction(fd));
         }}
       >
         {children}
@@ -75,7 +77,7 @@ export function ActionForm({ action, children, submitLabel = 'Salvar', submitCla
               {state.message}
             </span>
           ) : null}
-          <SubmitButton label={submitLabel} className={submitClass} />
+          <SubmitButton label={submitLabel} className={submitClass} pending={pending} />
         </div>
       </form>
       {stepUpOpen ? (

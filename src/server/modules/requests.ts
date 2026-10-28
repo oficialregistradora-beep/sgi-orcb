@@ -60,6 +60,9 @@ export async function createRequest(ctx: Ctx, input: z.input<typeof createSchema
     const p = correctionPayload.parse(d.payload);
     if (d.referenceDate > today) throw new AppError('Não é possível corrigir marcação de data futura.');
     if (d.referenceDate < e.admission_date) throw new AppError('Data anterior à admissão.');
+    if (e.control_start_date && d.referenceDate < e.control_start_date) {
+      throw new AppError(`Data anterior ao início do controle no sistema (${e.control_start_date}); corrija no controle anterior.`);
+    }
     await assertPeriodOpen(getPool(), d.referenceDate);
     if (p.action === 'INCLUIR' && localToInstant(d.referenceDate, p.time).getTime() > Date.now()) {
       throw new AppError('O horário informado ainda não ocorreu.');

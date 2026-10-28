@@ -9,7 +9,7 @@ import {
   acquisitivePeriods, ART130_BANDS, balances, entitlementForAbsences, validateVacation, VacationRuleError,
   type AcqPeriod, type Allocation, type VacationCheck,
 } from '../../domain/vacation.ts';
-import { todayLocal } from '../../domain/time.ts';
+import { addDays, todayLocal } from '../../domain/time.ts';
 import { findEmployee, getEmployeeFor } from './people.ts';
 import { ensureProcessed } from './timeclock.ts';
 import { getRule } from './legalRules.ts';
@@ -90,6 +90,8 @@ const reviewSchema = z.object({
   art133Loss: z.boolean().default(false),
   art133Reason: z.string().trim().max(1000).optional(),
   notes: z.string().trim().max(1000).optional(),
+  // Faltas injustificadas anteriores ao início do controle no sistema (do controle anterior), só para períodos que o antecedem.
+  priorUnjustifiedDays: z.number().int().min(0).max(366).default(0),
 });
 
 /**
@@ -106,17 +108,24 @@ export async function reviewVacationPeriod(ctx: Ctx, input: z.input<typeof revie
   const period = acquisitivePeriods(e.admission_date, todayLocal()).find((p) => p.start === d.periodStart);
   if (!period) throw new NotFoundError('Período aquisitivo inexistente.');
   if (period.end >= todayLocal()) throw new AppError('O período aquisitivo ainda não terminou.');
+  const controlStart = e.control_start_date ?? e.admission_date;
+  if (d.priorUnjustifiedDays > 0 && period.start >= controlStart) {
+    throw new AppError('Faltas anteriores à implantação só se aplicam a períodos que começaram antes do início do controle no sistema.');
+  }
+  if (d.priorUnjustifiedDays > 0 && (!d.notes || d.notes.length < 5)) throw new AppError('Informe nas observações a origem das faltas anteriores à implantação.');
   return tx(async (c) => {
     const cls = await classifyAbsences(c, d.employeeId, period);
     if (cls.pending.length) {
       throw new AppError(`Há ${cls.pending.length} falta(s) sem classificação no período (${cls.pending.slice(0, 5).join(', ')}${cls.pending.length > 5 ? '…' : ''}). Analise-as em Ocorrências antes da conferência.`);
     }
-    const entitlement = d.art133Loss ? 0 : entitlementForAbsences(cls.unjustified.length);
+    const unjustifiedTotal = cls.unjustified.length + d.priorUnjustifiedDays;
+    const entitlement = d.art133Loss ? 0 : entitlementForAbsences(unjustifiedTotal);
     const used = (await loadAllocations(c, d.employeeId)).filter((a) => a.periodStart === period.start).reduce((s, a) => s + a.enjoyedDays + a.soldDays, 0);
     if (used > entitlement) throw new AppError(`Já foram concedidos ${used} dias neste período, acima do direito apurado (${entitlement}). Revise as férias concedidas.`);
-    const band = ART130_BANDS.find((b) => b.dias === entitlementForAbsences(cls.unjustified.length))!;
+    const band = ART130_BANDS.find((b) => b.dias === entitlementForAbsences(unjustifiedTotal))!;
     const calculation = {
       periodo: { inicio: period.start, fim: period.end }, faltasInjustificadas: cls.unjustified, faltasNaoComputadas: cls.justified,
+      ...(d.priorUnjustifiedDays ? { faltasAnterioresImplantacao: d.priorUnjustifiedDays, inicioControle: controlStart } : {}),
       atrasosESaidasNaoConvertidos: cls.partialNotCounted, faixaArt130: band.faixa, diasPelaFaixa: band.dias,
       art133: d.art133Loss ? { perda: true, fundamento: d.art133Reason } : null, direitoFinal: entitlement,
     };
@@ -125,11 +134,11 @@ export async function reviewVacationPeriod(ctx: Ctx, input: z.input<typeof revie
       c,
       `INSERT INTO vacation_period_reviews (employee_id, period_start, unjustified_days, entitlement_days, art133_loss, art133_reason, calculation, notes, reviewed_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [d.employeeId, period.start, cls.unjustified.length, entitlement, d.art133Loss, d.art133Reason ?? null, JSON.stringify(calculation), d.notes ?? null, ctx.principal.userId],
+      [d.employeeId, period.start, unjustifiedTotal, entitlement, d.art133Loss, d.art133Reason ?? null, JSON.stringify(calculation), d.notes ?? null, ctx.principal.userId],
     );
     await audit(c, ctx, {
       action: 'FERIAS_CONFERENCIA_FALTAS', entityType: 'employee', entityId: d.employeeId,
-      summary: `Conferência do período ${period.index} de ${e.full_name}: ${cls.unjustified.length} falta(s) injustificada(s) → ${entitlement} dias${d.art133Loss ? ' (perda — art. 133)' : ''}`,
+      summary: `Conferência do período ${period.index} de ${e.full_name}: ${unjustifiedTotal} falta(s) injustificada(s)${d.priorUnjustifiedDays ? ` (${d.priorUnjustifiedDays} anteriores à implantação)` : ''} → ${entitlement} dias${d.art133Loss ? ' (perda — art. 133)' : ''}`,
     });
     return { entitlement };
   });
@@ -213,7 +222,9 @@ export async function applyVacationApproval(
   const review = (await currentReviews(c, r.employee_id)).get(check.period.start);
   if (!review) throw new AppError(`Conferência das faltas do período aquisitivo ${check.period.index} pendente (art. 130). Realize-a em Férias antes de aprovar.`);
   const cls = await classifyAbsences(c, r.employee_id, check.period);
-  if (cls.pending.length || cls.unjustified.length !== review.unjustified_days) {
+  // Faltas do controle anterior (implantação) entram no total conferido, mas não constam do sistema.
+  const prior = Number((review.calculation as { faltasAnterioresImplantacao?: number } | null)?.faltasAnterioresImplantacao ?? 0);
+  if (cls.pending.length || cls.unjustified.length + prior !== review.unjustified_days) {
     throw new AppError('A conferência das faltas está desatualizada (houve novas decisões de ocorrências). Refaça a conferência.');
   }
   await query(
@@ -267,7 +278,10 @@ export async function getVacationOverview(ctx: Ctx, employeeId: string) {
        FROM requests r WHERE r.employee_id = $1 AND r.type = 'FERIAS' ORDER BY r.reference_date DESC`,
     [employeeId],
   );
-  return { employee: e, periods, requests, reviews, absences, canReview: can(ctx.principal, 'ferias.aprovar', { employeeId, sectorId: e.sector_id }) && e.user_id !== ctx.principal.userId };
+  const prior = await query<{ id: string; period_start: string; start_date: string; end_date: string; enjoyed_days: number; sold_days: number; note: string }>(db,
+    `SELECT id, period_start, start_date, end_date, enjoyed_days, sold_days, note FROM vacation_allocations
+      WHERE employee_id = $1 AND source = 'IMPLANTACAO' AND cancelled_at IS NULL ORDER BY start_date`, [employeeId]);
+  return { employee: e, controlStart: e.control_start_date ?? e.admission_date, prior, periods, requests, reviews, absences, canReview: can(ctx.principal, 'ferias.aprovar', { employeeId, sectorId: e.sector_id }) && e.user_id !== ctx.principal.userId };
 }
 
 /** Programação de férias e alertas (períodos a vencer ou vencidos) das pessoas sob a visão do usuário. */
@@ -297,4 +311,67 @@ export async function teamVacations(ctx: Ctx) {
     p2,
   );
   return { alerts, scheduled, canApprove: can(ctx.principal, 'ferias.aprovar') };
+}
+
+// ---------------------------------------------------------------------------
+// Implantação: férias gozadas antes do início do controle no sistema
+// ---------------------------------------------------------------------------
+
+const priorSchema = z.object({
+  employeeId: z.uuid(),
+  periodStart: z.iso.date(),
+  startDate: z.iso.date(),
+  enjoyedDays: z.number().int().min(0).max(30),
+  soldDays: z.number().int().min(0).max(10),
+  note: z.string().trim().min(5).max(500),
+});
+
+/**
+ * Registra férias já gozadas (ou abono pecuniário) antes da implantação, conforme o controle anterior, para que o
+ * período aquisitivo apareça quitado. Não gera ausência nem aviso: são fatos anteriores ao sistema.
+ */
+export async function registerPriorVacation(ctx: Ctx, input: z.input<typeof priorSchema>): Promise<string> {
+  const d = priorSchema.parse(input);
+  const e = await getEmployeeFor(ctx, 'ferias.aprovar', d.employeeId);
+  if (e.user_id === ctx.principal.userId && !ctx.principal.isOwner) throw new ForbiddenError('Não é permitido lançar as próprias férias (segregação de funções).');
+  const controlStart = e.control_start_date ?? e.admission_date;
+  if (d.enjoyedDays + d.soldDays === 0) throw new AppError('Informe os dias gozados e/ou o abono.');
+  if (d.startDate >= controlStart) throw new AppError(`Somente férias iniciadas antes do início do controle no sistema (${controlStart}). As demais seguem pela solicitação.`);
+  const period = acquisitivePeriods(e.admission_date, todayLocal()).find((p) => p.start === d.periodStart);
+  if (!period) throw new NotFoundError('Período aquisitivo inexistente.');
+  if (d.startDate <= period.end) throw new AppError('As férias de um período aquisitivo só podem começar depois que ele termina.');
+  const endDate = d.enjoyedDays > 0 ? addDays(d.startDate, d.enjoyedDays - 1) : d.startDate;
+  return tx(async (c) => {
+    await query(c, "SELECT pg_advisory_xact_lock(hashtext('ferias:' || $1))", [d.employeeId]);
+    const used = (await loadAllocations(c, d.employeeId)).filter((a) => a.periodStart === period.start).reduce((s, a) => s + a.enjoyedDays + a.soldDays, 0);
+    const entitlement = (await entitlementMap(c, d.employeeId, [period])).get(period.start) ?? 30;
+    if (used + d.enjoyedDays + d.soldDays > entitlement) {
+      throw new AppError(`O período ${period.index} tem direito a ${entitlement} dias e já há ${used} lançado(s).`);
+    }
+    const r = await queryOne<{ id: string }>(c,
+      `INSERT INTO vacation_allocations (request_id, employee_id, period_start, enjoyed_days, sold_days, start_date, end_date, source, note, created_by)
+       VALUES (NULL,$1,$2,$3,$4,$5,$6,'IMPLANTACAO',$7,$8) RETURNING id`,
+      [d.employeeId, period.start, d.enjoyedDays, d.soldDays, d.startDate, endDate, d.note, ctx.principal.userId]);
+    await audit(c, ctx, {
+      action: 'FERIAS_ANTERIORES_REGISTRADAS', entityType: 'employee', entityId: d.employeeId,
+      summary: `${e.full_name}: férias anteriores à implantação — período ${period.index}, ${d.enjoyedDays} dia(s) a partir de ${d.startDate}${d.soldDays ? ` + ${d.soldDays} de abono` : ''}`,
+      data: { ...d, endDate },
+    });
+    return r!.id;
+  });
+}
+
+export async function cancelPriorVacation(ctx: Ctx, allocationId: string, reason: string): Promise<void> {
+  z.uuid().parse(allocationId);
+  if (reason.trim().length < 5) throw new AppError('Informe o motivo.');
+  await tx(async (c) => {
+    const a = await queryOne<{ employee_id: string; sector_id: string; user_id: string | null; start_date: string }>(c,
+      `SELECT va.employee_id, e.sector_id, e.user_id, va.start_date FROM vacation_allocations va JOIN employees e ON e.id = va.employee_id
+        WHERE va.id = $1 AND va.source = 'IMPLANTACAO' AND va.cancelled_at IS NULL FOR UPDATE OF va`, [allocationId]);
+    if (!a) throw new NotFoundError('Lançamento não encontrado.');
+    requirePermission(ctx, 'ferias.aprovar', { employeeId: a.employee_id, sectorId: a.sector_id });
+    if (a.user_id === ctx.principal.userId && !ctx.principal.isOwner) throw new ForbiddenError('Não é permitido alterar as próprias férias (segregação de funções).');
+    await query(c, 'UPDATE vacation_allocations SET cancelled_at = now(), cancelled_by = $2, cancel_reason = $3 WHERE id = $1', [allocationId, ctx.principal.userId, reason]);
+    await audit(c, ctx, { action: 'FERIAS_ANTERIORES_CANCELADAS', entityType: 'employee', entityId: a.employee_id, summary: `Lançamento de férias anteriores (início ${a.start_date}) cancelado`, data: { reason } });
+  });
 }

@@ -12,7 +12,7 @@ import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import {
   absenceAction, agreementAction, assignScheduleAction, cancelAbsenceAction, revokeAgreementAction, salaryAction, sensitiveAction,
-  terminateAction, updateEmployeeAction,
+  controlStartAction, terminateAction, updateEmployeeAction,
 } from '../../../actions/people.ts';
 import { checklistItemAction, deliverItemAction, returnItemAction } from '../../../actions/phase2b.ts';
 import { listChecklists, listEmployeeItems } from '@/server/modules/checklists.ts';
@@ -46,7 +46,7 @@ async function FuncionarioPage({ params, searchParams }: { params: Promise<{ id:
     <div className="stack">
       <PageHead
         title={e.social_name || e.full_name}
-        subtitle={<>{e.job_title} · {e.sector_name} · matrícula <span className="mono">{e.registration_code}</span> · admissão {fmtDate(e.admission_date)}{e.termination_date ? ` · desligamento ${fmtDate(e.termination_date)}` : ''}</>}
+        subtitle={<>{e.job_title} · {e.sector_name} · matrícula <span className="mono">{e.registration_code}</span> · admissão {fmtDate(e.admission_date)}{e.control_start_date ? ` · controle no sistema desde ${fmtDate(e.control_start_date)}` : ''}{e.termination_date ? ` · desligamento ${fmtDate(e.termination_date)}` : ''}</>}
         actions={<>
           <span className={statusTone(e.status)}>{label(e.status)}</span>
           {can(p, 'jornada.ver', res) ? <Link className="btn btn-sm" href={`/jornada?funcionario=${id}`}>Jornada</Link> : null}
@@ -82,6 +82,21 @@ async function FuncionarioPage({ params, searchParams }: { params: Promise<{ id:
             )}
           </div>
         </div>
+        {canEdit && e.status !== 'DESLIGADO' ? (
+          <div className="card">
+            <div className="card-head"><div><h2>Início do controle no sistema</h2><p>Atual: {fmtDate(e.control_start_date ?? e.admission_date)}{e.control_start_date ? '' : ' (desde a admissão)'}. Os dias anteriores não são apurados no sistema.</p></div></div>
+            <div className="card-body">
+              <ActionForm action={controlStartAction} submitLabel="Alterar início do controle">
+                <input type="hidden" name="employeeId" value={id} />
+                <div className="form-grid">
+                  <div className="field"><label htmlFor="cs-d">Nova data</label><input id="cs-d" name="date" type="date" className="input" min={e.admission_date} defaultValue={e.control_start_date ?? e.admission_date} required /></div>
+                  <div className="field"><label htmlFor="cs-r">Motivo</label><input id="cs-r" name="reason" className="input" placeholder="Implantação do sistema" required minLength={5} /></div>
+                </div>
+                <span className="hint">Use na implantação, para quem já trabalhava antes do sistema. Não é aceito se já houver marcações ou ocorrências analisadas antes da nova data.</span>
+              </ActionForm>
+            </div>
+          </div>
+        ) : null}
         <div className="card">
           <div className="card-head"><h2>Histórico de cargos e setores</h2></div>
           <div className="card-body flush table-wrap" tabIndex={0}>
