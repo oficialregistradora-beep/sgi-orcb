@@ -11,7 +11,9 @@ const schema = z.object({
   APP_ENV: z.enum(['desenvolvimento', 'homologacao', 'producao']).optional(),
   APP_URL: z.url(),
   DATABASE_URL: z.string().min(1),
-  DATABASE_SSL: z.enum(['true', 'false']).default('false'),
+  // true = TLS com verificação do certificado; require = TLS sem verificação de cadeia (Cloud SQL por IP privado:
+  // o certificado não cobre o IP); false = sem TLS.
+  DATABASE_SSL: z.enum(['true', 'require', 'false']).default('false'),
   GOOGLE_WORKSPACE_DOMAIN: z.string().min(3),
   GOOGLE_CLIENT_ID: z.string().default(''),
   GOOGLE_CLIENT_SECRET: z.string().default(''),
@@ -48,7 +50,7 @@ export type AppConfig = {
   appUrl: string;
   secureCookies: boolean;
   databaseUrl: string;
-  databaseSsl: boolean;
+  databaseSsl: 'verify' | 'require' | 'off';
   workspaceDomain: string;
   googleClientId: string;
   googleClientSecret: string;
@@ -102,7 +104,7 @@ export function getConfig(): AppConfig {
     appUrl: e.APP_URL.replace(/\/$/, ''),
     secureCookies: e.APP_URL.startsWith('https://'),
     databaseUrl: e.DATABASE_URL,
-    databaseSsl: e.DATABASE_SSL === 'true',
+    databaseSsl: e.DATABASE_SSL === 'true' ? 'verify' : e.DATABASE_SSL === 'require' ? 'require' : 'off',
     workspaceDomain: e.GOOGLE_WORKSPACE_DOMAIN.toLowerCase(),
     googleClientId: e.GOOGLE_CLIENT_ID,
     googleClientSecret: e.GOOGLE_CLIENT_SECRET,

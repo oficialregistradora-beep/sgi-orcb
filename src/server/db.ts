@@ -17,7 +17,7 @@ export function getPool(): pg.Pool {
     const cfg = getConfig();
     globalForPool.__sgiPool = new pg.Pool({
       connectionString: cfg.databaseUrl,
-      ssl: cfg.databaseSsl ? { rejectUnauthorized: true } : undefined,
+      ssl: cfg.databaseSsl === 'verify' ? { rejectUnauthorized: true } : cfg.databaseSsl === 'require' ? { rejectUnauthorized: false } : undefined,
       max: 10,
       idleTimeoutMillis: 30_000,
       application_name: 'sgi-orcb',

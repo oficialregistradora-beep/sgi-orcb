@@ -1,6 +1,6 @@
 # Checklist para entrada em produção
 
-**Situação em 23/10/2026: o sistema NÃO está em produção.** Nenhum ambiente na nuvem foi criado, nenhuma credencial real foi usada e nenhum dado real foi carregado. A publicação depende das decisões abaixo e de **autorização expressa** da Oficial Registradora.
+**Situação em 29/10/2026:** homologação publicada no Google Cloud (dados fictícios) e concluída; aceite e **autorização expressa** da Oficial enviados em 29/10/2026 (`28-registro-homologacao.md`). Produção em preparação (`29-guia-producao.md`, `deploy/gcp-producao.sh`). Pendências que a autorização condiciona: IP fixo (Ateky), quitação do banco de horas anterior, encarregado(a) LGPD e validação jurídica dos itens J.
 
 ## A. Decisões e documentos da serventia
 | Item | Decisão / documento | Bloqueia |
@@ -27,11 +27,11 @@
 
 ## C. Validação antes do aceite
 - [ ] Rodadas automatizadas no ambiente de homologação na nuvem (suíte completa, E2E, sondagem de segurança, acessibilidade, carga) — comandos em `15-plano-de-testes.md`.
-- [ ] Roteiro de homologação (`25-roteiro-homologacao.md`) executado e aceito por escrito.
+- [x] Roteiro de homologação (`25-roteiro-homologacao.md`) executado e aceito por escrito (29/10/2026).
 - [ ] Recomendado: teste de intrusão independente.
 
 ## D. Implantação gradual (`14-plano-implantacao.md`)
 - [ ] Cadastro da Oficial; papéis; cadastros funcionais reais pela interface (sem importação de dados reais em ambiente de teste).
 - [ ] Treinamento da equipe e cadastro dos autenticadores.
 - [ ] Operação paralela por 1 mês, conferindo espelhos; depois, encerrar o controle anterior.
-- [ ] **Autorização expressa da Oficial** para a publicação.
+- [x] **Autorização expressa da Oficial** para a publicação (29/10/2026).

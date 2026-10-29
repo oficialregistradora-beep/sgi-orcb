@@ -11,4 +11,4 @@
 | 6 | Operação paralela por 1 mês (controle atual + SGI), conferindo espelhos | Serventia | Etapa 5 |
 | 7 | Encerrar o controle anterior; primeiro fechamento de competência no SGI | Oficial | Divergências resolvidas |
 
-Lista de verificação completa: [26-checklist-producao.md](26-checklist-producao.md). Publicação em produção **somente com autorização expressa** da Oficial Registradora. Nenhuma implantação foi realizada até esta data.
+Lista de verificação completa: [26-checklist-producao.md](26-checklist-producao.md). Publicação em produção **somente com autorização expressa** da Oficial Registradora. Etapas 2 e 3 concluídas (homologação aceita em 29/10/2026, com autorização expressa para a produção); etapa 5 em preparação: `29-guia-producao.md`.
