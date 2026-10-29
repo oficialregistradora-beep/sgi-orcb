@@ -1,6 +1,6 @@
 # Checklist para entrada em produção
 
-**Situação em 29/10/2026:** homologação publicada no Google Cloud (dados fictícios) e concluída; aceite e **autorização expressa** da Oficial enviados em 29/10/2026 (`28-registro-homologacao.md`). Produção em preparação (`29-guia-producao.md`, `deploy/gcp-producao.sh`). Pendências que a autorização condiciona: IP fixo (Ateky), quitação do banco de horas anterior, encarregado(a) LGPD e validação jurídica dos itens J.
+**Situação em 29/10/2026:** homologação publicada no Google Cloud (dados fictícios) e concluída; aceite e **autorização expressa** da Oficial enviados em 29/10/2026 (`28-registro-homologacao.md`). Produção **publicada em 29/10/2026** (`29-guia-producao.md`); implantação (etapa 5 de `14-plano-implantacao.md`) em andamento. Pendências que a autorização condiciona: IP fixo (Ateky), quitação do banco de horas anterior, encarregado(a) LGPD e validação jurídica dos itens J.
 
 ## A. Decisões e documentos da serventia
 | Item | Decisão / documento | Bloqueia |

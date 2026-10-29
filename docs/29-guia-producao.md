@@ -27,4 +27,8 @@ A produção usa **outro projeto** no Google Cloud (`sgi-orcb-prod`), separado d
 5. **Endereço de retorno:** acrescentar no cliente `SGI` a URI mostrada ao final (`…/api/auth/google/callback`).
 6. **Primeiro acesso:** a Oficial entra, cadastra o autenticador e segue a implantação (`14-plano-implantacao.md`, etapa 5): rede da serventia, equipe (com *início do controle*), férias anteriores, papéis, despesas fixas (importação da planilha do último mês fechado), modelo do Asgard.
 
+## Registro
+
+- 29/10/2026: produção publicada (`sgi-orcb-prod`, pacote v11) em https://sgi-orcb-416495482761.southamerica-east1.run.app — conta de faturamento convertida para conta completa, orçamento com alerta de R$ 400/mês (sem limite de gastos), cliente OAuth `SGI`, primeiro acesso da Oficial com autenticador concluído.
+
 Atualizações futuras da produção: o mesmo comando do passo 4 (o banco e os cadastros são preservados; migrações novas são aplicadas).
