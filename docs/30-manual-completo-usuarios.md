@@ -320,21 +320,16 @@ Menu **Relatórios** → **Relatório para a folha de pagamento** → **Exportar
 ### 5.11 Gestão documental (elaboração e aprovação)
 Abas: **Repositório**, **Para ciência**, **Aprovações**, **Revisões**, **Categorias** e **Novo documento**.
 
-1. **Novo documento:** preencha:
-   - Título, Código (opcional), Categoria, Resumo, Setor responsável e Responsável;
-   - **Público destinatário** (setores ou pessoas) e **Confidencialidade**: um documento restrito indica setores ou pessoas, e um confidencial indica **pessoas nominalmente**;
-   - **Revisão periódica (meses)**;
-   - **Texto do documento** e/ou **Arquivo** (até 15 MB, verificado por antivírus).
-
-   Clique em **Criar rascunho**.
-2. **Submeter à aprovação.**
-3. **Outra pessoa** aprova em **Aprovações** → **Aprovar e tornar vigente**, ou **Rejeitar** com o que precisa ser ajustado. **Quem elaborou ou submeteu não aprova** a própria versão, nem a Oficial (decisão de 29/10/2026).
-4. Os destinatários registram a **ciência**. O quadro **Ciência da versão N** mostra a cobertura.
-5. **Nova revisão:** **Editar** → **Salvar rascunho**, com a **nota da versão** (o que mudou) → Submeter.
-6. **Declarar obsoleto** (só documento vigente) e **Arquivar**.
-7. **Descarte do conteúdo:** só para documentos obsoletos ou arquivados, com **prazo de retenção definido e fundamentado** na categoria. Os metadados e o hash são preservados.
-8. **Revisões:** mostra as revisões vencidas ou próximas. O responsável é avisado.
-9. **Exportar:** JSON com hashes.
+1. **Novo documento** (aba): preencha os dados (Título, Código opcional, Categoria, Resumo, Setor responsável, Responsável, **Público destinatário** — setores ou pessoas —, **Confidencialidade** — restrito exige setores/pessoas; confidencial exige **pessoas nominalmente** — e **Revisão periódica (meses)**) → **Criar rascunho**. Nesta aba ainda **não** há campo de arquivo.
+2. O sistema abre a página do documento. No quadro **Rascunho**: **Texto do documento** e/ou **Arquivo** (até 15 MB: PDF, DOCX, XLSX, ODT, ODS, PNG, JPG, TXT; passa pelo antivírus) e **Nota da versão** → **Salvar rascunho**. Um documento por arquivo; para vários arquivos, repita o processo.
+3. Ainda na página do documento → **Submeter à aprovação** (o conteúdo é congelado como versão).
+4. **Outra pessoa** aprova em **Gestão documental → Aprovações** → **Aprovar e tornar vigente** (ou **Rejeitar**, com o que precisa ser ajustado). **Quem elaborou/submeteu não aprova** a própria versão — nem a Oficial (decisão de 29/10/2026).
+5. Os destinatários registram a **ciência**. O quadro **Ciência da versão N** mostra a cobertura.
+6. **Nova revisão:** **Editar** → **Salvar rascunho**, com a **nota da versão** (o que mudou) → Submeter.
+7. **Declarar obsoleto** (só documento vigente) e **Arquivar**.
+8. **Descarte do conteúdo:** só para documentos obsoletos ou arquivados, com **prazo de retenção definido e fundamentado** na categoria. Os metadados e o hash são preservados.
+9. **Revisões:** mostra as revisões vencidas ou próximas. O responsável é avisado.
+10. **Exportar:** JSON com hashes.
 
 ---
 
@@ -561,6 +556,7 @@ Marcações perdidas entram por pedido de correção.
 | Compensação recusada | Falta saldo, não há acordo de banco vigente, ou a data é passada (nesse caso, justifique na ocorrência) |
 | Não consigo aprovar o meu próprio pedido, documento ou tarefa | É proposital: quem pede ou elabora não aprova |
 | "Registrar pagamento" não aparece | A despesa ainda não foi aprovada, ou você foi quem solicitou ou aprovou (só a Oficial é exceção) |
+| Não acho onde enviar o arquivo de um documento | Primeiro crie o documento na aba **Novo documento** (só dados) → **Criar rascunho**; o campo **Arquivo** aparece na página do documento, no quadro **Rascunho** |
 | "Cotações" não aparece | Só aparece em despesas do tipo **Compra** |
 | Não consigo aprovar o espelho | O funcionário ainda não se manifestou (dupla conferência) |
 | Férias não aprovam | Falta a **Conferência das faltas** do período, ou ela ficou desatualizada |
