@@ -24,7 +24,7 @@ Ambiente: Google Cloud, região São Paulo, publicado pelo caminho sem chave (`d
 | 5.2 Rotina diária | ✅ | |
 | 5.3 Projeto (Gantt) e processo | ✅ | |
 | 6.1 Despesa: solicitar, aprovar, pagar | ✅ | Após decisão sobre a segregação (ver abaixo) |
-| 6.2 Compra, contrato, orçamento, relatório | pendente | |
+| 6.2 Compra, contrato, orçamento, relatório | ✅ | |
 | Rede da serventia | ✅ parcial | Endereço lido corretamente e restrição ativada; teste pelo celular (4G) não realizado |
 
 ## Ajustes feitos durante a homologação
