@@ -657,6 +657,11 @@ export async function financeOverview(ctx: Ctx, fromMonth: string, toMonth: stri
   };
 }
 
+/** Para as telas: a pessoa conectada é a Oficial dispensada da segregação? */
+export async function financeOwnerExempt(ctx: Ctx): Promise<boolean> {
+  return ownerExempt(getPool(), ctx.principal);
+}
+
 /** Parâmetro da serventia: a Oficial não está sujeita à segregação de funções no financeiro. */
 async function ownerExempt(db: Db, p: Principal): Promise<boolean> {
   return p.isOwner && (await getSetting<boolean>(db, 'financeiro.oficial_sem_segregacao', false)) === true;

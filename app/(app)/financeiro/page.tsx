@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requirePageCtx } from '@/server/web/session.ts';
 import { can } from '@/server/authz.ts';
 import {
-  DISCLAIMER, financeOverview, paymentBlockers, listContracts, listCostCenters, listExpenses, listFinanceCategories, listRevenues, listSuppliers, type ExpenseRow,
+  DISCLAIMER, financeOverview, financeOwnerExempt, paymentBlockers, listContracts, listCostCenters, listExpenses, listFinanceCategories, listRevenues, listSuppliers, type ExpenseRow,
 } from '@/server/modules/finance.ts';
 import { listProjects } from '@/server/modules/projects.ts';
 import { directory } from '@/server/modules/directory.ts';
@@ -73,8 +73,10 @@ async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ aba?: 
         const from = addMonths(`${today.slice(0, 7)}-01`, -5).slice(0, 7);
         const o = await financeOverview(ctx, from, today.slice(0, 7));
         const pending = await listExpenses(ctx, { status: 'ABERTAS' });
-        const toDecide = pending.filter((e) => e.status === 'SOLICITADA' && e.requested_by !== p.userId && has('financeiro.aprovar'));
-        const toPay = pending.filter((e) => e.status === 'APROVADA' && has('financeiro.pagar') && e.requested_by !== p.userId && e.decided_by !== p.userId);
+        // A Oficial dispensada da segregação (parâmetro) também vê as despesas que ela mesma solicitou ou aprovou.
+        const exempt = await financeOwnerExempt(ctx);
+        const toDecide = pending.filter((e) => e.status === 'SOLICITADA' && (e.requested_by !== p.userId || exempt) && has('financeiro.aprovar'));
+        const toPay = pending.filter((e) => e.status === 'APROVADA' && has('financeiro.pagar') && ((e.requested_by !== p.userId && e.decided_by !== p.userId) || exempt));
         const { alerts } = await listContracts(ctx);
         const blockers = await paymentBlockers(ctx);
         return (
