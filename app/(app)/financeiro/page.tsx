@@ -13,6 +13,7 @@ import { Empty, PageHead, Stat } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { financeAdminAction, requestExpenseAction } from '../../actions/phase4b.ts';
 import { withGuard } from '@/server/web/guard.ts';
+import { AsgardReport } from './Asgard.tsx';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Financeiro' };
@@ -42,7 +43,7 @@ function ExpenseTable({ rows }: { rows: ExpenseRow[] }) {
   );
 }
 
-async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ aba?: string; situacao?: string; mes?: string; centro?: string; q?: string; de?: string; ate?: string; ano?: string }> }) {
+async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ aba?: string; situacao?: string; mes?: string; centro?: string; q?: string; de?: string; ate?: string; ano?: string; sub?: string }> }) {
   const ctx = await requirePageCtx();
   const sp = await searchParams;
   const p = ctx.principal;
@@ -300,6 +301,18 @@ async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ aba?: 
       })() : null}
 
       {tab === 'relatorios' ? await (async () => {
+        const canAsgard = p.isOwner || has('financeiro.cadastros') || has('financeiro.pagar');
+        const sub = sp.sub === 'asgard' && canAsgard ? 'asgard' : 'resumo';
+        const subNav = canAsgard ? (
+          <nav className="tabs">
+            <Link href="/financeiro?aba=relatorios" aria-current={sub === 'resumo' ? 'page' : undefined}>Resumo</Link>
+            <Link href="/financeiro?aba=relatorios&sub=asgard" aria-current={sub === 'asgard' ? 'page' : undefined}>Gerar relatório XLS Asgard</Link>
+          </nav>
+        ) : null;
+        if (sub === 'asgard') {
+          const mes = /^\d{4}-\d{2}$/.test(sp.mes ?? '') ? sp.mes! : addMonths(`${today.slice(0, 7)}-01`, -1).slice(0, 7);
+          return <div className="stack">{subNav}<AsgardReport ctx={ctx} month={mes} canConfigure={admin} /></div>;
+        }
         const de = /^\d{4}-\d{2}$/.test(sp.de ?? '') ? sp.de! : today.slice(0, 7);
         const ate = /^\d{4}-\d{2}$/.test(sp.ate ?? '') && sp.ate! >= de ? sp.ate! : de;
         const o = await financeOverview(ctx, de, ate);
@@ -314,6 +327,7 @@ async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ aba?: 
         };
         return (
           <div className="stack">
+            {subNav}
             <form className="row" method="get" action="/financeiro">
               <input type="hidden" name="aba" value="relatorios" />
               <label className="small">De <input name="de" type="month" className="input" defaultValue={de} /></label>

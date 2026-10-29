@@ -33,6 +33,8 @@ Ambiente: Google Cloud, região São Paulo, publicado pelo caminho sem chave (`d
 - **v5:** início do controle no sistema e férias anteriores à implantação (funcionários já em atividade); faltas do controle anterior na conferência do art. 130; formulários deixam de perder os dados quando o servidor recusa.
 - **v6:** situação do termo de entrega na ficha do funcionário.
 - **v7:** a Oficial pode solicitar, aprovar e pagar despesas (parâmetro).
+- **v8:** painel do financeiro mostra à Oficial as despesas em que ela participou (complemento da v7).
+- **v9:** Relatórios → *Gerar relatório XLS Asgard*: modelo do Asgard preenchido com as despesas pagas no mês (pedido da Oficial, 29/10/2026).
 
 ## Decisões da Oficial
 

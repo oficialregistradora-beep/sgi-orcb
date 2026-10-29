@@ -54,6 +54,7 @@
 - **Mensalidades:** em *Contratos → Lançar despesas fixas do mês*, uma vez por mês (não duplica). Elas seguem para aprovação.
 - **Pagamento:** anexe o comprovante e registre data, valor (igual ao aprovado) e forma. O registro é definitivo.
 - **Receitas:** lançamento gerencial para o fluxo de caixa; correções por estorno.
+- **Planilha para o Asgard** (*Relatórios → Gerar relatório XLS Asgard*): envie uma vez o modelo exportado do Asgard (a lista de tipos é lida da aba de configuração; reenvie se os tipos mudarem). Defina a **correspondência padrão** dos tipos por categoria e por fornecedor (a do fornecedor prevalece). Escolha o **mês de referência**: entram todas as despesas **pagas** no mês, uma linha por pagamento, na data do pagamento. Ajuste, se preciso, o tipo de uma despesa, o nº do documento fiscal e o nº da autorização prévia. Com todas as linhas com tipo, clique em **Gerar relatório XLS Asgard** e importe o arquivo no Asgard. A geração fica registrada na auditoria.
 - O módulo é gerencial e não substitui a escrituração nem o Livro Diário Auxiliar.
 
 ## Fase 5a — qualidade e segurança da informação

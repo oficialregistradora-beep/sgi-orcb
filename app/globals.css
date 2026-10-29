@@ -193,6 +193,7 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
 .table tr:last-child td { border-bottom: 0; }
 .table tr.row-muted td { color: var(--text-3); background: var(--surface-2); }
+.table tr.row-warn td { background: var(--warn-soft); }
 .table .num { text-align: right; }
 
 /* ---------- Botões e formulários ---------- */
