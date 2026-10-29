@@ -14,6 +14,7 @@ import { ActionForm } from '@/ui/ActionForm.tsx';
 import { financeAdminAction, requestExpenseAction } from '../../actions/phase4b.ts';
 import { withGuard } from '@/server/web/guard.ts';
 import { AsgardReport } from './Asgard.tsx';
+import { RecurringExpenses } from './Recorrentes.tsx';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Financeiro' };
@@ -31,7 +32,7 @@ function ExpenseTable({ rows }: { rows: ExpenseRow[] }) {
       <thead><tr><th>Despesa</th><th>Centro / categoria</th><th>Competência</th><th>Vencimento</th><th className="num">Valor</th><th>Situação</th></tr></thead>
       <tbody>{rows.map((e) => (
         <tr key={e.id}>
-          <td><Link href={`/financeiro/despesas/${e.id}`}>{e.description}</Link><div className="small muted">{e.supplier_name ?? '—'} · {label(e.kind)}{e.origin === 'CONTRATO' ? ' · contrato' : ''} · {e.requested_by_name}</div></td>
+          <td><Link href={`/financeiro/despesas/${e.id}`}>{e.description}</Link><div className="small muted">{e.supplier_name ?? '—'} · {label(e.kind)}{e.origin === 'CONTRATO' ? ' · contrato' : e.origin === 'RECORRENTE' ? ' · fixa mensal' : ''} · {e.requested_by_name}</div></td>
           <td className="small">{e.cost_center}<div className="muted">{e.category}</div></td>
           <td className="small">{monthLabel(e.competence)}</td>
           <td className={`small nowrap ${e.status === 'APROVADA' && e.due_date < today ? 'neg' : ''}`}>{fmtDate(e.due_date)}{e.status === 'APROVADA' && e.due_date < today ? ' (vencida)' : ''}</td>
@@ -187,7 +188,7 @@ async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ aba?: 
             </div></div>
             {admin ? (
               <div className="grid grid-2">
-                <div className="card"><div className="card-head"><h2>Lançar despesas fixas do mês</h2><p>Gera, para aprovação, as mensalidades dos contratos vigentes (sem duplicar).</p></div>
+                <div className="card"><div className="card-head"><h2>Lançar despesas fixas do mês</h2><p>Gera, para aprovação, as mensalidades dos contratos vigentes e as despesas fixas mensais com valor (sem duplicar).</p></div>
                   <div className="card-body"><ActionForm action={financeAdminAction} submitLabel="Gerar lançamentos"><input type="hidden" name="op" value="gerar_fixas" /><input name="month" type="month" className="input" aria-label="Competência" defaultValue={month} required /></ActionForm></div>
                 </div>
                 <div className="card"><div className="card-head"><h2>Novo contrato</h2></div>
@@ -211,6 +212,8 @@ async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ aba?: 
                 </div>
               </div>
             ) : null}
+            {admin ? <RecurringExpenses ctx={ctx} costCenters={ccs.filter((c) => c.active).map((c) => ({ id: c.id, label: `${c.code} — ${c.name}` }))}
+              categories={expenseCats.map((c) => ({ id: c.id, label: c.name }))} suppliers={suppliers.filter((x) => x.active).map((x) => ({ id: x.id, label: x.name }))} /> : null}
           </div>
         );
       })() : null}

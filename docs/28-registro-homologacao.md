@@ -35,6 +35,7 @@ Ambiente: Google Cloud, região São Paulo, publicado pelo caminho sem chave (`d
 - **v7:** a Oficial pode solicitar, aprovar e pagar despesas (parâmetro).
 - **v8:** painel do financeiro mostra à Oficial as despesas em que ela participou (complemento da v7).
 - **v9:** Relatórios → *Gerar relatório XLS Asgard*: modelo do Asgard preenchido com as despesas pagas no mês (pedido da Oficial, 29/10/2026).
+- **v10:** despesas fixas mensais sem contrato (editáveis/excluíveis) e importação da planilha do Asgard; geração mensal já com o tipo do Asgard. A planilha real de setembro/2026 **não** foi carregada na homologação (contém salários): será importada na produção.
 
 ## Decisões da Oficial
 

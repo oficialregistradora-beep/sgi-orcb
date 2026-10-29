@@ -24,6 +24,16 @@ function requireAsgard(ctx: Ctx): void {
 
 type Parsed = { entries: ZipEntries; outPath: string; types: string[] };
 
+/** Aba no formato do Asgard: primeira linha com Data, Tipo, Descrição, Valor, Nº Documento Fiscal, Nº Autorização Prévia. */
+export function findDataSheet(entries: ZipEntries): { name: string; path: string; hidden: boolean } {
+  const out = sheets(entries).find((s) => {
+    const t = cellTexts(entries, s.path);
+    return COLUMNS.every((c, i) => norm(t.get(`${'ABCDEF'[i]}1`) ?? '') === norm(c));
+  });
+  if (!out) throw new AppError(`Planilha não reconhecida: a primeira linha deve ter as colunas ${COLUMNS.join(', ')}.`);
+  return out;
+}
+
 /** Valida o modelo e extrai a lista de tipos (aba de configuração, coluna A a partir da linha 2). */
 export function parseTemplate(bytes: Buffer): Parsed {
   if (bytes.readUInt32LE(0) !== 0x04034b50) {
@@ -31,12 +41,8 @@ export function parseTemplate(bytes: Buffer): Parsed {
   }
   const entries = readZip(bytes);
   const all = sheets(entries);
-  const out = all.find((s) => {
-    const t = cellTexts(entries, s.path);
-    return COLUMNS.every((c, i) => norm(t.get(`${'ABCDEF'[i]}1`) ?? '') === norm(c));
-  });
-  if (!out) throw new AppError(`Modelo não reconhecido: a primeira linha deve ter as colunas ${COLUMNS.join(', ')}.`);
-  const conf = all.find((s) => s !== out && (s.hidden || /config/i.test(s.name)));
+  const out = findDataSheet(entries);
+  const conf = all.find((s) => s.path !== out.path && (s.hidden || /config/i.test(s.name)));
   if (!conf) throw new AppError('Modelo sem a aba de configuração com a lista de tipos.');
   const t = cellTexts(entries, conf.path);
   const types: string[] = [];
@@ -156,7 +162,9 @@ export function fillTemplate(parsed: Parsed, rows: { date: string; type: string;
   const style = (col: string) => { const s = new RegExp(`<c r="${col}2"[^>]*?\\bs="(\\d+)"`).exec(row2)?.[1]; return s ? ` s="${s}"` : ''; };
   const st = Object.fromEntries([...'ABCDEF'].map((c) => [c, style(c)]));
 
-  // Textos em sharedStrings.xml (como faz o Excel), acrescentados ao fim da tabela existente.
+  // Textos em sharedStrings.xml (como faz o Excel), acrescentados ao fim da tabela existente; se o modelo não tem
+  // essa tabela (alguns geradores gravam o texto na própria célula), o texto vai na célula (inlineStr).
+  const inline = !entries.has('xl/sharedStrings.xml');
   const ssXml = entries.get('xl/sharedStrings.xml')?.toString('utf8') ?? '<?xml version="1.0" encoding="UTF-8"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="0" uniqueCount="0"></sst>';
   const existing = sharedStrings(entries);
   const added: string[] = [];
@@ -164,6 +172,7 @@ export function fillTemplate(parsed: Parsed, rows: { date: string; type: string;
   let used = 0;
   const str = (ref: string, col: string, v: string | null) => {
     if (v === null || v === '') return `<c r="${ref}"${st[col]}/>`;
+    if (inline) return `<c r="${ref}"${st[col]} t="inlineStr"><is><t xml:space="preserve">${xmlEscape(v)}</t></is></c>`;
     used++;
     return `<c r="${ref}"${st[col]} t="s"><v>${sidx(v)}</v></c>`;
   };
@@ -185,7 +194,7 @@ export function fillTemplate(parsed: Parsed, rows: { date: string; type: string;
   let sst = ssXml.replace('</sst>', `${added.map((s) => `<si><t xml:space="preserve">${xmlEscape(s)}</t></si>`).join('')}</sst>`);
   const prevCount = Number(/count="(\d+)"/.exec(ssXml)?.[1] ?? 0);
   sst = countAttr(countAttr(sst, 'uniqueCount', existing.length + added.length), 'count', prevCount + used);
-  out.set('xl/sharedStrings.xml', Buffer.from(sst, 'utf8'));
+  if (!inline) out.set('xl/sharedStrings.xml', Buffer.from(sst, 'utf8'));
   return writeZip(out);
 }
 

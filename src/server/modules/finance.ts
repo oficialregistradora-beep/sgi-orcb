@@ -219,9 +219,24 @@ export async function generateContractExpenses(ctx: Ctx, month: string): Promise
         await query(c, "INSERT INTO expense_events (expense_id, user_id, event, details) VALUES ($1,$2,'SOLICITADA',$3)", [r[0]!.id, ctx.principal.userId, JSON.stringify({ origem: 'contrato' })]);
       }
     }
-    await audit(c, ctx, { action: 'FIN_DESPESAS_FIXAS_GERADAS', entityType: 'expense', entityId: null, summary: `${n} despesa(s) fixa(s) de contratos lançadas para ${comp.slice(0, 7)}` });
+    // Despesas fixas mensais sem contrato (com valor informado): uma solicitação por item e mês, já com o tipo do Asgard.
+    const recurring = await query<{ id: string; description: string; supplier_id: string | null; cost_center_id: string; category_id: string; amount: string; due_day: number; asgard_type: string | null }>(
+      c, 'SELECT id, description, supplier_id, cost_center_id, category_id, amount::text, due_day, asgard_type FROM recurring_expenses WHERE active AND amount IS NOT NULL');
+    for (const k of recurring) {
+      const r = await query<{ id: string }>(
+        c,
+        `INSERT INTO expenses (kind, origin, description, supplier_id, recurring_id, cost_center_id, category_id, amount, competence, due_date, requested_by)
+         VALUES ('FIXA','RECORRENTE',$1,$2,$3,$4,$5,$6,$7,$8,$9)
+         ON CONFLICT (recurring_id, competence) WHERE origin = 'RECORRENTE' AND status <> 'CANCELADA' DO NOTHING RETURNING id`,
+        [k.description, k.supplier_id, k.id, k.cost_center_id, k.category_id, k.amount, comp, dueDateIn(comp, k.due_day), ctx.principal.userId]);
+      if (!r.length) continue;
+      n++;
+      await query(c, "INSERT INTO expense_events (expense_id, user_id, event, details) VALUES ($1,$2,'SOLICITADA',$3)", [r[0]!.id, ctx.principal.userId, JSON.stringify({ origem: 'despesa fixa mensal' })]);
+      if (k.asgard_type) await query(c, 'INSERT INTO expense_asgard (expense_id, asgard_type, updated_by) VALUES ($1,$2,$3)', [r[0]!.id, k.asgard_type, ctx.principal.userId]);
+    }
+    await audit(c, ctx, { action: 'FIN_DESPESAS_FIXAS_GERADAS', entityType: 'expense', entityId: null, summary: `${n} despesa(s) fixa(s) (contratos e mensais) lançadas para ${comp.slice(0, 7)}` });
     if (n) await notifyUsers(c, (await usersWithPermission(c, 'financeiro.aprovar', '00000000-0000-0000-0000-000000000000')).filter((u) => u !== ctx.principal.userId),
-      { kind: 'FIN_APROVACAO', title: 'Despesas fixas aguardando aprovação', body: `${n} lançamento(s) de contratos — ${comp.slice(0, 7)}`, link: '/financeiro?aba=pagar' });
+      { kind: 'FIN_APROVACAO', title: 'Despesas fixas aguardando aprovação', body: `${n} lançamento(s) de despesas fixas — ${comp.slice(0, 7)}`, link: '/financeiro?aba=pagar' });
     return n;
   });
 }

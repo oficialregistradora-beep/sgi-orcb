@@ -5,7 +5,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { asgardTemplate } from '../fixtures/asgardTemplate.ts';
-import { cellTexts, readZip, sheets } from '../../src/server/xlsx.ts';
+import { cellTexts, excelDate, readZip, sheets } from '../../src/server/xlsx.ts';
 
 const BASE = process.argv[2] ?? 'http://localhost:3000';
 const results = [];
@@ -13,6 +13,11 @@ const check = (name, ok, detail = '') => { results.push(ok); console.log(`${ok ?
 const dir = mkdtempSync(path.join(tmpdir(), 'asgard-'));
 const tpl = path.join(dir, 'modelo-despesas-asgard.xls');
 writeFileSync(tpl, asgardTemplate());
+const sheet = path.join(dir, 'despesas-setembro.xlsx');
+writeFileSync(sheet, asgardTemplate({ rows: [
+  { date: excelDate('2026-09-10'), type: 'ENERGIA', description: 'Energia fictícia E2E', value: 422.61 },
+  { date: excelDate('2026-09-05'), type: 'DESPESAS SOFTWARE', description: 'Software fictício E2E', value: 99.9 },
+] }));
 const month = new Date().toISOString().slice(0, 7);
 const browser = await chromium.launch();
 
@@ -62,6 +67,18 @@ try {
   check('Planilha baixada com o nome do mês', dl.suggestedFilename() === `despesas-asgard-${month}.xls`, dl.suggestedFilename());
   check('Linha preenchida com tipo e valor', c.get('A1') === 'Data *' && !!c.get('B2') && !!c.get('D2'), `${c.get('B2')} · ${c.get('C2')} · ${c.get('D2')}`);
   check('Aba de configuração continua oculta', tabs[1]?.hidden === true);
+
+  // Despesas fixas mensais: importar planilha fictícia no formato do Asgard, conferir e excluir um item.
+  await page.goto(`${BASE}/financeiro?aba=contratos`);
+  check('Contratos mostra "Despesas fixas mensais"', await page.locator('h2:has-text("Despesas fixas mensais")').isVisible());
+  await page.setInputFiles('#ri-f', sheet);
+  await page.click('form:has(#ri-f) button[type=submit]');
+  await page.waitForSelector('text=despesa(s) fixa(s) importada(s)', { timeout: 15000 });
+  check('Planilha importada: itens listados com valor e dia', await page.locator('td:has-text("Energia fictícia E2E")').isVisible() && await page.locator('tr:has-text("Energia fictícia E2E") td:has-text("422,61")').isVisible());
+  page.once('dialog', (d) => d.accept());
+  await page.locator('tr:has-text("Software fictício E2E") button:has-text("Excluir")').click();
+  await page.locator('td:has-text("Software fictício E2E")').waitFor({ state: 'detached', timeout: 10000 });
+  check('Item excluído (some da lista)', !(await page.locator('td:has-text("Software fictício E2E")').count()));
 } catch (e) {
   check('Execução sem exceções', false, String(e).slice(0, 300));
 } finally {

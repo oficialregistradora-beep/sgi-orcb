@@ -7,7 +7,7 @@
 | 2 | Provisionar o ambiente de **homologação** no GCP (dados fictícios) | Dev/DevOps | P-02, P-03 |
 | 3 | Homologação guiada pela Oficial e pela Substituta (roteiro: `25-roteiro-homologacao.md`) | Serventia | Etapa 2 |
 | 4 | Treinamento da equipe (1 h; manual do funcionário) e cadastro dos autenticadores | Oficial + Dev | Etapa 3 |
-| 5 | Provisionar **produção**; cadastrar a Oficial; cadastros funcionais reais pela interface, com **início do controle** = data da implantação e **férias anteriores** lançadas por período (manual do administrador, Primeiros passos, item 4); banco de horas anterior quitado | Oficial | Aceite formal |
+| 5 | Provisionar **produção**; cadastrar a Oficial; cadastros funcionais reais pela interface, com **início do controle** = data da implantação e **férias anteriores** lançadas por período (manual do administrador, Primeiros passos, item 4); banco de horas anterior quitado; **despesas fixas mensais** importadas da planilha do último mês fechado (Financeiro → Contratos → Despesas fixas mensais → Importar) e revisadas | Oficial | Aceite formal |
 | 6 | Operação paralela por 1 mês (controle atual + SGI), conferindo espelhos | Serventia | Etapa 5 |
 | 7 | Encerrar o controle anterior; primeiro fechamento de competência no SGI | Oficial | Divergências resolvidas |
 

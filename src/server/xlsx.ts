@@ -72,7 +72,10 @@ export function writeZip(entries: ZipEntries): Buffer {
 }
 
 export const xmlEscape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const xmlUnescape = (s: string) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+const xmlUnescape = (s: string) => s
+  .replace(/&#x([0-9a-f]+);/gi, (_, h: string) => String.fromCodePoint(parseInt(h, 16)))
+  .replace(/&#(\d+);/g, (_, d: string) => String.fromCodePoint(Number(d)))
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
 
 /** Textos compartilhados (sharedStrings.xml), na ordem; rich text é concatenado. */
 export function sharedStrings(entries: ZipEntries): string[] {
