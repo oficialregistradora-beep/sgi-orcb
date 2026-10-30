@@ -9,7 +9,7 @@ import { fmtDate, fmtDateTime, label, statusTone } from '@/ui/format.ts';
 import { PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import {
-  assignRoleAction, createRoleAction, createUserAction, resetMfaAction, correctEmailAction, revokeRoleAction, rolePermissionAction, userStatusAction,
+  assignRoleAction, createRoleAction, createUserAction, resetMfaAction, correctEmailAction, emailMfaAction, revokeRoleAction, rolePermissionAction, userStatusAction,
 } from '../../actions/admin.ts';
 
 import { withGuard } from '@/server/web/guard.ts';
@@ -111,6 +111,22 @@ async function PermissoesPage({ searchParams }: { searchParams: Promise<{ aba?: 
                       <input type="hidden" name="userId" value={selected.id} />
                       <div className="field"><label htmlFor="rm-r">Motivo (ex.: troca de celular)</label><input id="rm-r" name="reason" className="input" required minLength={5} /></div>
                     </ActionForm>
+                    <ActionForm action={emailMfaAction} submitLabel={selected.mfa_email ? 'Trocar e-mail' : 'Liberar código por e-mail'} submitClass="btn" confirm="Confirma? Quem tiver acesso a esse e-mail pessoal poderá receber o código de entrada.">
+                      <input type="hidden" name="userId" value={selected.id} />
+                      <p className="small muted">
+                        Código por e-mail pessoal: {selected.mfa_email ? <strong>liberado ({selected.mfa_email})</strong> : 'não liberado'} · códigos de reserva: {selected.backup_left}.
+                        {' '}Alternativa ao aplicativo, menos segura — libere só para quem não pode usar o autenticador.
+                      </p>
+                      <div className="field"><label htmlFor="em-e">E-mail pessoal</label><input id="em-e" name="email" type="email" className="input" required /></div>
+                      <div className="field" style={{ marginTop: 8 }}><label htmlFor="em-r">Motivo</label><input id="em-r" name="reason" className="input" required minLength={5} /></div>
+                    </ActionForm>
+                    {selected.mfa_email ? (
+                      <ActionForm action={emailMfaAction} submitLabel="Retirar código por e-mail" submitClass="btn btn-danger">
+                        <input type="hidden" name="userId" value={selected.id} />
+                        <input type="hidden" name="op" value="retirar" />
+                        <div className="field"><label htmlFor="em-x">Motivo</label><input id="em-x" name="reason" className="input" required minLength={5} /></div>
+                      </ActionForm>
+                    ) : null}
                     {!selected.last_login_at && !selected.mfa_enabled ? (
                       <ActionForm action={correctEmailAction} submitLabel="Corrigir e-mail" submitClass="btn" confirm="Corrigir o e-mail institucional deste usuário?">
                         <input type="hidden" name="userId" value={selected.id} />

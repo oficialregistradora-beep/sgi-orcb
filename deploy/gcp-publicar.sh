@@ -4,12 +4,14 @@
 #   bash deploy/gcp-homolog.sh     (homologação: dados fictícios)
 #   bash deploy/gcp-producao.sh    (produção: banco vazio, só a Oficial cadastrada)
 # Para trocar a chave secreta do cliente OAuth (após gerar outra no console): acrescente --trocar-chave-oauth
+# Para ligar o envio de e-mail (código de acesso no e-mail pessoal) pela caixa institucional: acrescente --ligar-email
 # Usa o login de quem executa (nenhuma chave é criada). Pode ser executado de novo a qualquer momento:
 # o que já existe é mantido; a imagem é reconstruída e republicada.
 # Segredos são gerados aqui e gravados direto no Secret Manager; nada é exibido na tela.
 set -euo pipefail
 
 AMBIENTE="${AMBIENTE:-homologacao}"
+LIGAR_EMAIL=0; for a in "$@"; do [ "$a" = --ligar-email ] && LIGAR_EMAIL=1; done
 case "$AMBIENTE" in
   homologacao) PROJECT="${PROJECT:-sgi-orcb-homolog}"; SQL_INSTANCE="sgi-homolog"; SQL_TIER="db-f1-micro"; BACKUPS=7; SSL_MODE="ALLOW_UNENCRYPTED_AND_ENCRYPTED"; DB_SSL="false"; NOME="Homologação"; CLIENTE="SGI homologação"; ETAPA8="migrations, papel da aplicação e dados FICTÍCIOS de homologação" ;;
   producao)    PROJECT="${PROJECT:-sgi-orcb-prod}";    SQL_INSTANCE="sgi-prod";    SQL_TIER="db-g1-small"; BACKUPS=30; SSL_MODE="ENCRYPTED_ONLY"; DB_SSL="require"; NOME="PRODUÇÃO"; CLIENTE="SGI"; ETAPA8="migrations, papel da aplicação e cadastro da Oficial" ;;
@@ -76,7 +78,11 @@ while [[ "${GOOGLE_CLIENT_ID:-}" != *.apps.googleusercontent.com ]]; do
   GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID//[[:space:]]/}"
   [[ "$GOOGLE_CLIENT_ID" == GOCSPX* ]] && { echo "    Isso é a CHAVE SECRETA, não o ID. Ela será pedida depois, sem aparecer na tela."; GOOGLE_CLIENT_ID=""; }
 done
-printf 'EMAIL_OFICIAL=%q\nEMAIL_SUBSTITUTA=%q\nNOME_OFICIAL=%q\nGOOGLE_CLIENT_ID=%q\n' "$EMAIL_OFICIAL" "${EMAIL_SUBSTITUTA:-}" "${NOME_OFICIAL:-}" "$GOOGLE_CLIENT_ID" > "$CONF"
+GMAIL_SENDER="${GMAIL_SENDER:-}"
+if [ "$LIGAR_EMAIL" = 1 ] && [ -z "$GMAIL_SENDER" ]; then
+  pergunta_email GMAIL_SENDER "Caixa institucional que ENVIARÁ os códigos por e-mail (ex.: atendimento@$DOMAIN)" 1
+fi
+printf 'EMAIL_OFICIAL=%q\nEMAIL_SUBSTITUTA=%q\nNOME_OFICIAL=%q\nGOOGLE_CLIENT_ID=%q\nGMAIL_SENDER=%q\n' "$EMAIL_OFICIAL" "${EMAIL_SUBSTITUTA:-}" "${NOME_OFICIAL:-}" "$GOOGLE_CLIENT_ID" "$GMAIL_SENDER" > "$CONF"
 ok "Respostas guardadas em $CONF"
 
 # ---------------------------------------------------------------------------
@@ -104,6 +110,14 @@ for sa in sgi-app sgi-setup; do
 done
 SA_APP="sgi-app@$PROJECT.iam.gserviceaccount.com"; SA_SETUP="sgi-setup@$PROJECT.iam.gserviceaccount.com"
 ok "sgi-app (aplicação) e sgi-setup (preparação do banco)"
+if [ -n "$GMAIL_SENDER" ]; then
+  # Envio pelo Gmail sem chave: a própria sgi-app assina a delegação (IAM signJwt), restrita ao escopo gmail.send.
+  gcloud services enable gmail.googleapis.com iamcredentials.googleapis.com --quiet
+  gcloud iam service-accounts add-iam-policy-binding "$SA_APP" --member="serviceAccount:$SA_APP" \
+    --role=roles/iam.serviceAccountTokenCreator --quiet >/dev/null
+  SA_APP_CLIENT_ID="$(gcloud iam service-accounts describe "$SA_APP" --format='value(oauth2ClientId)')"
+  ok "Envio de e-mail preparado (remetente $GMAIL_SENDER)"
+fi
 
 # ---------------------------------------------------------------------------
 passo "5/10 Segredos (gerados aqui, gravados no Secret Manager)"
@@ -220,7 +234,7 @@ else
   SEED="oficial=$EMAIL_OFICIAL${EMAIL_SUBSTITUTA:+;substituta=$EMAIL_SUBSTITUTA}"
   { cat "$TMP/comum.yaml"; echo "SEED_EMAILS: \"$SEED\""; } > "$TMP/job.yaml"
 fi
-{ cat "$TMP/comum.yaml"; echo 'CLAMAV_HOST: "127.0.0.1"'; echo 'CLAMAV_PORT: "3310"'; } > "$TMP/app.yaml"
+{ cat "$TMP/comum.yaml"; echo 'CLAMAV_HOST: "127.0.0.1"'; echo 'CLAMAV_PORT: "3310"'; [ -z "$GMAIL_SENDER" ] || echo "GMAIL_SENDER: \"$GMAIL_SENDER\""; } > "$TMP/app.yaml"
 REDE=(--network="$VPC" --subnet="$SUBNET" --vpc-egress=private-ranges-only)
 
 passo "8/10 Preparando o banco ($ETAPA8)"
@@ -294,3 +308,12 @@ $(if [ "$AMBIENTE" = producao ]; then echo "  PRODUÇÃO: dados reais. A Oficial
   (Equipe → Admitir funcionário, com o início do controle no sistema)."; else echo "  Dados: somente FICTÍCIOS. Não cadastre pessoas, documentos ou valores reais na homologação."; fi)
   O antivírus leva 2–3 min para carregar após o sistema "acordar"; nesse intervalo, anexos são recusados.
 EOF
+if [ -n "$GMAIL_SENDER" ]; then cat <<EOF
+
+  ENVIO DE E-MAIL (uma vez só): admin.google.com → Segurança → Controle de acesso e dados →
+  Controles de API → Gerenciar a delegação em todo o domínio → Adicionar novo:
+      ID do cliente:  ${SA_APP_CLIENT_ID:-}
+      Escopo OAuth:   https://www.googleapis.com/auth/gmail.send
+  → Autorizar. Os códigos sairão de $GMAIL_SENDER (só envio; o sistema não lê a caixa).
+EOF
+fi

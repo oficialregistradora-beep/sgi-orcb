@@ -6,6 +6,8 @@ import { can, requirePermission, requireStepUp } from '../authz.ts';
 import { audit } from '../audit.ts';
 import { AppError, ConflictError, ForbiddenError, NotFoundError } from '../errors.ts';
 import { revokeAllUserSessions } from '../auth/session.ts';
+import { maskEmail } from '../auth/mfa.ts';
+import { decryptField, encryptField } from '../crypto.ts';
 import { invalidateSettingsCache } from '../settings.ts';
 import { parseHHMM } from '../../domain/time.ts';
 
@@ -18,6 +20,8 @@ const isoDate = z.iso.date();
 export type UserListItem = {
   id: string; email: string; display_name: string; status: string; is_owner: boolean;
   mfa_enabled: boolean; last_login_at: Date | null; employee_id: string | null; employee_name: string | null;
+  /** E-mail pessoal liberado para código de acesso (mascarado). */
+  mfa_email: string | null; backup_left: number;
 };
 
 export async function listUsers(ctx: Ctx, db: Db = getPool()): Promise<UserListItem[]> {
@@ -25,10 +29,44 @@ export async function listUsers(ctx: Ctx, db: Db = getPool()): Promise<UserListI
   return query<UserListItem>(
     db,
     `SELECT u.id, u.email, u.display_name, u.status, u.is_owner, (u.totp_enabled_at IS NOT NULL) AS mfa_enabled,
-            u.last_login_at, e.id AS employee_id, e.full_name AS employee_name
+            u.last_login_at, e.id AS employee_id, e.full_name AS employee_name, u.mfa_email_enc AS mfa_email,
+            (SELECT count(*)::int FROM mfa_backup_codes b WHERE b.user_id = u.id AND b.used_at IS NULL) AS backup_left
        FROM users u LEFT JOIN employees e ON e.user_id = u.id
       ORDER BY u.status, u.display_name`,
-  );
+  ).then((rows) => rows.map((r) => {
+    const personal = decryptField(r.mfa_email);
+    return { ...r, mfa_email: personal ? maskEmail(personal) : null };
+  }));
+}
+
+const emailMfaSchema = z.object({
+  userId: uuid,
+  email: z.string().trim().toLowerCase().pipe(z.email()).nullable(),
+  reason: z.string().trim().min(5).max(500),
+});
+
+/**
+ * Libera (ou retira) o código de acesso por e-mail pessoal para uma pessoa — alternativa ao aplicativo autenticador,
+ * menos segura: quem tiver acesso ao e-mail pessoal recebe o código. Decisão da Oficial, pessoa a pessoa.
+ */
+export async function setUserEmailMfa(ctx: Ctx, input: z.input<typeof emailMfaSchema>): Promise<void> {
+  requirePermission(ctx, 'usuarios.gerenciar');
+  const data = emailMfaSchema.parse(input);
+  if (data.email?.endsWith(`@${getConfig().workspaceDomain}`)) {
+    throw new AppError('Informe um e-mail pessoal (fora do domínio institucional): o código não pode ir para a mesma conta usada no login.');
+  }
+  await requireStepUp(getPool(), ctx);
+  await tx(async (c) => {
+    const u = await queryOne<{ email: string }>(c, 'SELECT email FROM users WHERE id = $1 FOR UPDATE', [data.userId]);
+    if (!u) throw new NotFoundError();
+    await query(c, 'UPDATE users SET mfa_email_enc = $2, mfa_email_code_hash = NULL, mfa_email_code_expires_at = NULL WHERE id = $1',
+      [data.userId, data.email ? encryptField(data.email) : null]);
+    await audit(c, ctx, {
+      action: 'USUARIO_MFA_EMAIL', entityType: 'user', entityId: data.userId,
+      summary: data.email ? `Código por e-mail pessoal liberado para ${u.email} (${maskEmail(data.email)})` : `Código por e-mail pessoal retirado de ${u.email}`,
+      data: { reason: data.reason },
+    });
+  });
 }
 
 const createUserSchema = z.object({
@@ -124,7 +162,8 @@ export async function resetUserMfa(ctx: Ctx, userId: string, reason: string): Pr
     const u = await queryOne<{ email: string }>(c, 'SELECT email FROM users WHERE id = $1', [userId]);
     if (!u) throw new NotFoundError();
     await query(c, `UPDATE users SET totp_secret_enc = NULL, totp_enabled_at = NULL, totp_last_step = NULL,
-                    mfa_failed_count = 0, mfa_locked_until = NULL WHERE id = $1`, [userId]);
+                    mfa_failed_count = 0, mfa_locked_until = NULL, mfa_email_code_hash = NULL, mfa_email_code_expires_at = NULL WHERE id = $1`, [userId]);
+    await query(c, 'DELETE FROM mfa_backup_codes WHERE user_id = $1', [userId]);
     await revokeAllUserSessions(c, userId, 'MFA_REDEFINIDO');
     await audit(c, ctx, { action: 'USUARIO_MFA_REDEFINIDO', entityType: 'user', entityId: userId, summary: `Autenticador de ${u.email} redefinido`, data: { reason } });
   });

@@ -28,6 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         { href: '/solicitacoes', label: 'Solicitações', icon: <I.IconInbox /> },
         ...(can(p, 'documentos.ver') ? [{ href: '/documentos', label: 'Gestão documental', icon: <I.IconFolder /> }] : []),
         { href: '/agenda', label: 'Agenda', icon: <I.IconCalendar /> },
+        { href: '/seguranca', label: 'Minha segurança', icon: <I.IconShield /> },
         ...(p.employeeId || can(p, 'ferias.aprovar') ? [{ href: '/ferias', label: 'Férias', icon: <I.IconCalendar /> }] : []),
         ...(can(p, 'plantoes.ver') ? [{ href: '/plantoes', label: 'Plantões RCPN', icon: <I.IconClock /> }] : []),
       ],

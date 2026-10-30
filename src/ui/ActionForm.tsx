@@ -3,6 +3,7 @@
 import { startTransition, useActionState, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ActionState } from '../server/web/action.ts';
 import { stepUpAction } from '../../app/actions/auth.ts';
+import { EmailCodeButton } from './EmailCodeButton.tsx';
 
 type Props = {
   action: (prev: ActionState, fd: FormData) => Promise<ActionState>;
@@ -87,17 +88,15 @@ export function ActionForm({ action, children, submitLabel = 'Salvar', submitCla
               <h2 id="stepup-title">Confirme sua identidade</h2>
             </div>
             <div className="card-body stack">
-              <p className="muted small">Operação crítica: informe o código de 6 dígitos do seu aplicativo autenticador.</p>
+              <p className="muted small">Operação crítica: informe o código do aplicativo autenticador, um código de reserva ou o código enviado ao seu e-mail pessoal.</p>
               <input
                 className="input mono"
-                inputMode="numeric"
                 autoComplete="one-time-code"
-                pattern="\d{6}"
-                maxLength={6}
+                maxLength={9}
                 autoFocus
-                aria-label="Código do autenticador"
+                aria-label="Código de confirmação"
                 value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
@@ -106,9 +105,10 @@ export function ActionForm({ action, children, submitLabel = 'Salvar', submitCla
                 }}
               />
               {stepUpError ? <p className="small neg" role="alert">{stepUpError}</p> : null}
+              <EmailCodeButton />
               <div className="form-actions">
                 <button type="button" className="btn" onClick={() => setStepUpOpen(false)}>Cancelar</button>
-                <button type="button" className="btn btn-primary" disabled={code.length !== 6 || busy} onClick={() => void confirmStepUp()}>
+                <button type="button" className="btn btn-primary" disabled={code.replace(/-/g, '').length < 6 || busy} onClick={() => void confirmStepUp()}>
                   {busy ? 'Verificando…' : 'Confirmar'}
                 </button>
               </div>

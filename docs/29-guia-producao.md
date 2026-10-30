@@ -31,4 +31,11 @@ A produção usa **outro projeto** no Google Cloud (`sgi-orcb-prod`), separado d
 
 - 29/10/2026: produção publicada (`sgi-orcb-prod`, pacote v11) em https://sgi-orcb-416495482761.southamerica-east1.run.app — conta de faturamento convertida para conta completa, orçamento com alerta de R$ 400/mês (sem limite de gastos), cliente OAuth `SGI`, primeiro acesso da Oficial com autenticador concluído.
 
+## Envio de e-mail (código de acesso no e-mail pessoal) — uma vez só
+
+1. Escolha a caixa institucional que enviará os códigos (ex.: `atendimento@registroscapivari.com`). Ela só envia; o sistema não lê a caixa.
+2. Cloud Shell: `cd ~/sgi-orcb && bash deploy/gcp-producao.sh --ligar-email` → `PUBLICAR` → informe a caixa. O script ativa a Gmail API e a assinatura sem chave e mostra, ao final, o **ID do cliente** da conta `sgi-app`.
+3. admin.google.com → *Segurança → Controle de acesso e dados → Controles de API → Gerenciar a delegação em todo o domínio → Adicionar novo*: ID do cliente mostrado + escopo `https://www.googleapis.com/auth/gmail.send` → *Autorizar*.
+4. Teste: libere o código por e-mail para uma pessoa (*Usuários e permissões*) e peça o código na tela de entrada. As próximas publicações mantêm a caixa (guardada em `~/.sgi-producao.conf`).
+
 Atualizações futuras da produção: o mesmo comando do passo 4 (o banco e os cadastros são preservados; migrações novas são aplicadas).

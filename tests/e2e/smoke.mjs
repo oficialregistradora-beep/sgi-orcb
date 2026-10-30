@@ -285,7 +285,8 @@ try {
   await page.click('tbody a:has-text("LGPD-01")');
   await page.waitForURL(/\/treinamentos\/[0-9a-f-]+$/);
   check('Treinamento: turma planejada com inscritos', await page.locator('h2:has-text("Turmas")').isVisible() && await page.locator('text=Sala de reuniões').first().isVisible());
-  await page.goto(`${BASE}/agenda`);
+  // A turma fictícia é marcada para daqui a 10 dias: abre o mês dela (no fim do mês, cai no mês seguinte).
+  await page.goto(`${BASE}/agenda?mes=${new Date(Date.now() + 10 * 864e5).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }).slice(0, 7)}`);
   check('Agenda: turma de treinamento no calendário', (await page.locator('text=Treinamento: LGPD').count()) >= 1);
   await page.goto(`${BASE}/avaliacoes?aba=modelos`);
   check('Avaliações: modelos publicados com critérios e pesos', await page.locator('text=Acompanhamento do período de experiência').first().isVisible() && await page.locator('text=Qualidade técnica (peso 2)').first().isVisible());

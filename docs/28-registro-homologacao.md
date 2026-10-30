@@ -44,6 +44,7 @@ Ambiente: Google Cloud, região São Paulo, publicado pelo caminho sem chave (`d
 | 28/10/2026 | Ativar a restrição de rede com o endereço atual (177.74.69.168, Ateky), mesmo sem confirmação de IP fixo; se mudar, a Substituta atualiza em Configurações → Rede |
 | 28/10/2026 | Financeiro: a Oficial pode solicitar, aprovar e pagar a mesma despesa (`financeiro.oficial_sem_segregacao`); demais pessoas mantêm a regra das três pessoas |
 | 29/10/2026 | Gestão documental: **mantida** a aprovação por outra pessoa também para documentos elaborados pela Oficial |
+| 30/10/2026 | Segundo fator: além do aplicativo, **códigos de reserva** para todos e **código por e-mail pessoal** liberado pela Oficial pessoa a pessoa (v14). SMS descartado (custo e clonagem de chip); WhatsApp (API oficial da Meta) fica para depois da verificação da empresa na Meta |
 | 30/10/2026 | Regras da CCT SC000957/2026: a conferência e a validação no sistema são feitas pela **Oficial, como empregadora** (nome e cargo), sem exigência de advogado(a) — não há norma que a imponha; dúvidas de interpretação podem ser levadas ao jurídico do SINOREG-SC. A v12 pré-cadastra as regras da CCT (pendentes) e acrescenta a cl. 17, §2º (folga integral começa na segunda ou sexta) e §§5º–6º (sábado, domingo e feriado fora do banco, salvo plantão, casamento e curso/palestra até 4 sábados/ano) |
 
 ## Pendências para a produção

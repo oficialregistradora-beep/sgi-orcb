@@ -21,7 +21,9 @@
 6. **Banco de horas** de cada funcionário: verificar créditos a vencer e vencidos; registrar pagamentos em folha.
 
 ## Segurança
-- Perda de celular: **Usuários → selecionar → Redefinir autenticador**.
+- Perda de celular: **Usuários → selecionar → Redefinir autenticador** (invalida também os códigos de reserva da pessoa).
+- **Códigos de reserva:** cada pessoa gera os seus em *Minha segurança* (10 códigos de uso único, mostrados uma vez). Oriente todos a gerar e guardar.
+- **Código por e-mail pessoal:** em *Usuários e permissões* → pessoa → *Liberar código por e-mail* (e-mail pessoal, fora do domínio; motivo; reautenticação). Alternativa menos segura que o aplicativo — só para quem não pode usá-lo. Exige o envio pelo Gmail ligado uma vez (`bash deploy/gcp-producao.sh --ligar-email` + delegação no admin.google.com; ver `29-guia-producao.md`).
 - Afastamento ou desligamento: suspender o usuário ou registrar o desligamento (revoga sessões na hora).
 - Mensalmente: **Auditoria → Verificar integridade da cadeia**. Qualquer alerta aciona o plano de resposta a incidentes.
 - Parâmetros (inatividade, reautenticação, alertas, divisor e adicional) ficam em **Configurações → Parâmetros**.

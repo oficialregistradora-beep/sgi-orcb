@@ -2,12 +2,13 @@ import { redirect } from 'next/navigation';
 import QRCode from 'qrcode';
 import { getConfig } from '@/server/config.ts';
 import { getPool, queryOne } from '@/server/db.ts';
-import { beginEnrollment, mfaStatus } from '@/server/auth/mfa.ts';
+import { beginEnrollment, mfaOptions, mfaStatus } from '@/server/auth/mfa.ts';
 import { decryptField } from '@/server/crypto.ts';
 import { totpAt } from '@/server/totp.ts';
 import { getSessionState } from '@/server/web/session.ts';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { BrandMark } from '@/ui/Brand.tsx';
+import { EmailCodeButton } from '@/ui/EmailCodeButton.tsx';
 import { mfaAction, logoutAction } from '../actions/auth.ts';
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +23,13 @@ export default async function MfaPage() {
   const status = await mfaStatus(db, st.session.user_id);
   const enrollment = status === 'PENDENTE_CADASTRO' ? await beginEnrollment(db, st.session.user_id) : null;
   const qr = enrollment ? await QRCode.toDataURL(enrollment.uri, { margin: 1, width: 172 }) : null;
+  const alt = await mfaOptions(db, st.session.user_id);
+  const codeField = (id: string, label: string, autoFocus: boolean) => (
+    <div className="field" style={{ marginTop: 16 }}>
+      <label htmlFor={id}>{label}</label>
+      <input id={id} name="code" className="input mono" autoComplete="one-time-code" maxLength={9} required autoFocus={autoFocus} />
+    </div>
+  );
 
   // Somente em homologação, para sessões de login de teste: exibe o código atual (usuários fictícios).
   let devCode: string | null = null;
@@ -53,16 +61,28 @@ export default async function MfaPage() {
               </details>
             </div>
           ) : (
-            <p className="small muted">Informe o código de 6 dígitos do seu aplicativo autenticador.</p>
+            <p className="small muted">
+              Informe o código de 6 dígitos do seu aplicativo autenticador
+              {alt.backupLeft ? ', ou um dos seus códigos de reserva (formato XXXX-XXXX)' : ''}
+              {alt.email ? ', ou peça um código no seu e-mail pessoal' : ''}.
+            </p>
           )}
           {devCode ? <div className="alert alert-warn small" style={{ marginTop: 12 }}>Homologação — código atual do usuário fictício: <strong className="mono">{devCode}</strong></div> : null}
           <ActionForm action={mfaAction} submitLabel={enrollment ? 'Ativar e entrar' : 'Verificar'} className="stack">
             <input type="hidden" name="mode" value={enrollment ? 'cadastro' : 'verificacao'} />
-            <div className="field" style={{ marginTop: 16 }}>
-              <label htmlFor="code">Código do autenticador</label>
-              <input id="code" name="code" className="input mono" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} required autoFocus />
-            </div>
+            {codeField('code', enrollment ? 'Código do autenticador' : 'Código', true)}
           </ActionForm>
+          {!enrollment && alt.email ? <EmailCodeButton /> : null}
+          {enrollment && alt.email ? (
+            <div className="stack" style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+              <p className="small muted">Não pode usar o aplicativo? Receba um código no seu e-mail pessoal ({alt.email}).</p>
+              <EmailCodeButton />
+              <ActionForm action={mfaAction} submitLabel="Entrar com o código do e-mail" submitClass="btn" className="stack">
+                <input type="hidden" name="mode" value="verificacao" />
+                {codeField('code-email', 'Código recebido por e-mail', false)}
+              </ActionForm>
+            </div>
+          ) : null}
           <form action={logoutAction} style={{ marginTop: 8 }}>
             <button type="submit" className="btn btn-ghost btn-sm">Cancelar e sair</button>
           </form>

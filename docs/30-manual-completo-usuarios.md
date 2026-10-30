@@ -58,13 +58,15 @@ Princípios:
 Dica: no aplicativo autenticador, dê à conta um nome fácil de reconhecer, como "SGI PRODUÇÃO". Se você participou da homologação, terá uma conta antiga com o mesmo nome. Os códigos dela **não** funcionam na produção, então apague-a ou renomeie-a para "SGI homologação (antigo)".
 
 ### 2.3 Acessos seguintes
-**Entrar com Google** → digitar o código atual do aplicativo.
+**Entrar com Google** → digitar o código atual do aplicativo. No lugar dele, também valem:
+- um **código de reserva** (formato `XXXX-XXXX`, ver 2.7);
+- o **código enviado ao seu e-mail pessoal**, se a Oficial liberou essa opção para você: clique em **Enviar código para meu e-mail pessoal**, abra o e-mail e digite o código (vale **10 minutos**, uma vez só; para pedir outro, espere 1 minuto).
 
 ### 2.4 Sessão, bloqueio e saída
 - Depois de **30 minutos sem uso**, a sessão expira e é preciso entrar de novo.
 - Uma sessão dura no máximo **12 horas**.
 - Para sair, clique em **Sair**, no canto superior direito. Faça isso sempre em computador compartilhado.
-- Algumas operações pedem o código do autenticador de novo, por exemplo: alterar permissões, aprovar documentos, registrar manifestação no espelho, dados sensíveis, salário e configurações de rede. Essa confirmação vale **10 minutos**.
+- Algumas operações pedem o código de novo (**Confirme sua identidade**), por exemplo: alterar permissões, aprovar documentos, registrar manifestação no espelho, dados sensíveis, salário e configurações de rede. Vale o código do aplicativo, um código de reserva ou o código do e-mail (botão **Enviar código para meu e-mail pessoal** no próprio quadro). Essa confirmação vale **10 minutos**.
 - **Cada código só pode ser usado uma vez.** Se o sistema recusar um código recém-usado, espere o próximo (eles mudam a cada 30 segundos).
 
 ### 2.5 Restrição à rede da serventia
@@ -78,7 +80,13 @@ O sistema só pode ser usado **na internet do cartório**. Fora dela, aparece a 
   - o **plantonista do RCPN** durante o plantão, com uma folga antes e depois.
 
 ### 2.6 Troquei ou perdi o celular
-Avise a Oficial ou a Substituta. Elas abrem **Usuários e permissões** → selecionam você → **Redefinir autenticador**. No próximo acesso, você lê um QR code novo. Se o celular foi **perdido ou roubado**, comunique também um **incidente** (ver 7.6).
+Se tiver **códigos de reserva**, entre com um deles e siga trabalhando. Para cadastrar o celular novo, avise a Oficial: ela abre **Usuários e permissões** → seleciona você → **Redefinir autenticador** (isso também invalida os códigos de reserva). No próximo acesso, você lê um QR code novo e gera novos códigos de reserva. Se o celular foi **perdido ou roubado**, comunique também um **incidente** (ver 7.6).
+
+### 2.7 Códigos de reserva e código por e-mail
+- **Códigos de reserva (para todos):** menu **Minha segurança** → **Códigos de reserva** → digite um código atual (do aplicativo, do e-mail ou um código de reserva) → **Gerar códigos de reserva**. Aparecem **10 códigos**, **uma única vez**: imprima (**Imprimir**) ou anote e guarde em lugar seguro (carteira, gaveta com chave). Não fotografe nem envie por mensagem. Cada código vale **uma vez**; quando restarem poucos, gere uma lista nova (a anterior deixa de valer).
+- **Código por e-mail pessoal (só para quem a Oficial liberar):** alternativa para quem **não pode usar o aplicativo**. A Oficial cadastra o seu e-mail pessoal; na tela do código aparece **Enviar código para meu e-mail pessoal**. É menos seguro que o aplicativo: não compartilhe a senha do seu e-mail pessoal.
+- **Sem celular nenhum?** Também é possível usar um **token físico** (chaveiro que mostra o código) ou um programa no computador protegido por senha pessoal — fale com a Oficial.
+- Em **Minha segurança** você vê a situação: aplicativo cadastrado, quantos códigos de reserva restam e se o e-mail está liberado.
 
 ---
 
@@ -479,6 +487,7 @@ Abas:
   - **Revogar** um papel;
   - **Alterar situação:** Ativo, Suspenso ou Revogado. A suspensão **bloqueia na hora**;
   - **Redefinir autenticador:** troca de celular.
+  - **Liberar código por e-mail:** e-mail **pessoal** (fora do domínio do cartório) e motivo; pede o seu código. Libere só para quem não pode usar o aplicativo. Para tirar: **Retirar código por e-mail**. O painel mostra o e-mail mascarado (ex.: `b***@gmail.com`) e quantos códigos de reserva a pessoa ainda tem.
   - **Corrigir e-mail:** só enquanto a pessoa nunca entrou. Use o **e-mail principal** da conta no Google Workspace (admin.google.com → Diretório → Usuários, coluna E-mail), não um apelido.
 - **Criar usuário:** para quem não é funcionário. Funcionários ganham acesso pela admissão.
 - **Matriz de permissões:** o que cada papel pode fazer, e o escopo de cada permissão (próprio, setor ou todos).
@@ -570,6 +579,9 @@ Se algum contrato individual previr condição **mais favorável** que a CCT em 
 |---|---|
 | "Acesso permitido apenas na rede da serventia" | Você está fora da rede do cartório (ou no 4G). Ligue o Wi-Fi da serventia. Se estiver no cartório e várias pessoas forem bloqueadas, o IP mudou: avise a Oficial ou a Substituta (ver 9.5) |
 | "Acesso não autorizado. Sua conta precisa estar previamente cadastrada e ativa" | A conta Google usada não bate com o cadastro. Veja em **Auditoria** o registro "Login negado" (mostra o e-mail tentado). Se a pessoa escolheu outra conta, entre por janela anônima e digite o e-mail institucional. Se o cadastro foi feito com um **apelido** (o Google sempre devolve o **e-mail principal**, que aparece em admin.google.com → Usuários), use **Usuários e permissões → a pessoa → Corrigir e-mail** (só antes do primeiro acesso) |
+| Esqueci o celular / sem bateria | Entre com um **código de reserva** (ver 2.7). Se a Oficial liberou, peça o **código por e-mail** |
+| "O envio de e-mail ainda não está configurado no sistema" | O envio pelo Gmail do cartório ainda não foi ligado (ver o guia de produção). Use o aplicativo ou um código de reserva |
+| "O código por e-mail não está liberado para você" | Só a Oficial libera, em **Usuários e permissões** |
 | Código do autenticador recusado | Use o código da conta **certa** (produção, não homologação). Espere o código seguinte, porque cada código vale uma vez. Confira se a hora do celular está automática |
 | Troquei ou perdi o celular | Peça para **Redefinir autenticador** (ver 2.6). Se perdeu, comunique um incidente |
 | Um item do menu não aparece | O seu papel não dá acesso. Peça à Oficial, se for necessário para a sua função |

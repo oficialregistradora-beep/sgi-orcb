@@ -2,7 +2,7 @@
 
 import { runAction, str, optStr, int, type ActionState } from '@/server/web/action.ts';
 import {
-  addHoliday, assignRole, correctUserEmail, createRole, createSchedule, createUser, removeHoliday, resetUserMfa, revokeUserRole, saveJobTitle,
+  addHoliday, assignRole, correctUserEmail, setUserEmailMfa, createRole, createSchedule, createUser, removeHoliday, resetUserMfa, revokeUserRole, saveJobTitle,
   saveSector, setRolePermission, setUserStatus, updateNumericSetting,
 } from '@/server/modules/admin.ts';
 import { verifyAuditChain } from '@/server/audit.ts';
@@ -28,6 +28,14 @@ export async function correctEmailAction(_p: ActionState, fd: FormData): Promise
   return runAction(async (ctx) => {
     await correctUserEmail(ctx, { userId: str(fd, 'userId'), email: str(fd, 'email'), reason: str(fd, 'reason') });
     return 'E-mail corrigido. A pessoa já pode entrar com a conta Google correspondente.';
+  }, '/permissoes');
+}
+
+export async function emailMfaAction(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return runAction(async (ctx) => {
+    const off = fd.get('op') === 'retirar';
+    await setUserEmailMfa(ctx, { userId: str(fd, 'userId'), email: off ? null : str(fd, 'email'), reason: str(fd, 'reason') });
+    return off ? 'Código por e-mail retirado.' : 'Código por e-mail liberado para esta pessoa.';
   }, '/permissoes');
 }
 
