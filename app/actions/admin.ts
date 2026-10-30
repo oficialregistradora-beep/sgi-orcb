@@ -2,7 +2,7 @@
 
 import { runAction, str, optStr, int, type ActionState } from '@/server/web/action.ts';
 import {
-  addHoliday, assignRole, createRole, createSchedule, createUser, removeHoliday, resetUserMfa, revokeUserRole, saveJobTitle,
+  addHoliday, assignRole, correctUserEmail, createRole, createSchedule, createUser, removeHoliday, resetUserMfa, revokeUserRole, saveJobTitle,
   saveSector, setRolePermission, setUserStatus, updateNumericSetting,
 } from '@/server/modules/admin.ts';
 import { verifyAuditChain } from '@/server/audit.ts';
@@ -21,6 +21,13 @@ export async function userStatusAction(_p: ActionState, fd: FormData): Promise<A
   return runAction(async (ctx) => {
     await setUserStatus(ctx, { userId: str(fd, 'userId'), status: str(fd, 'status') as 'ATIVO', reason: str(fd, 'reason') });
     return 'Situação do usuário alterada.';
+  }, '/permissoes');
+}
+
+export async function correctEmailAction(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return runAction(async (ctx) => {
+    await correctUserEmail(ctx, { userId: str(fd, 'userId'), email: str(fd, 'email'), reason: str(fd, 'reason') });
+    return 'E-mail corrigido. A pessoa já pode entrar com a conta Google correspondente.';
   }, '/permissoes');
 }
 

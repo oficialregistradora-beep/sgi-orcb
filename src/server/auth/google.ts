@@ -102,7 +102,7 @@ export async function loginWithGoogleIdentity(
   if (!user || user.status !== 'ATIVO') {
     await audit(db, { userId: user?.id ?? null, sessionId: null, ip }, {
       action: 'AUTH_LOGIN_NEGADO', entityType: 'user', entityId: user?.id ?? null,
-      summary: user ? `Login negado: usuário ${user.status.toLowerCase()}` : 'Login negado: conta não cadastrada no sistema',
+      summary: user ? `Login negado: usuário ${user.status.toLowerCase()} (${id.email})` : `Login negado: conta não cadastrada no sistema (${id.email})`,
       data: { email: id.email },
     });
     throw new AppError('Acesso não autorizado. Procure a administração da serventia.', 403, 'USUARIO_NAO_AUTORIZADO');

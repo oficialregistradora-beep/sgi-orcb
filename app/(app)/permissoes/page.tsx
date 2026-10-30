@@ -9,7 +9,7 @@ import { fmtDate, fmtDateTime, label, statusTone } from '@/ui/format.ts';
 import { PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import {
-  assignRoleAction, createRoleAction, createUserAction, resetMfaAction, revokeRoleAction, rolePermissionAction, userStatusAction,
+  assignRoleAction, createRoleAction, createUserAction, resetMfaAction, correctEmailAction, revokeRoleAction, rolePermissionAction, userStatusAction,
 } from '../../actions/admin.ts';
 
 import { withGuard } from '@/server/web/guard.ts';
@@ -111,6 +111,14 @@ async function PermissoesPage({ searchParams }: { searchParams: Promise<{ aba?: 
                       <input type="hidden" name="userId" value={selected.id} />
                       <div className="field"><label htmlFor="rm-r">Motivo (ex.: troca de celular)</label><input id="rm-r" name="reason" className="input" required minLength={5} /></div>
                     </ActionForm>
+                    {!selected.last_login_at && !selected.mfa_enabled ? (
+                      <ActionForm action={correctEmailAction} submitLabel="Corrigir e-mail" submitClass="btn" confirm="Corrigir o e-mail institucional deste usuário?">
+                        <input type="hidden" name="userId" value={selected.id} />
+                        <p className="small muted">Só antes do primeiro acesso. Use o <strong>e-mail principal</strong> da conta no Google Workspace (apelidos não funcionam).</p>
+                        <div className="field"><label htmlFor="ce-e">E-mail correto</label><input id="ce-e" name="email" type="email" className="input" required defaultValue={selected.email} /></div>
+                        <div className="field" style={{ marginTop: 8 }}><label htmlFor="ce-r">Motivo</label><input id="ce-r" name="reason" className="input" required minLength={5} /></div>
+                      </ActionForm>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

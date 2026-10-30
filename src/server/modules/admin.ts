@@ -54,6 +54,38 @@ export async function createUser(ctx: Ctx, input: z.input<typeof createUserSchem
   });
 }
 
+const emailFixSchema = z.object({
+  userId: uuid,
+  email: z.string().trim().toLowerCase().pipe(z.email()),
+  reason: z.string().trim().min(5).max(500),
+});
+
+/**
+ * Corrige o e-mail institucional de quem ainda não entrou no sistema (ex.: cadastrado com um apelido do Google,
+ * que devolve sempre o e-mail principal). Depois do primeiro acesso a conta fica presa à identidade Google e não muda.
+ */
+export async function correctUserEmail(ctx: Ctx, input: z.input<typeof emailFixSchema>): Promise<void> {
+  requirePermission(ctx, 'usuarios.gerenciar');
+  const data = emailFixSchema.parse(input);
+  const domain = getConfig().workspaceDomain;
+  if (!data.email.endsWith(`@${domain}`)) throw new AppError(`O e-mail deve pertencer ao domínio institucional (@${domain}).`);
+  await requireStepUp(getPool(), ctx);
+  await tx(async (c) => {
+    const u = await queryOne<{ email: string; is_owner: boolean; google_sub: string | null; totp_enabled_at: Date | null }>(
+      c, 'SELECT email, is_owner, google_sub, totp_enabled_at FROM users WHERE id = $1 FOR UPDATE', [data.userId]);
+    if (!u) throw new NotFoundError();
+    if (u.is_owner) throw new ForbiddenError('O e-mail da Oficial Registradora não é alterado por aqui.');
+    if (u.google_sub || u.totp_enabled_at) throw new AppError('Esta pessoa já entrou no sistema: o e-mail não pode mais ser alterado.');
+    if (u.email === data.email) throw new AppError('O e-mail informado é igual ao atual.');
+    if (await queryOne(c, 'SELECT 1 FROM users WHERE email = $1', [data.email])) throw new ConflictError('Já existe usuário com este e-mail.');
+    await query(c, 'UPDATE users SET email = $2 WHERE id = $1', [data.userId, data.email]);
+    await audit(c, ctx, {
+      action: 'USUARIO_EMAIL_CORRIGIDO', entityType: 'user', entityId: data.userId,
+      summary: `E-mail corrigido: ${u.email} → ${data.email}`, data: { reason: data.reason },
+    });
+  });
+}
+
 const statusSchema = z.object({
   userId: uuid,
   status: z.enum(['ATIVO', 'SUSPENSO', 'REVOGADO']),

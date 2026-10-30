@@ -238,7 +238,7 @@ Menu **Equipe** → **Admitir funcionário**:
 | **Início do controle no sistema** | a data a partir da qual o SGI apura a jornada. **Obrigatório** quando a admissão tem mais de 31 dias. Para quem já trabalhava antes do sistema, use a data da implantação. Sem ela, todos os dias desde a admissão apareceriam como faltas |
 | Tipo de contrato, Horas semanais | |
 | Jornada contratual | escolha uma jornada cadastrada, ou **Definir depois** |
-| E-mail institucional | cria o **acesso** da pessoa, com o papel Colaborador |
+| E-mail institucional | cria o **acesso** da pessoa, com o papel Colaborador. Use o **e-mail principal** exatamente como aparece em admin.google.com → Usuários (apelidos não funcionam) |
 
 Clique em **Admitir**. Para dar poderes de gestão, atribua o papel em **Usuários e permissões** (ver 9.2).
 
@@ -479,6 +479,7 @@ Abas:
   - **Revogar** um papel;
   - **Alterar situação:** Ativo, Suspenso ou Revogado. A suspensão **bloqueia na hora**;
   - **Redefinir autenticador:** troca de celular.
+  - **Corrigir e-mail:** só enquanto a pessoa nunca entrou. Use o **e-mail principal** da conta no Google Workspace (admin.google.com → Diretório → Usuários, coluna E-mail), não um apelido.
 - **Criar usuário:** para quem não é funcionário. Funcionários ganham acesso pela admissão.
 - **Matriz de permissões:** o que cada papel pode fazer, e o escopo de cada permissão (próprio, setor ou todos).
 - **Novo papel:** código, nome e descrição. Depois, marque as permissões na matriz.
@@ -568,6 +569,7 @@ Se algum contrato individual previr condição **mais favorável** que a CCT em 
 | Situação | O que fazer |
 |---|---|
 | "Acesso permitido apenas na rede da serventia" | Você está fora da rede do cartório (ou no 4G). Ligue o Wi-Fi da serventia. Se estiver no cartório e várias pessoas forem bloqueadas, o IP mudou: avise a Oficial ou a Substituta (ver 9.5) |
+| "Acesso não autorizado. Sua conta precisa estar previamente cadastrada e ativa" | A conta Google usada não bate com o cadastro. Veja em **Auditoria** o registro "Login negado" (mostra o e-mail tentado). Se a pessoa escolheu outra conta, entre por janela anônima e digite o e-mail institucional. Se o cadastro foi feito com um **apelido** (o Google sempre devolve o **e-mail principal**, que aparece em admin.google.com → Usuários), use **Usuários e permissões → a pessoa → Corrigir e-mail** (só antes do primeiro acesso) |
 | Código do autenticador recusado | Use o código da conta **certa** (produção, não homologação). Espere o código seguinte, porque cada código vale uma vez. Confira se a hora do celular está automática |
 | Troquei ou perdi o celular | Peça para **Redefinir autenticador** (ver 2.6). Se perdeu, comunique um incidente |
 | Um item do menu não aparece | O seu papel não dá acesso. Peça à Oficial, se for necessário para a sua função |
