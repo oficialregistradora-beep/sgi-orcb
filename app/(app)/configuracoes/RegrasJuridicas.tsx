@@ -1,6 +1,6 @@
 import type { Ctx } from '@/server/context.ts';
 import { can } from '@/server/authz.ts';
-import { BINDING_RULES, describeValue, listLegalRegistry, RULE_LABELS, type RuleCode } from '@/server/modules/legalRules.ts';
+import { BINDING_RULES, describeValue, listLegalRegistry, RULE_LABELS, WEEKDAY_NAMES, type RuleCode } from '@/server/modules/legalRules.ts';
 import { todayLocal } from '@/domain/time.ts';
 import { fmtDate, label, statusTone } from '@/ui/format.ts';
 import { ActionForm } from '@/ui/ActionForm.tsx';
@@ -13,7 +13,7 @@ export async function RegrasJuridicas({ ctx }: { ctx: Ctx }) {
   return (
     <div className="stack">
       <div className="alert alert-info small"><div>
-        Regras que alteram cálculos com efeito (conversão e prazo do banco de horas, antecedência de comunicação, vedação de início de férias)
+        Regras que alteram cálculos com efeito (conversão e prazo do banco de horas, antecedência de comunicação, dias de início da folga, trabalho em sábado/domingo/feriado, vedação de início de férias)
         só se aplicam quando <strong>validadas</strong>. Estimativas (custos, sobreaviso) podem usar regra pendente, sempre sinalizada.
         Regras <strong>históricas</strong> nunca são aplicadas. O conteúdo de uma regra é imutável: para alterar, encerre a vigência e cadastre outra.
       </div></div>
@@ -66,8 +66,9 @@ export async function RegrasJuridicas({ ctx }: { ctx: Ctx }) {
                       <details className="disclosure small"><summary><a>Registrar validação</a></summary>
                         <ActionForm action={validateRuleAction} submitLabel="Validar" submitClass="btn btn-sm btn-primary" confirm="A regra passará a produzir efeitos nos cálculos. Confirma?">
                           <input type="hidden" name="ruleId" value={r.id} />
-                          <input name="validatedBy" className="input" placeholder="Responsável (nome e OAB)" aria-label="Responsável" required minLength={5} />
+                          <input name="validatedBy" className="input" placeholder="Responsável (nome e cargo)" aria-label="Responsável" required minLength={5} />
                           <input name="validatedAt" type="date" className="input" defaultValue={today} aria-label="Data" style={{ marginTop: 6 }} />
+                          <input name="notes" className="input" placeholder="Observação (ex.: conferida com a cláusula…)" aria-label="Observação" style={{ marginTop: 6 }} />
                         </ActionForm>
                       </details>
                     ) : null}
@@ -113,11 +114,16 @@ export async function RegrasJuridicas({ ctx }: { ctx: Ctx }) {
                 <div className="field"><label htmlFor="rj-mo">Prazo: modo</label><select id="rj-mo" name="modo" className="input"><option value="MESES">Meses</option><option value="DIAS_APOS_MES">Dias após o mês</option></select></div>
                 <div className="field"><label htmlFor="rj-q">Prazo: quantidade</label><input id="rj-q" name="quantidade" type="number" className="input" /></div>
                 <label className="check" style={{ alignSelf: 'end' }}><input type="checkbox" name="ativo" /> Vedação ativa (férias)</label>
+                <div className="field"><span className="label">Folga integral começa em</span>
+                  <div>{WEEKDAY_NAMES.map((n, i) => <label key={n} className="check" style={{ marginRight: 8 }}><input type="checkbox" name="dias" value={i} /> {n}</label>)}</div>
+                </div>
+                <label className="check" style={{ alignSelf: 'end' }}><input type="checkbox" name="excluir" /> Sábado/domingo/feriado fora do banco</label>
+                <div className="field"><label htmlFor="rj-sc">Sábados de curso/palestra por ano</label><input id="rj-sc" name="sabadosCursoPorAno" type="number" className="input" placeholder="4" /></div>
               </fieldset>
               <div className="form-grid" style={{ marginTop: 12 }}>
                 <div className="field"><label htmlFor="rj-b">Fundamento (artigo, súmula, cláusula)</label><input id="rj-b" name="legalBasis" className="input" required minLength={5} /></div>
                 <div className="field"><label htmlFor="rj-s">Fonte consultada</label><input id="rj-s" name="source" className="input" required minLength={3} /></div>
-                <div className="field"><label htmlFor="rj-v">Validado por (nome e OAB)</label><input id="rj-v" name="validatedBy" className="input" /></div>
+                <div className="field"><label htmlFor="rj-v">Validado por (nome e cargo)</label><input id="rj-v" name="validatedBy" className="input" /></div>
                 <div className="field"><label htmlFor="rj-va">Data da validação</label><input id="rj-va" name="validatedAt" type="date" className="input" /></div>
               </div>
               <div className="field" style={{ marginTop: 12 }}><label htmlFor="rj-o">Observações</label><input id="rj-o" name="notes" className="input" /></div>

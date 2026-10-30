@@ -10,6 +10,7 @@ export async function resolveOccurrenceAction(_p: ActionState, fd: FormData): Pr
       occurrenceId: str(fd, 'occurrenceId'),
       resolution: str(fd, 'resolution') as 'BANCO_CREDITO',
       notes: optStr(fd, 'notes'),
+      nonWorkingException: (optStr(fd, 'nonWorkingException') as 'CASAMENTO' | 'CURSO' | undefined) ?? undefined,
     });
     return 'Decisão registrada.';
   }, ['/ocorrencias', '/painel']);

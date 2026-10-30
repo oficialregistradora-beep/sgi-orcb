@@ -19,12 +19,16 @@ export const RULE_SCHEMAS = {
   BANCO_PRAZO: z.object({ modo: z.enum(['MESES', 'DIAS_APOS_MES']), quantidade: z.number().int().min(1).max(365) }),
   BANCO_COMUNICACAO_MINIMA: z.object({ horas: z.number().int().min(0).max(168) }),
   FERIAS_VEDAR_INICIO_FDS_FERIADO: z.object({ ativo: z.boolean() }),
+  BANCO_FOLGA_DIAS_INICIO: z.object({ dias: z.array(z.number().int().min(0).max(6)).min(1).max(7) }),
+  BANCO_DIAS_NAO_UTEIS: z.object({ excluir: z.boolean(), sabadosCursoPorAno: z.number().int().min(0).max(52) }),
 } as const;
 export type RuleCode = keyof typeof RULE_SCHEMAS;
 export type RuleValue<C extends RuleCode> = z.infer<(typeof RULE_SCHEMAS)[C]>;
 
 /** Regras que alteram cálculos com efeito real: exigem validação. */
-export const BINDING_RULES: RuleCode[] = ['BANCO_FATOR_CONVERSAO', 'BANCO_PRAZO', 'BANCO_COMUNICACAO_MINIMA', 'FERIAS_VEDAR_INICIO_FDS_FERIADO'];
+export const BINDING_RULES: RuleCode[] = [
+  'BANCO_FATOR_CONVERSAO', 'BANCO_PRAZO', 'BANCO_COMUNICACAO_MINIMA', 'FERIAS_VEDAR_INICIO_FDS_FERIADO', 'BANCO_FOLGA_DIAS_INICIO', 'BANCO_DIAS_NAO_UTEIS',
+];
 
 export const RULE_LABELS: Record<RuleCode, string> = {
   SOBREAVISO_FRACAO: 'Fração da hora de sobreaviso',
@@ -35,7 +39,11 @@ export const RULE_LABELS: Record<RuleCode, string> = {
   BANCO_PRAZO: 'Banco de horas — prazo de compensação',
   BANCO_COMUNICACAO_MINIMA: 'Banco de horas — antecedência mínima da comunicação da folga',
   FERIAS_VEDAR_INICIO_FDS_FERIADO: 'Férias — vedar início em sábado, domingo ou feriado',
+  BANCO_FOLGA_DIAS_INICIO: 'Banco de horas — dias em que a folga integral pode começar',
+  BANCO_DIAS_NAO_UTEIS: 'Banco de horas — trabalho em sábado, domingo e feriado',
 };
+
+export const WEEKDAY_NAMES = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 
 export function describeValue(code: RuleCode, v: Record<string, unknown>): string {
   switch (code) {
@@ -47,6 +55,10 @@ export function describeValue(code: RuleCode, v: Record<string, unknown>): strin
     case 'BANCO_PRAZO': return v.modo === 'MESES' ? `${v.quantidade} meses` : `${v.quantidade} dias após o fim do mês da acumulação`;
     case 'BANCO_COMUNICACAO_MINIMA': return `${v.horas} horas de antecedência`;
     case 'FERIAS_VEDAR_INICIO_FDS_FERIADO': return v.ativo ? 'Vedado' : 'Permitido';
+    case 'BANCO_FOLGA_DIAS_INICIO': return `Começa só em: ${(v.dias as number[]).map((d) => WEEKDAY_NAMES[d]).join(', ')}`;
+    case 'BANCO_DIAS_NAO_UTEIS': return v.excluir
+      ? `Não entra no banco (pago como extra), salvo plantão, casamento ou curso/palestra (até ${v.sabadosCursoPorAno} sábados/ano)`
+      : 'Entra no banco normalmente';
   }
 }
 

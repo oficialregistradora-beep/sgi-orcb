@@ -4,7 +4,7 @@ import type { Ctx } from '../context.ts';
 import { can, requirePermission, scopeFilter, scopeSql } from '../authz.ts';
 import { audit } from '../audit.ts';
 import { AppError, ForbiddenError, NotFoundError } from '../errors.ts';
-import { localToInstant, todayLocal } from '../../domain/time.ts';
+import { addDays, localToInstant, todayLocal, weekdayOf } from '../../domain/time.ts';
 import { nextPunchKind, scheduleMinutes } from '../../domain/journey.ts';
 import { summarize } from '../../domain/hourBank.ts';
 import { activeAgreement, assertPeriodOpen, insertDebit, loadLedger } from './ledger.ts';
@@ -12,7 +12,7 @@ import { computeRange, recomputeDays } from './timeclock.ts';
 import { findEmployee } from './people.ts';
 import { notifyEmployee, notifyUsers, usersWithPermission } from './notifications.ts';
 import { applyVacationApproval } from './vacation.ts';
-import { getRule } from './legalRules.ts';
+import { getRule, WEEKDAY_NAMES } from './legalRules.ts';
 import { formatHHMM } from '../../domain/time.ts';
 
 export const REQUEST_TYPES = {
@@ -44,6 +44,21 @@ const createSchema = z.object({
 async function expectedMinutesOn(employeeId: string, date: string): Promise<number> {
   const [day] = await computeRange(getPool(), employeeId, date, date);
   return day?.result.kind === 'UTIL' && day.schedule ? scheduleMinutes(day.schedule) : 0;
+}
+
+/** Folga contínua: o dia útil anterior já tem folga integral pedida ou aprovada. */
+async function continuesFullDayOff(employeeId: string, date: string): Promise<boolean> {
+  for (let back = 1; back <= 5; back++) {
+    const prev = addDays(date, -back);
+    if (await expectedMinutesOn(employeeId, prev) === 0) continue;
+    return !!(await queryOne(
+      getPool(),
+      `SELECT 1 FROM requests WHERE employee_id = $1 AND type = 'COMPENSACAO' AND status IN ('PENDENTE','APROVADA')
+          AND reference_date = $2 AND payload->>'mode' = 'FOLGA_INTEGRAL'`,
+      [employeeId, prev],
+    ));
+  }
+  return false;
 }
 
 export async function createRequest(ctx: Ctx, input: z.input<typeof createSchema>): Promise<string> {
@@ -87,6 +102,13 @@ export async function createRequest(ctx: Ctx, input: z.input<typeof createSchema
       const startsAt = localToInstant(d.referenceDate, formatHHMM(day?.schedule?.start ?? 0));
       if (startsAt.getTime() - Date.now() < notice.value.horas * 3600_000) {
         throw new AppError(`A folga deve ser comunicada com ${notice.value.horas} horas de antecedência (${notice.legalBasis}).`);
+      }
+    }
+    if (p.mode === 'FOLGA_INTEGRAL') {
+      const start = await getRule(getPool(), 'BANCO_FOLGA_DIAS_INICIO', d.referenceDate, { allowPending: false });
+      if (start && !start.value.dias.includes(weekdayOf(d.referenceDate)) && !(await continuesFullDayOff(employeeId, d.referenceDate))) {
+        throw new AppError(`A folga integral só pode começar em: ${start.value.dias.map((x) => WEEKDAY_NAMES[x]).join(' ou ')} (${start.legalBasis}). `
+          + 'Para folga de mais de um dia, peça primeiro o dia de início.');
       }
     }
     payload = { mode: p.mode, minutes };

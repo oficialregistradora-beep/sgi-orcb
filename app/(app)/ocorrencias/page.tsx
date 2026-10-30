@@ -59,6 +59,13 @@ async function OcorrenciasPage({ searchParams }: { searchParams: Promise<{ aba?:
                           <select name="resolution" className="input" aria-label="Decisão">
                             {OPTIONS[o.type]!.map((r) => <option key={r} value={r}>{label(r)}</option>)}
                           </select>
+                          {o.type === 'HORA_EXTRA' && o.non_working ? (
+                            <select name="nonWorkingException" className="input" aria-label="Sábado, domingo ou feriado" style={{ marginTop: 6 }}>
+                              <option value="">Sábado/domingo/feriado: sem exceção</option>
+                              <option value="CASAMENTO">Exceção: atendimento de casamento</option>
+                              <option value="CURSO">Exceção: curso ou palestra (sábado)</option>
+                            </select>
+                          ) : null}
                           <input name="notes" className="input" placeholder="Fundamentação" aria-label="Fundamentação" style={{ marginTop: 6 }} />
                         </ActionForm>
                       ) : (

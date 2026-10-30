@@ -44,6 +44,8 @@ function ruleValue(code: RuleCode, fd: FormData): Record<string, unknown> {
     case 'BANCO_PRAZO': return { modo: str(fd, 'modo'), quantidade: int(fd, 'quantidade') };
     case 'BANCO_COMUNICACAO_MINIMA': return { horas: int(fd, 'horas') };
     case 'FERIAS_VEDAR_INICIO_FDS_FERIADO': return { ativo: fd.get('ativo') === 'on' };
+    case 'BANCO_FOLGA_DIAS_INICIO': return { dias: fd.getAll('dias').map(Number) };
+    case 'BANCO_DIAS_NAO_UTEIS': return { excluir: fd.get('excluir') === 'on', sabadosCursoPorAno: int(fd, 'sabadosCursoPorAno') };
   }
 }
 

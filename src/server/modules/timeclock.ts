@@ -15,7 +15,7 @@ import {
 } from '../../domain/journey.ts';
 import { addDays, parseHHMM, todayLocal, toLocalParts, weekdayOf } from '../../domain/time.ts';
 import { assertPunchNetwork } from './network.ts';
-import { activeAgreement, insertCredit, reverseEntry } from './ledger.ts';
+import { activeAgreement, assertNonWorkingCredit, insertCredit, reverseEntry } from './ledger.ts';
 
 // Controle ADMINISTRATIVO INTERNO de frequência (J-01): não constitui REP-P nos termos da Portaria MTP 671/2021.
 
@@ -300,6 +300,8 @@ async function tryAutoResolveAuthorizedExtra(db: Db, actor: AuditActor, employee
   if (auth.destination === 'BANCO') {
     const agreement = await activeAgreement(db, employeeId, date);
     if (!agreement || minutes > agreement.max_daily_extra_minutes) return;
+    // Sábado/domingo/feriado fora do banco (CCT): fica pendente para a gestão decidir (pagamento ou exceção).
+    if (await assertNonWorkingCredit(db, { employeeId, date }).then(() => false, () => true)) return;
     await insertCredit(db, {
       employeeId, agreement, date, minutes, occurrenceId, userId: auth.decided_by,
       notes: 'Crédito de hora extra previamente autorizada',

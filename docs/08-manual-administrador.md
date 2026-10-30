@@ -28,7 +28,8 @@
 
 ## Fase 2c — rotinas novas
 - **Férias:** antes de aprovar, abra *Férias* do funcionário → *Conferência das faltas do período aquisitivo*. Faltas integrais ainda sem decisão bloqueiam a conferência; decida-as antes em *Ocorrências*. A conferência registra a faixa do art. 130 e a memória de cálculo.
-- **Regras jurídicas** (*Configurações → Regras jurídicas*): após a leitura da CCT vigente, cadastre cada regra com fundamento e fonte. Ao registrar a validação (nome e OAB do responsável), a regra passa a valer. Regras históricas nunca valem.
+- **Regras jurídicas** (*Configurações → Regras jurídicas*): as regras da CCT SC000957/2026 já vêm cadastradas como pendentes (cláusulas 8, 17 e 20). Confira cada uma com o texto da CCT e use *Registrar validação* (nome e cargo de quem conferiu, data e observação); a partir daí a regra passa a valer. Para CCT nova, cadastre as regras com fundamento e fonte e encerre a vigência das anteriores. Regras históricas nunca valem.
+- **CCT 2026/2027, cl. 17:** com as regras validadas, a folga integral só começa na segunda ou sexta (os dias seguintes de uma folga contínua são aceitos) e a hora extra em sábado, domingo ou feriado não vai ao banco — em *Ocorrências*, escolha *Pagamento como extra* ou a exceção (casamento; curso/palestra em sábado, até 4 por ano). Plantão do RCPN é exceção automática.
 - **Modelos de checklist** (*Configurações → Modelos de checklist*): *Editar (nova versão)* → ajustar itens → *Publicar*. Checklists já abertos não mudam.
 - **Plantões:** se o substituto atendeu, troque o responsável antes de fechar. O sistema avisa quando há chamado registrado pelo substituto.
 

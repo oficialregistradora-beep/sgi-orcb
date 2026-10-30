@@ -76,6 +76,8 @@ export type OccurrenceListItem = {
   id: string; employee_id: string; full_name: string; sector_name: string; work_date: string; type: string; minutes: number;
   status: string; resolution: string | null; resolution_notes: string | null; employee_justification: string | null;
   auto_resolved: boolean; resolved_at: Date | null; resolver_name: string | null; alerts: string[] | null;
+  /** Sábado, domingo ou feriado com folga. */
+  non_working: boolean;
 };
 
 export async function listOccurrences(
@@ -102,7 +104,8 @@ export async function listOccurrences(
   return query<OccurrenceListItem>(
     db,
     `SELECT o.id, o.employee_id, e.full_name, s.name AS sector_name, o.work_date, o.type, o.minutes, o.status, o.resolution,
-            o.resolution_notes, o.employee_justification, o.auto_resolved, o.resolved_at, u.display_name AS resolver_name, dr.alerts
+            o.resolution_notes, o.employee_justification, o.auto_resolved, o.resolved_at, u.display_name AS resolver_name, dr.alerts,
+            (extract(dow FROM o.work_date) IN (0, 6) OR EXISTS (SELECT 1 FROM holidays h WHERE h.is_day_off AND h.date = o.work_date)) AS non_working
        FROM daily_occurrences o JOIN employees e ON e.id = o.employee_id JOIN sectors s ON s.id = e.sector_id
        LEFT JOIN users u ON u.id = o.resolved_by
        LEFT JOIN daily_records dr ON dr.employee_id = o.employee_id AND dr.work_date = o.work_date
@@ -130,6 +133,8 @@ const resolveSchema = z.object({
   occurrenceId: z.uuid(),
   resolution: z.enum(['BANCO_CREDITO', 'PAGAMENTO_EXTRA', 'ABONO', 'BANCO_DEBITO', 'FALTA_NAO_JUSTIFICADA', 'CIENTE']),
   notes: z.string().trim().max(1000).optional(),
+  /** Trabalho em sábado/domingo/feriado levado ao banco por exceção da CCT (casamento; curso/palestra em sábado). */
+  nonWorkingException: z.enum(['CASAMENTO', 'CURSO']).optional(),
 });
 
 const ALLOWED: Record<string, string[]> = {
@@ -171,7 +176,7 @@ export async function resolveOccurrence(ctx: Ctx, input: z.input<typeof resolveS
             `A hora extra (${o.minutes} min) excede o limite diário do acordo (${agreement.max_daily_extra_minutes} min). Destine-a para pagamento.`,
           );
         }
-        await insertCredit(c, { employeeId: o.employee_id, agreement, date: o.work_date, minutes: o.minutes, occurrenceId: o.id, userId: ctx.principal.userId, notes: d.notes || 'Hora extra destinada ao banco de horas' });
+        await insertCredit(c, { employeeId: o.employee_id, agreement, date: o.work_date, minutes: o.minutes, occurrenceId: o.id, userId: ctx.principal.userId, notes: d.notes || 'Hora extra destinada ao banco de horas', nonWorkingException: d.nonWorkingException ?? null });
       } else {
         await insertDebit(c, {
           employeeId: o.employee_id, agreement, date: o.work_date, minutes: o.minutes, kind: 'DEBITO_FALTA', asOf: o.work_date, today,

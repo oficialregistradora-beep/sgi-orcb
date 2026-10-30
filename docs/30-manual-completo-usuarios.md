@@ -141,6 +141,8 @@ Menu **Banco de horas**:
 - **Solicitar compensação:** para hoje ou datas futuras. As modalidades são folga integral, compensação parcial, entrada posterior e saída antecipada.
   - Precisa haver **saldo suficiente** e **acordo de banco de horas vigente**. Se não houver, o sistema recusa e explica o motivo.
   - Para dias passados, justifique na ocorrência em vez de pedir compensação.
+  - **Folga integral começa na segunda ou na sexta-feira** e é comunicada com **48 horas** de antecedência (CCT, cl. 17, §2º — quando validada). Para folga de mais de um dia, peça primeiro o dia de início (ex.: segunda) e depois os seguintes. Entrada posterior e saída antecipada não têm essa restrição.
+  - Pela CCT, **1 hora extra vira 1h30 de folga**, e o prazo para compensar é de **90 dias após o mês** em que a hora foi feita; o que não for compensado é pago como extra.
 
 ### 4.3 Meus documentos (espelho e extrato mensais)
 Após o fim de cada mês:
@@ -261,6 +263,7 @@ Menu **Ocorrências** → **Pendentes** / **Resolvidas**. Só a Substituta e a O
 | Alertas, como intervalo menor que 1 h em jornada acima de 6 h (art. 71 da CLT) | **Ciente** |
 
 - **Abono** e **Falta não justificada** exigem **fundamentação**.
+- **Sábado, domingo e feriado** (CCT 2026/2027, cl. 17, §§5º e 6º — quando a regra estiver validada): a hora extra **não vai para o banco**; decida **Pagamento como extra**. Exceções — escolha no campo que aparece abaixo da decisão: **atendimento de casamento** ou **curso/palestra** (só em sábado, até 4 sábados por ano). Plantões do RCPN seguem pelo fechamento do plantão.
 - Veja a justificativa enviada pelo funcionário antes de decidir.
 - A decisão é registrada e o funcionário é avisado.
 
@@ -464,7 +467,7 @@ Abas:
 - **Competências:** fechar ou reabrir o mês (ver 5.9).
 - **Regras jurídicas:**
   - cadastre os instrumentos normativos (lei, CCT, súmula) e as regras parametrizadas, com fundamento e fonte;
-  - a regra só passa a valer com **Registrar validação** (nome e OAB do responsável);
+  - a regra só passa a valer com **Registrar validação** (nome e cargo de quem conferiu, data e observação — ex.: a Oficial, como empregadora); as regras da CCT 2026/2027 já vêm cadastradas como pendentes: basta conferir e validar cada uma;
   - regras históricas nunca valem.
 - **Modelos de checklist:** **Editar (nova versão)** → ajustar itens → **Publicar**. Checklists já abertos não mudam.
 - **Integrações:** Google Agenda, Gmail e Chat. Tudo começa desligado; ative depois de configurar. A tela mostra os últimos erros e tem a opção **Reenviar mensagens com falha**.
@@ -553,7 +556,8 @@ Marcações perdidas entram por pedido de correção.
 | O sistema demora no primeiro acesso do dia | O sistema "acorda" sozinho às 07:45 nos dias úteis. Fora disso, o primeiro acesso pode levar alguns segundos |
 | Anexo recusado | Pode ser: arquivo acima do limite (15 MB em documentos); **vírus detectado**; ou o antivírus ainda carregando, nos primeiros 2 a 3 minutos depois que o sistema "acorda". Tente de novo em alguns minutos |
 | "O documento mensal só pode ser gerado após o término da competência" | O espelho do mês só sai depois que o mês acaba |
-| Compensação recusada | Falta saldo, não há acordo de banco vigente, ou a data é passada (nesse caso, justifique na ocorrência) |
+| Compensação recusada | Falta saldo, não há acordo de banco vigente, a data é passada (justifique na ocorrência), faltam 48 h de antecedência, ou a folga integral não começa na segunda/sexta |
+| "Trabalho em sábado, domingo ou feriado não entra no banco" | Regra da CCT: decida **Pagamento como extra**, ou marque a exceção (casamento; curso/palestra em sábado) |
 | Não consigo aprovar o meu próprio pedido, documento ou tarefa | É proposital: quem pede ou elabora não aprova |
 | "Registrar pagamento" não aparece | A despesa ainda não foi aprovada, ou você foi quem solicitou ou aprovou (só a Oficial é exceção) |
 | Não acho onde enviar o arquivo de um documento | Primeiro crie o documento na aba **Novo documento** (só dados) → **Criar rascunho**; o campo **Arquivo** aparece na página do documento, no quadro **Rascunho** |
