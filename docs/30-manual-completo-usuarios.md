@@ -14,7 +14,7 @@
 6. Financeiro gerencial
 7. Qualidade e segurança da informação
 8. Treinamentos e avaliações de desempenho
-9. Administração (Configurações, Usuários e permissões, Auditoria, Automações, Rede)
+9. Administração (Configurações, Usuários e permissões, Auditoria, Automações, Rede, Convenção coletiva e acordos individuais)
 10. Rotinas recomendadas (diária, mensal, anual)
 11. Problemas comuns e soluções
 12. Limites legais e cuidados
@@ -506,6 +506,25 @@ Regras de **aviso** e de **criação de tarefas**. Use **Executar agora** para t
 4. dias depois, remova o endereço antigo.
 
 Marcações perdidas entram por pedido de correção.
+
+### 9.6 Convenção coletiva e acordos individuais
+
+**Guardar a íntegra da convenção (CCT):**
+1. *Gestão documental → Categorias → Nova categoria* (uma vez): código `CCT`, nome **Convenções e acordos coletivos**, revisão 12 meses, confidencialidade padrão **Interno**, *Ativa* → **Criar categoria**.
+2. *Novo documento*: título "Convenção Coletiva de Trabalho 2026/2027 — SC000957/2026", código `CCT-2026`, categoria **Convenções e acordos coletivos**, resumo com as partes, a vigência e o nº da solicitação, público **todos os setores**, **Interno** → **Criar rascunho**.
+3. No quadro **Rascunho**: **Arquivo** = PDF da CCT (no Mediador: *Imprimir → Salvar como PDF*), nota "Registrada no MTE em 18/05/2026" → **Salvar rascunho** → **Submeter à aprovação**; outra pessoa aprova em *Aprovações*.
+4. *Configurações → Regras jurídicas → Instrumentos normativos* → SC000957/2026 → **Alterar situação**: **Vigente — validado**, observação "Íntegra em Gestão documental, código CCT-2026".
+
+**Regras da CCT valem para todos.** Ficam em *Configurações → Regras jurídicas* e não variam por pessoa. Um contrato ou acordo individual **não pode reduzir** o que a CCT garante (CLT, art. 619); pode apenas ser mais favorável. O conteúdo de uma regra não se edita: para mudar, **Encerrar vigência** (data e motivo) e **Cadastrar regra** nova (tipo, instrumento, início, valor, fundamento, fonte e validação).
+
+**O que é individual (ficha do funcionário, em *Equipe*):**
+- **Jornada contratual:** horários diferentes (meio período, 6 h, entrada às 9 h…) — crie em *Configurações → Jornadas → Nova jornada* e atribua na ficha (*Jornada contratual → Atribuir jornada*, com a data de início).
+- **Acordo de banco de horas** (a CCT exige acordo individual escrito — cl. 17, §4º): *Cadastrar acordo* com modalidade **Individual escrito**, prazo em meses (com a regra da CCT validada vale o prazo da CCT, 90 dias após o mês), início e término, **limite diário de extras** (120 min numa jornada de 8 h respeita o teto de 10 h da CCT), **Instrumento assinado** (nº/arquivo do acordo) e, só se o acordo prever, **Admite saldo negativo**. Para mudar condições: **Encerrar** o acordo atual e cadastrar o novo.
+- **Contrato e acordo assinados:** guarde em *Gestão documental*, categoria **Contratos de trabalho** (confidencial — indique as pessoas pelo nome).
+- **Cargo, setor, horas semanais e salário:** na ficha, com data de vigência (salário só a Oficial).
+- **Situações pontuais** (prova de estudante, dirigente sindical, atestado): decida em *Ocorrências* (**Abono**), citando a cláusula.
+
+Se algum contrato individual previr condição **mais favorável** que a CCT em ponto que o sistema aplica para todos (ex.: conversão maior que 1h30), o sistema ainda não tem exceção por pessoa: registre a condição na observação do acordo e trate por ajuste manual até que essa opção seja incluída.
 
 ---
 
