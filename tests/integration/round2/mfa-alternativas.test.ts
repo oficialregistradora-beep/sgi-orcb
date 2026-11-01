@@ -134,3 +134,41 @@ describe('Código por e-mail pessoal', () => {
     expect((await verifyAuditChain(getPool())).ok).toBe(true);
   });
 });
+
+describe('Emergência (Cloud Shell) e e-mail pessoal da própria Oficial', () => {
+  it('a Oficial cadastra o próprio e-mail em Minha segurança; as demais pessoas não', async () => {
+    const { setOwnEmailMfa } = await import('../../../src/server/modules/admin.ts');
+    await expect(setOwnEmailMfa(cSubst, 'substituta.pessoal@exemplo.com')).rejects.toThrow(/Somente a Oficial/);
+    await setOwnEmailMfa(cOwner, 'oficial.pessoal@exemplo.com');
+    expect((await mfaOptions(getPool(), cOwner.principal.userId)).email).toBe('o***@exemplo.com');
+    await setOwnEmailMfa(cOwner, null);
+    expect((await mfaOptions(getPool(), cOwner.principal.userId)).email).toBeNull();
+  });
+
+  it('procedimento de emergência: libera o e-mail e redefine o autenticador da Oficial, encerra sessões e audita', async () => {
+    const { emergencyMfa } = await import('../../../src/server/auth/emergency.ts');
+    const ownerEmail = (await queryOne<{ e: string }>(getPool(), 'SELECT email AS e FROM users WHERE id = $1', [cOwner.principal.userId]))!.e;
+    await expect(emergencyMfa(getPool(), { targetEmail: `ninguem@${DOMAIN}`, action: 'REDEFINIR', executedBy: `admin@${DOMAIN}` })).rejects.toThrow(/Não há usuário/);
+    await expect(emergencyMfa(getPool(), { targetEmail: ownerEmail, action: 'EMAIL', personalEmail: `x@${DOMAIN}`, executedBy: `admin@${DOMAIN}` })).rejects.toThrow(/não pode ser do domínio/);
+    await expect(emergencyMfa(getPool(), { targetEmail: ownerEmail, action: 'AMBOS', executedBy: `admin@${DOMAIN}` })).rejects.toThrow(/e-mail pessoal/);
+
+    const live = await sessionOf(cOwner.principal.userId);
+    await getPool().query("UPDATE users SET totp_secret_enc = 'x', totp_enabled_at = now(), mfa_failed_count = 4, mfa_locked_until = now() + interval '10 minutes' WHERE id = $1", [cOwner.principal.userId]);
+    const done = await emergencyMfa(getPool(), { targetEmail: ` ${ownerEmail.toUpperCase()} `, action: 'AMBOS', personalEmail: 'oficial.pessoal@exemplo.com', executedBy: `admin@${DOMAIN}` });
+    expect(done.join(' ')).toContain('o***@exemplo.com');
+    const u = (await queryOne<{ t: Date | null; l: Date | null; f: number; e: string | null }>(getPool(),
+      'SELECT totp_enabled_at AS t, mfa_locked_until AS l, mfa_failed_count AS f, mfa_email_enc AS e FROM users WHERE id = $1', [cOwner.principal.userId]))!;
+    expect(u.t).toBeNull(); expect(u.l).toBeNull(); expect(u.f).toBe(0); expect(u.e).not.toContain('oficial.pessoal');
+    expect((await queryOne<{ r: Date | null }>(getPool(), 'SELECT revoked_at AS r FROM sessions WHERE id = $1', [live.id]))!.r).not.toBeNull();
+
+    // Entra pelo código do e-mail, sem aplicativo.
+    const s = await sessionOf(cOwner.principal.userId);
+    await requestEmailCode(getPool(), s);
+    await verifyLoginMfa(getPool(), s, lastCode());
+    const a = (await queryOne<{ s: string; actor: string | null }>(getPool(), "SELECT summary AS s, actor_user_id AS actor FROM audit_log WHERE action = 'EMERGENCIA_MFA' ORDER BY id DESC LIMIT 1"))!;
+    expect(a.s).toContain(`executado no Cloud Shell por admin@${DOMAIN}`);
+    expect(a.s).not.toContain('oficial.pessoal@');
+    expect(a.actor).toBeNull();
+    expect((await verifyAuditChain(getPool())).ok).toBe(true);
+  });
+});

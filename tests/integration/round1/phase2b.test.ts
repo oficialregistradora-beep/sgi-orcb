@@ -101,7 +101,10 @@ describe('Fase 2b — plantão realizado: chamados, fechamento e separação de 
     ))!.id;
     // Plantonista também registrou ponto no sábado: não deve virar hora extra comum.
     await query(getPool(), "UPDATE absences SET end_date = $2 WHERE employee_id = $1 AND type = 'OUTRO'", [rc1.employeeId, addDays(sat, -1)]);
-    await query(getPool(), "INSERT INTO absences (employee_id, type, start_date, end_date) VALUES ($1,'OUTRO',$2,$3)", [rc1.employeeId, addDays(sat, 1), addDays(today, -1)]);
+    // Aos domingos o sábado do plantão é ontem: não há dias depois dele para a segunda ausência.
+    if (addDays(sat, 1) <= addDays(today, -1)) {
+      await query(getPool(), "INSERT INTO absences (employee_id, type, start_date, end_date) VALUES ($1,'OUTRO',$2,$3)", [rc1.employeeId, addDays(sat, 1), addDays(today, -1)]);
+    }
     await seedPunches(rc1.employeeId, sat, ['10:00', '11:30'], owner.userId);
   });
 

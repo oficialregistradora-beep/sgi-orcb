@@ -23,6 +23,7 @@
 ## Segurança
 - Perda de celular: **Usuários → selecionar → Redefinir autenticador** (invalida também os códigos de reserva da pessoa).
 - **Códigos de reserva:** cada pessoa gera os seus em *Minha segurança* (10 códigos de uso único, mostrados uma vez). Oriente todos a gerar e guardar.
+- **Emergência (Oficial sem acesso ao segundo fator):** Cloud Shell → `cd ~/sgi-orcb && bash deploy/gcp-emergencia.sh` → e-mail institucional → opção 1 (e-mail pessoal), 2 (redefinir o aplicativo) ou 3 (os dois) → `EMERGENCIA`. Executa um job temporário (apagado ao final) e registra na auditoria quem executou. A própria Oficial cadastra o e-mail pessoal em *Minha segurança*.
 - **Código por e-mail pessoal:** em *Usuários e permissões* → pessoa → *Liberar código por e-mail* (e-mail pessoal, fora do domínio; motivo; reautenticação). Alternativa menos segura que o aplicativo — só para quem não pode usá-lo. Exige o envio pelo Gmail ligado uma vez (`bash deploy/gcp-producao.sh --ligar-email` + delegação no admin.google.com; ver `29-guia-producao.md`).
 - Afastamento ou desligamento: suspender o usuário ou registrar o desligamento (revoga sessões na hora).
 - Mensalmente: **Auditoria → Verificar integridade da cadeia**. Qualquer alerta aciona o plano de resposta a incidentes.

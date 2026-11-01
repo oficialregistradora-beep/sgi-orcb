@@ -3,6 +3,8 @@ import { getPool } from '@/server/db.ts';
 import { BACKUP_COUNT, mfaOptions } from '@/server/auth/mfa.ts';
 import { PageHead } from '@/ui/Stat.tsx';
 import { BackupCodesForm } from '@/ui/BackupCodesForm.tsx';
+import { ActionForm } from '@/ui/ActionForm.tsx';
+import { ownEmailMfaAction } from '../../actions/admin.ts';
 
 export const metadata = { title: 'Minha segurança' };
 
@@ -25,6 +27,21 @@ export default async function SegurancaPage() {
           </table>
         </div>
       </div>
+      {ctx.principal.isOwner ? (
+        <div className="card">
+          <div className="card-head"><h2>Meu e-mail pessoal para código</h2><p>Alternativa ao aplicativo: o código de entrada chega neste e-mail (fora do domínio do cartório).</p></div>
+          <div className="card-body stack">
+            <ActionForm action={ownEmailMfaAction} submitLabel={o.email ? 'Trocar e-mail' : 'Cadastrar e-mail'} confirm="Quem tiver acesso a este e-mail poderá receber o seu código de entrada. Confirma?">
+              <div className="field"><label htmlFor="oe-e">E-mail pessoal</label><input id="oe-e" name="email" type="email" className="input" required /></div>
+            </ActionForm>
+            {o.email ? (
+              <ActionForm action={ownEmailMfaAction} submitLabel="Retirar e-mail" submitClass="btn btn-danger">
+                <input type="hidden" name="op" value="retirar" />
+              </ActionForm>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
       <div className="card">
         <div className="card-head"><h2>Códigos de reserva</h2><p>Para quando o celular não estiver à mão: {BACKUP_COUNT} códigos, cada um vale uma vez.</p></div>
         <div className="card-body">

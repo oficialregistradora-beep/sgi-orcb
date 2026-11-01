@@ -49,6 +49,12 @@ const emailMfaSchema = z.object({
  * Libera (ou retira) o código de acesso por e-mail pessoal para uma pessoa — alternativa ao aplicativo autenticador,
  * menos segura: quem tiver acesso ao e-mail pessoal recebe o código. Decisão da Oficial, pessoa a pessoa.
  */
+/** A Oficial cadastra o próprio e-mail pessoal como alternativa ao aplicativo (Minha segurança). */
+export async function setOwnEmailMfa(ctx: Ctx, email: string | null): Promise<void> {
+  if (!ctx.principal.isOwner) throw new ForbiddenError('Somente a Oficial cadastra o próprio e-mail; as demais pessoas pedem à Oficial.');
+  await setUserEmailMfa(ctx, { userId: ctx.principal.userId, email, reason: email ? 'Cadastrado pela própria Oficial em Minha segurança' : 'Retirado pela própria Oficial em Minha segurança' });
+}
+
 export async function setUserEmailMfa(ctx: Ctx, input: z.input<typeof emailMfaSchema>): Promise<void> {
   requirePermission(ctx, 'usuarios.gerenciar');
   const data = emailMfaSchema.parse(input);

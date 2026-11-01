@@ -38,4 +38,10 @@ A produção usa **outro projeto** no Google Cloud (`sgi-orcb-prod`), separado d
 3. admin.google.com → *Segurança → Controle de acesso e dados → Controles de API → Gerenciar a delegação em todo o domínio → Adicionar novo*: ID do cliente mostrado + escopo `https://www.googleapis.com/auth/gmail.send` → *Autorizar*.
 4. Teste: libere o código por e-mail para uma pessoa (*Usuários e permissões*) e peça o código na tela de entrada. As próximas publicações mantêm a caixa (guardada em `~/.sgi-producao.conf`).
 
+## Emergência: perda do segundo fator (inclusive da Oficial)
+
+Pré-requisito: versão 15 ou posterior publicada e acesso ao Cloud Shell do projeto (login Google de quem administra o Google Cloud).
+`cd ~/sgi-orcb && bash deploy/gcp-emergencia.sh` → e-mail institucional da pessoa → **1** libera o código no e-mail pessoal (exige o envio de e-mail ligado), **2** redefine o autenticador (cadastra o aplicativo de novo pelo QR code), **3** os dois → digite `EMERGENCIA`. O job `sgi-emergencia` é criado, executado e apagado; a auditoria do sistema registra a ação e quem a executou.
+Observação: a verificação em duas etapas da **conta Google** (antes do SGI) é do Google Workspace — recuperação por *Tentar de outro jeito* ou por outro administrador em admin.google.com (*Usuários → pessoa → Segurança → Verificação em duas etapas → códigos de backup*). Recomenda-se ter duas pessoas administradoras no Workspace.
+
 Atualizações futuras da produção: o mesmo comando do passo 4 (o banco e os cadastros são preservados; migrações novas são aplicadas).
