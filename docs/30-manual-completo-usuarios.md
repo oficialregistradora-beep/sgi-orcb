@@ -169,6 +169,11 @@ O espelho traz a ressalva de que o SGI é um **controle administrativo**, e não
 ### 4.4 Solicitações
 Menu **Solicitações** → aba **Minhas**: acompanhe tudo o que você pediu (correção de ponto, compensação, autorização de hora extra) e a decisão de cada pedido. Enquanto estiver pendente, você pode **cancelar** a solicitação.
 
+**Pedidos à administração** (declarações, material ou equipamento, ajuste de dados cadastrais, assunto pessoal, sugestão ou reclamação): aba **À administração** → **Nova solicitação à administração** → escolha o **Tipo**, escreva o **Assunto** e **Descreva o pedido** → **Enviar solicitação**.
+- Marque **Somente para a Oficial** quando o assunto for reservado: ninguém mais da administração vê.
+- A resposta chega no **sino** e aparece na lista **Minhas solicitações à administração**. Clique no assunto para ver a **conversa** e responder perguntas da administração.
+- Enquanto estiver aberta, você pode **Cancelar minha solicitação**.
+
 ### 4.5 Férias
 Menu **Férias**:
 - **Períodos aquisitivos:** direito, dias usados e saldo de cada período.
@@ -279,6 +284,8 @@ Menu **Ocorrências** → **Pendentes** / **Resolvidas**. Só a Substituta e a O
 ### 5.4 Solicitações → Para decidir
 Menu **Solicitações** → **Para decidir**: correções de ponto, compensações e autorizações de hora extra. Aprove ou rejeite (a rejeição exige motivo). O histórico fica em **Decididas**.
 
+**Recebidas pela administração** (Oficial e quem tem a permissão *Atender solicitações à administração* — por padrão, a Substituta): lista **Em aberto** e **Encerradas**. Abra o pedido, converse em **Mensagem** se precisar de mais informação e, no quadro **Atender**, escolha **Em andamento**, **Atendida** ou **Recusada** (encerrar exige a **resposta** escrita; quem pediu é avisada). Pedidos **somente para a Oficial** só aparecem para ela. Ninguém atende o próprio pedido.
+
 ### 5.5 Espelhos → Aguardando aprovação
 Menu **Meus documentos** → **Aguardando aprovação**: documentos mensais da equipe.
 - **Dupla conferência:** a aprovação só é possível **depois da manifestação do funcionário**.
@@ -350,6 +357,11 @@ Abas: **Repositório**, **Para ciência**, **Aprovações**, **Revisões**, **Ca
 > Módulo **gerencial**: **não substitui** a escrituração nem o Livro Diário Auxiliar.
 
 Menu **Financeiro**. Abas: **Painel**, **Contas a pagar**, **Solicitar despesa**, **Contratos**, **Fornecedores**, **Orçamento**, **Receitas**, **Relatórios** e **Centros e categorias**. Cada aba aparece conforme a permissão.
+
+**Quem vê o quê (decisão da Oficial):** ninguém vê o financeiro até a Oficial habilitar. Em *Usuários e permissões* → pessoa → **Financeiro — o que esta pessoa vê**:
+- **Ver todo o financeiro** (administração): todos os centros de custo, receitas, fluxo de caixa, centros e categorias, lançamento mensal das despesas fixas e planilha do Asgard.
+- **Somente estes centros de custo:** a pessoa vê e movimenta apenas despesas, contratos, orçamento e despesas fixas desses centros (ex.: a coordenação do RI só no centro RI). Salários num centro próprio (ex.: *PES — Pessoal*) ficam invisíveis para quem não o tiver.
+- O **papel** continua dizendo **o que** a pessoa faz (solicitar, aprovar, pagar, cadastrar); este quadro diz **onde**. A Oficial vê sempre tudo. Sem habilitação, o menu Financeiro nem aparece.
 
 ### 6.1 Antes de usar (cadastros)
 Em **Centros e categorias** e em **Fornecedores**:
@@ -488,6 +500,7 @@ Abas:
   - **Revogar** um papel;
   - **Alterar situação:** Ativo, Suspenso ou Revogado. A suspensão **bloqueia na hora**;
   - **Redefinir autenticador:** troca de celular.
+  - **Financeiro — o que esta pessoa vê:** *Ver todo o financeiro* (administração) ou os centros de custo marcados; motivo e código do autenticador. Ver 6.
   - **Liberar código por e-mail:** e-mail **pessoal** (fora do domínio do cartório) e motivo; pede o seu código. Libere só para quem não pode usar o aplicativo. Para tirar: **Retirar código por e-mail**. O painel mostra o e-mail mascarado (ex.: `b***@gmail.com`) e quantos códigos de reserva a pessoa ainda tem.
   - **Corrigir e-mail:** só enquanto a pessoa nunca entrou. Use o **e-mail principal** da conta no Google Workspace (admin.google.com → Diretório → Usuários, coluna E-mail), não um apelido.
 - **Criar usuário:** para quem não é funcionário. Funcionários ganham acesso pela admissão.
@@ -596,6 +609,8 @@ Se algum contrato individual previr condição **mais favorável** que a CCT em 
 | "Registrar pagamento" não aparece | A despesa ainda não foi aprovada, ou você foi quem solicitou ou aprovou (só a Oficial é exceção) |
 | Não acho onde enviar o arquivo de um documento | Primeiro crie o documento na aba **Novo documento** (só dados) → **Criar rascunho**; o campo **Arquivo** aparece na página do documento, no quadro **Rascunho** |
 | "Cotações" não aparece | Só aparece em despesas do tipo **Compra** |
+| "Nenhum acesso ao financeiro foi habilitado para você" / menu Financeiro sumiu | A Oficial ainda não habilitou (ou retirou) o seu acesso: *Usuários e permissões → Financeiro — o que esta pessoa vê* |
+| "Este centro de custo não está habilitado para você" | Peça à Oficial para incluir o centro de custo no seu acesso |
 | Não consigo aprovar o espelho | O funcionário ainda não se manifestou (dupla conferência) |
 | Férias não aprovam | Falta a **Conferência das faltas** do período, ou ela ficou desatualizada |
 | Correção recusada por data | Datas futuras e datas anteriores ao início do controle não aceitam correção. Competência fechada também bloqueia |

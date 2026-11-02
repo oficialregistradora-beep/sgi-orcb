@@ -7,6 +7,30 @@ import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { cancelRequestAction, decideAction } from '../../actions/journey.ts';
 import { withGuard } from '@/server/web/guard.ts';
+import {
+  ADMIN_REQUEST_CATEGORIES, canHandleAdminRequests, listAdminInbox, listMyAdminRequests, type AdminRequestRow,
+} from '@/server/modules/adminRequests.ts';
+import { adminRequestCreateAction } from '../../actions/adminRequests.ts';
+
+function AdminTable({ rows, inbox }: { rows: AdminRequestRow[]; inbox: boolean }) {
+  if (!rows.length) return <Empty>{inbox ? 'Nenhuma solicitação nesta lista.' : 'Você ainda não fez solicitações à administração.'}</Empty>;
+  return (
+    <table className="table">
+      <thead><tr><th>Aberta em</th>{inbox ? <th>Quem pediu</th> : null}<th>Assunto</th><th>Tipo</th><th>Situação</th></tr></thead>
+      <tbody>{rows.map((r) => (
+        <tr key={r.id}>
+          <td className="small nowrap">{fmtDateTime(r.created_at)}</td>
+          {inbox ? <td>{r.requester_name}</td> : null}
+          <td><Link href={`/solicitacoes/administracao/${r.id}`}>{r.subject}</Link>
+            {r.only_owner ? <span className="tag" style={{ marginLeft: 6 }}>somente Oficial</span> : null}
+            {r.messages ? <div className="small muted">{r.messages} mensagem(ns)</div> : null}</td>
+          <td className="small">{ADMIN_REQUEST_CATEGORIES[r.category]}</td>
+          <td><span className={statusTone(r.status)}>{label(r.status)}</span>{r.closed_at ? <div className="small muted">{r.closed_by_name} · {fmtDate(r.closed_at.toISOString().slice(0, 10))}</div> : null}</td>
+        </tr>
+      ))}</tbody>
+    </table>
+  );
+}
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Solicitações' };
@@ -62,22 +86,70 @@ function Table({ rows, mode }: { rows: RequestRow[]; mode: 'minhas' | 'aprovar' 
   );
 }
 
-async function SolicitacoesPage({ searchParams }: { searchParams: Promise<{ aba?: string }> }) {
+async function SolicitacoesPage({ searchParams }: { searchParams: Promise<{ aba?: string; situacao?: string }> }) {
   const ctx = await requirePageCtx();
-  const { aba = 'minhas' } = await searchParams;
+  const { aba = 'minhas', situacao } = await searchParams;
   const approver = Object.values(REQUEST_TYPES).some((t) => can(ctx.principal, t.approve));
-  const tab = approver && (aba === 'aprovar' || aba === 'decididas') ? aba : 'minhas';
+  const handler = canHandleAdminRequests(ctx);
+  const tab = approver && (aba === 'aprovar' || aba === 'decididas') ? aba
+    : aba === 'administracao' ? 'administracao'
+      : handler && aba === 'recebidas' ? 'recebidas' : 'minhas';
+  const adminTabs = (
+    <nav className="tabs" aria-label="Abas">
+      <Link href="/solicitacoes" aria-current={tab === 'minhas' ? 'page' : undefined}>Minhas</Link>
+      {approver ? <Link href="/solicitacoes?aba=aprovar" aria-current={tab === 'aprovar' ? 'page' : undefined}>Para decidir</Link> : null}
+      {approver ? <Link href="/solicitacoes?aba=decididas" aria-current={tab === 'decididas' ? 'page' : undefined}>Decididas</Link> : null}
+      <Link href="/solicitacoes?aba=administracao" aria-current={tab === 'administracao' ? 'page' : undefined}>À administração</Link>
+      {handler ? <Link href="/solicitacoes?aba=recebidas" aria-current={tab === 'recebidas' ? 'page' : undefined}>Recebidas pela administração</Link> : null}
+    </nav>
+  );
+  if (tab === 'administracao') {
+    const mine = await listMyAdminRequests(ctx);
+    return (
+      <div className="stack">
+        <PageHead title="Solicitações" subtitle="Pedidos à administração: declarações, material, ajustes de cadastro, assuntos pessoais, sugestões." />
+        {adminTabs}
+        <div className="card">
+          <div className="card-head"><h2>Nova solicitação à administração</h2><p>A Oficial e quem atende a administração recebem um aviso; a resposta chega no sino e nesta tela.</p></div>
+          <div className="card-body">
+            <ActionForm action={adminRequestCreateAction} submitLabel="Enviar solicitação" resetOnSuccess>
+              <div className="form-grid">
+                <div className="field"><label htmlFor="ar-c">Tipo</label>
+                  <select id="ar-c" name="category" className="input" required>{Object.entries(ADMIN_REQUEST_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
+                <div className="field"><label htmlFor="ar-s">Assunto</label><input id="ar-s" name="subject" className="input" required minLength={3} maxLength={200} /></div>
+              </div>
+              <div className="field" style={{ marginTop: 8 }}><label htmlFor="ar-b">Descreva o pedido</label><textarea id="ar-b" name="body" className="input" rows={5} required minLength={5} maxLength={5000} /></div>
+              <label className="check" style={{ marginTop: 8 }}><input type="checkbox" name="onlyOwner" /> Somente para a Oficial (ninguém mais da administração vê)</label>
+            </ActionForm>
+          </div>
+        </div>
+        <div className="card"><div className="card-head"><h2>Minhas solicitações à administração</h2></div>
+          <div className="card-body flush table-wrap" tabIndex={0}><AdminTable rows={mine} inbox={false} /></div></div>
+      </div>
+    );
+  }
+  if (tab === 'recebidas') {
+    const closed = situacao === 'encerradas';
+    const rows = await listAdminInbox(ctx, closed ? 'ENCERRADAS' : 'ABERTAS');
+    return (
+      <div className="stack">
+        <PageHead title="Solicitações" subtitle="Pedidos recebidos pela administração. Encerrar exige resposta escrita a quem pediu." />
+        {adminTabs}
+        <nav className="tabs" aria-label="Situação">
+          <Link href="/solicitacoes?aba=recebidas" aria-current={!closed ? 'page' : undefined}>Em aberto</Link>
+          <Link href="/solicitacoes?aba=recebidas&situacao=encerradas" aria-current={closed ? 'page' : undefined}>Encerradas</Link>
+        </nav>
+        <div className="card"><div className="card-body flush table-wrap" tabIndex={0}><AdminTable rows={rows} inbox /></div></div>
+      </div>
+    );
+  }
   const rows = tab === 'minhas' ? await listMyRequests(ctx) : await listRequestsToDecide(ctx, tab === 'aprovar' ? 'PENDENTE' : 'DECIDIDAS');
   return (
     <div className="stack">
       <PageHead title="Solicitações" subtitle="Correções de marcação, compensações e autorizações de hora extra. Ninguém decide o próprio pedido." />
-      <nav className="tabs" aria-label="Abas">
-        <Link href="/solicitacoes" aria-current={tab === 'minhas' ? 'page' : undefined}>Minhas</Link>
-        {approver ? <Link href="/solicitacoes?aba=aprovar" aria-current={tab === 'aprovar' ? 'page' : undefined}>Para decidir</Link> : null}
-        {approver ? <Link href="/solicitacoes?aba=decididas" aria-current={tab === 'decididas' ? 'page' : undefined}>Decididas</Link> : null}
-      </nav>
+      {adminTabs}
       <div className="card"><div className="card-body flush table-wrap" tabIndex={0}><Table rows={rows} mode={tab as 'minhas'} /></div></div>
-      {tab === 'minhas' ? <p className="small muted">Para abrir correções, use <Link href="/jornada">Minha jornada</Link>; para compensações, <Link href="/banco-de-horas">Banco de horas</Link>.</p> : null}
+      {tab === 'minhas' ? <p className="small muted">Para abrir correções, use <Link href="/jornada">Minha jornada</Link>; para compensações, <Link href="/banco-de-horas">Banco de horas</Link>; para outros pedidos, <Link href="/solicitacoes?aba=administracao">À administração</Link>.</p> : null}
     </div>
   );
 }
