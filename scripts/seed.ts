@@ -212,9 +212,12 @@ console.log('✓ rotinas, projetos, tarefas e processo fictícios');
 
 // Financeiro gerencial fictício (Fase 4b). Segregação: Camila solicita, Beatriz aprova, Helena paga.
 const fcat = Object.fromEntries((await listFinanceCategories()).map((c) => [c.code, c.id]));
+// Alcance no financeiro (definido pela Oficial): Beatriz vê todo o financeiro; Camila, só o centro de custo do RI.
+await query(db, 'UPDATE users SET finance_all = true WHERE id = $1', [cBeatriz.principal.userId]);
 const ccRI = await saveCostCenter(cBeatriz, { code: 'RI', name: 'Registro de Imóveis', sectorId: ri, active: true });
 const ccADM = await saveCostCenter(cBeatriz, { code: 'ADM', name: 'Administração', sectorId: await sector('DIR'), active: true });
 await saveCostCenter(cBeatriz, { code: 'ATD', name: 'Atendimento', sectorId: await sector('ATD'), active: true });
+await query(db, 'INSERT INTO finance_access (user_id, cost_center_id) VALUES ($1, $2)', [cCamila.principal.userId, ccRI]);
 const forn1 = await saveSupplier(cBeatriz, { name: 'Imobiliária Fictícia Ltda', document: '11.222.333/0001-81' });
 const forn2 = await saveSupplier(cBeatriz, { name: 'Papelaria Exemplo Ltda', document: '45.723.174/0001-10' });
 const ym = today.slice(0, 7);

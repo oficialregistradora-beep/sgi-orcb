@@ -3,6 +3,7 @@ import { getPool, query, queryOne, tx, type Db } from '../db.ts';
 import type { Ctx } from '../context.ts';
 import { can } from '../authz.ts';
 import { audit } from '../audit.ts';
+import { requireFullFinance } from './financeAccess.ts';
 import { AppError, ForbiddenError, NotFoundError } from '../errors.ts';
 import { sha256Hex } from '../crypto.ts';
 import { scanBytes } from '../antivirus.ts';
@@ -17,9 +18,11 @@ const COLUMNS = ['Data', 'Tipo', 'Descrição', 'Valor', 'N° Documento Fiscal',
 const MAX_TEMPLATE_BYTES = 2 * 1024 * 1024;
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[º°]/g, 'o').replace(/[\s*]+/g, ' ').trim().toLowerCase();
 
-function requireAsgard(ctx: Ctx): void {
+/** Planilha do Asgard: todas as despesas pagas do mês — só quem vê todo o financeiro. */
+async function requireAsgard(ctx: Ctx): Promise<void> {
   const p = ctx.principal;
   if (!p.isOwner && !can(p, 'financeiro.cadastros') && !can(p, 'financeiro.pagar')) throw new ForbiddenError();
+  await requireFullFinance(getPool(), p);
 }
 
 type Parsed = { entries: ZipEntries; outPath: string; types: string[] };
@@ -63,6 +66,7 @@ export async function getTemplate(db: Db = getPool()) {
 
 export async function uploadTemplate(ctx: Ctx, file: { name: string; bytes: Uint8Array }): Promise<{ types: number }> {
   if (!ctx.principal.isOwner && !can(ctx.principal, 'financeiro.cadastros')) throw new ForbiddenError();
+  await requireFullFinance(getPool(), ctx.principal);
   const filename = safeFilename(file.name);
   if (!/\.xlsx?$/i.test(filename)) throw new AppError('Envie o modelo do Asgard (.xls ou .xlsx).');
   if (!file.bytes.byteLength || file.bytes.byteLength > MAX_TEMPLATE_BYTES) throw new AppError('Modelo vazio ou maior que 2 MB.');
@@ -84,6 +88,7 @@ const mapSchema = z.object({ target: z.enum(['categoria', 'fornecedor']), id: z.
 /** Correspondência padrão de uma categoria ou fornecedor com um tipo do Asgard (vazio = sem correspondência). */
 export async function setDefaultType(ctx: Ctx, input: z.input<typeof mapSchema>): Promise<void> {
   if (!ctx.principal.isOwner && !can(ctx.principal, 'financeiro.cadastros')) throw new ForbiddenError();
+  await requireFullFinance(getPool(), ctx.principal);
   const d = mapSchema.parse(input);
   const value = d.asgardType || null;
   if (value) await assertType(getPool(), value);
@@ -109,7 +114,7 @@ export type AsgardRow = {
 
 /** Despesas pagas no mês (data do pagamento), com o tipo resolvido: despesa → fornecedor → categoria. */
 export async function listMonth(ctx: Ctx, month: string): Promise<AsgardRow[]> {
-  requireAsgard(ctx);
+  await requireAsgard(ctx);
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new AppError('Mês inválido.');
   const t = await getTemplate();
   const valid = new Set(t?.types ?? []);
@@ -135,7 +140,7 @@ const expenseSchema = z.object({
 
 /** Ajusta, para uma despesa paga, o tipo (vazio = usa o padrão), o nº do documento fiscal e o da autorização prévia. */
 export async function setExpenseData(ctx: Ctx, input: z.input<typeof expenseSchema>): Promise<void> {
-  requireAsgard(ctx);
+  await requireAsgard(ctx);
   const d = expenseSchema.parse(input);
   if (d.asgardType) await assertType(getPool(), d.asgardType);
   await tx(async (c) => {
@@ -200,7 +205,7 @@ export function fillTemplate(parsed: Parsed, rows: { date: string; type: string;
 
 /** Gera a planilha do mês. Recusa se faltar tipo em alguma despesa paga. Exportação auditada. */
 export async function buildMonthFile(ctx: Ctx, month: string): Promise<{ filename: string; bytes: Buffer; rows: number }> {
-  requireAsgard(ctx);
+  await requireAsgard(ctx);
   const rows = await listMonth(ctx, month);
   const tpl = await queryOne<{ filename: string; content: Buffer }>(getPool(), 'SELECT filename, content FROM asgard_templates WHERE replaced_at IS NULL');
   if (!tpl) throw new AppError('Envie primeiro o modelo do Asgard (Financeiro → Relatórios → Gerar relatório XLS Asgard).');
@@ -217,7 +222,7 @@ export async function buildMonthFile(ctx: Ctx, month: string): Promise<{ filenam
 
 /** Categorias e fornecedores ativos com a correspondência atual (tela de configuração). */
 export async function listDefaults(ctx: Ctx) {
-  requireAsgard(ctx);
+  await requireAsgard(ctx);
   const db = getPool();
   const [categories, suppliers] = await Promise.all([
     query<{ id: string; name: string; asgard_type: string | null }>(db, "SELECT id, name, asgard_type FROM finance_categories WHERE active AND kind <> 'RECEITA' ORDER BY sort_order, name"),

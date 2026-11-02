@@ -10,7 +10,8 @@ import { checkFile } from '../files.ts';
 import { addDays, addMonths, todayLocal } from '../../domain/time.ts';
 import { centsToDb, toCents } from '../../domain/money.ts';
 import { budgetVsActual, cashFlow, competenceDate, contractAlerts, dueDateIn, monthsBetween, normalizeCnpj, projectOutflows } from '../../domain/finance.ts';
-import { notifyUsers, usersWithPermission } from './notifications.ts';
+import { notifyUsers } from './notifications.ts';
+import { assertCostCenterInScope, financeScope, financeUsers, requireFullFinance } from './financeAccess.ts';
 import { discardUnsaved, insertStoredFile, loadStoredFile, prepareFile, readStoredFile, rescan } from './fileStore.ts';
 import { maxFileBytes } from './repository.ts';
 
@@ -25,13 +26,9 @@ const cents = z.number().int().positive().max(99_999_999_999_99);
 // Escopo de visualização
 // ---------------------------------------------------------------------------
 
-/** Centros de custo visíveis: todos (escopo TODOS, aprovação ou pagamento) ou os dos setores do escopo. null = todos. */
+/** Centros de custo visíveis: null = todo o financeiro (Oficial ou "administração"); senão, só os habilitados pela Oficial. */
 async function visibleCostCenters(db: Db, p: Principal): Promise<string[] | null> {
-  if (p.isOwner || can(p, 'financeiro.aprovar') || can(p, 'financeiro.pagar') || can(p, 'financeiro.cadastros')) return null;
-  const f = scopeFilter(p, 'financeiro.ver') ?? scopeFilter(p, 'financeiro.solicitar');
-  if (!f) return [];
-  if (f.all) return null;
-  return (await query<{ id: string }>(db, 'SELECT id FROM cost_centers WHERE sector_id = ANY($1::uuid[])', [f.sectorIds])).map((r) => r.id);
+  return financeScope(db, p);
 }
 
 function requireAnyFinance(p: Principal) {
@@ -51,6 +48,7 @@ export async function listCostCenters() {
 
 export async function saveCostCenter(ctx: Ctx, input: { id?: string; code: string; name: string; sectorId: string; active: boolean }): Promise<string> {
   requirePermission(ctx, 'financeiro.cadastros');
+  await requireFullFinance(getPool(), ctx.principal);
   const d = z.object({ id: z.uuid().optional(), code: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9._-]{0,19}$/, 'Código inválido.'), name: z.string().trim().min(2).max(120), sectorId: z.uuid(), active: z.boolean() }).parse(input);
   return tx(async (c) => {
     const r = await (d.id
@@ -69,6 +67,7 @@ export async function listFinanceCategories() {
 
 export async function saveFinanceCategory(ctx: Ctx, input: { id?: string; code: string; name: string; kind: string; active: boolean }): Promise<void> {
   requirePermission(ctx, 'financeiro.cadastros');
+  await requireFullFinance(getPool(), ctx.principal);
   const d = z.object({ id: z.uuid().optional(), code: z.string().trim().toUpperCase().regex(/^[A-Z0-9_]{2,30}$/), name: z.string().trim().min(2).max(120),
     kind: z.enum(['DESPESA_FIXA', 'DESPESA_VARIAVEL', 'PESSOAL', 'INVESTIMENTO', 'RECEITA']), active: z.boolean() }).parse(input);
   await tx(async (c) => {
@@ -150,6 +149,11 @@ export async function saveContract(ctx: Ctx, input: z.input<typeof contractSchem
   if (d.endDate && d.endDate < d.startDate) throw new AppError('O término não pode ser anterior ao início.');
   if ((d.monthlyCents == null) !== (d.dueDay == null)) throw new AppError('Contrato com valor mensal exige o dia de vencimento (e vice-versa).');
   return tx(async (c) => {
+    await assertCostCenterInScope(c, ctx.principal, d.costCenterId);
+    if (d.id) {
+      const cur = await queryOne<{ cost_center_id: string }>(c, 'SELECT cost_center_id FROM contracts WHERE id = $1', [d.id]);
+      if (cur) await assertCostCenterInScope(c, ctx.principal, cur.cost_center_id);
+    }
     const params = [d.supplierId, d.object, d.costCenterId, d.categoryId, d.startDate, d.endDate ?? null, d.monthlyCents != null ? centsToDb(d.monthlyCents) : null,
       d.totalCents != null ? centsToDb(d.totalCents) : null, d.dueDay ?? null, d.readjustment ?? null, d.noticeDays];
     const r = d.id
@@ -168,6 +172,8 @@ export async function closeContract(ctx: Ctx, id: string, reason: string): Promi
   requirePermission(ctx, 'financeiro.cadastros');
   if (reason.trim().length < 3) throw new AppError('Informe o motivo do encerramento.');
   await tx(async (c) => {
+    const cur = await queryOne<{ cost_center_id: string }>(c, 'SELECT cost_center_id FROM contracts WHERE id = $1', [id]);
+    if (cur) await assertCostCenterInScope(c, ctx.principal, cur.cost_center_id);
     const r = await query(c, "UPDATE contracts SET status='ENCERRADO', closed_reason=$2 WHERE id=$1 AND status='VIGENTE' RETURNING id", [id, reason.trim()]);
     if (!r.length) throw new AppError('Contrato inexistente ou já encerrado.');
     await audit(c, ctx, { action: 'FIN_CONTRATO_ENCERRADO', entityType: 'contract', entityId: id, summary: `Contrato encerrado: ${reason.trim()}` });
@@ -200,6 +206,7 @@ const maxDate = (a: string, b: string) => (a > b ? a : b);
  */
 export async function generateContractExpenses(ctx: Ctx, month: string): Promise<number> {
   requirePermission(ctx, 'financeiro.cadastros');
+  await requireFullFinance(getPool(), ctx.principal);
   const comp = competenceDate(z.string().regex(/^\d{4}-\d{2}$/).parse(month));
   const last = addDays(addMonths(comp, 1), -1);
   return tx(async (c) => {
@@ -235,7 +242,7 @@ export async function generateContractExpenses(ctx: Ctx, month: string): Promise
       if (k.asgard_type) await query(c, 'INSERT INTO expense_asgard (expense_id, asgard_type, updated_by) VALUES ($1,$2,$3)', [r[0]!.id, k.asgard_type, ctx.principal.userId]);
     }
     await audit(c, ctx, { action: 'FIN_DESPESAS_FIXAS_GERADAS', entityType: 'expense', entityId: null, summary: `${n} despesa(s) fixa(s) (contratos e mensais) lançadas para ${comp.slice(0, 7)}` });
-    if (n) await notifyUsers(c, (await usersWithPermission(c, 'financeiro.aprovar', '00000000-0000-0000-0000-000000000000')).filter((u) => u !== ctx.principal.userId),
+    if (n) await notifyUsers(c, (await financeUsers(c, 'financeiro.aprovar', null)).filter((u) => u !== ctx.principal.userId),
       { kind: 'FIN_APROVACAO', title: 'Despesas fixas aguardando aprovação', body: `${n} lançamento(s) de despesas fixas — ${comp.slice(0, 7)}`, link: '/financeiro?aba=pagar' });
     return n;
   });
@@ -246,6 +253,7 @@ export async function setBudget(ctx: Ctx, input: { year: number; months: number[
   const d = z.object({ year: z.number().int().min(2020).max(2100), months: z.array(z.number().int().min(1).max(12)).min(1).max(12), costCenterId: z.uuid(), categoryId: z.uuid(),
     amountCents: z.number().int().min(0).max(99_999_999_999_99) }).parse(input);
   await tx(async (c) => {
+    await assertCostCenterInScope(c, ctx.principal, d.costCenterId);
     for (const m of new Set(d.months)) {
       await query(c, `INSERT INTO budget_lines (year, month, cost_center_id, category_id, amount, updated_by) VALUES ($1,$2,$3,$4,$5,$6)
         ON CONFLICT (year, month, cost_center_id, category_id) DO UPDATE SET amount = EXCLUDED.amount, updated_by = EXCLUDED.updated_by, updated_at = now()`,
@@ -288,8 +296,9 @@ export async function requestExpense(ctx: Ctx, input: z.input<typeof expenseSche
   const d = expenseSchema.parse(input);
   if (d.kind === 'COMPRA' && (!d.justification || d.justification.length < 3)) throw new AppError('Compras exigem justificativa.');
   return tx(async (c) => {
-    const sector = await costCenterSector(c, d.costCenterId);
-    if (!ctx.principal.isOwner && !can(ctx.principal, 'financeiro.solicitar', { sectorId: sector })) throw new ForbiddenError('Sem permissão para solicitar despesas neste centro de custo.');
+    await costCenterSector(c, d.costCenterId);
+    if (!ctx.principal.isOwner && !can(ctx.principal, 'financeiro.solicitar')) throw new ForbiddenError('Sem permissão para solicitar despesas.');
+    await assertCostCenterInScope(c, ctx.principal, d.costCenterId);
     const cat = await queryOne<{ kind: string; active: boolean }>(c, 'SELECT kind, active FROM finance_categories WHERE id = $1', [d.categoryId]);
     if (!cat || !cat.active || cat.kind === 'RECEITA') throw new AppError('Categoria de despesa inválida.');
     const r = await queryOne<{ id: string }>(
@@ -300,7 +309,7 @@ export async function requestExpense(ctx: Ctx, input: z.input<typeof expenseSche
         d.dueDate, d.justification ?? null, ctx.principal.userId]);
     await event(c, ctx, r!.id, 'SOLICITADA', { valor: d.amountCents });
     await audit(c, ctx, { action: 'FIN_DESPESA_SOLICITADA', entityType: 'expense', entityId: r!.id, summary: `Despesa solicitada: ${d.description} (${centsToDb(d.amountCents)})` });
-    const approvers = (await usersWithPermission(c, 'financeiro.aprovar', sector)).filter((u) => u !== ctx.principal.userId);
+    const approvers = (await financeUsers(c, 'financeiro.aprovar', d.costCenterId)).filter((u) => u !== ctx.principal.userId);
     await notifyUsers(c, approvers, { kind: 'FIN_APROVACAO', title: d.kind === 'COMPRA' ? 'Compra aguardando aprovação' : 'Despesa aguardando aprovação', body: d.description, link: `/financeiro/despesas/${r!.id}` });
     return r!.id;
   });
@@ -342,8 +351,9 @@ export async function updateRequest(ctx: Ctx, id: string, input: z.input<typeof 
     const e = await loadExpense(c, ctx, id, true);
     if (e.requested_by !== ctx.principal.userId) throw new ForbiddenError('Somente quem solicitou altera a solicitação.');
     if (e.status !== 'SOLICITADA') throw new AppError('Somente solicitações pendentes podem ser alteradas.');
-    const sector = await costCenterSector(c, d.costCenterId);
-    if (!ctx.principal.isOwner && !can(ctx.principal, 'financeiro.solicitar', { sectorId: sector })) throw new ForbiddenError();
+    await costCenterSector(c, d.costCenterId);
+    if (!ctx.principal.isOwner && !can(ctx.principal, 'financeiro.solicitar')) throw new ForbiddenError();
+    await assertCostCenterInScope(c, ctx.principal, d.costCenterId);
     await query(c, `UPDATE expenses SET kind=$2, description=$3, supplier_id=$4, project_id=$5, cost_center_id=$6, category_id=$7, amount=$8, competence=$9, due_date=$10,
                     justification=$11, updated_at=now() WHERE id=$1`,
       [id, d.kind, d.description, d.supplierId ?? null, d.projectId ?? null, d.costCenterId, d.categoryId, centsToDb(d.amountCents), competenceDate(d.competence), d.dueDate, d.justification ?? null]);
@@ -374,7 +384,7 @@ export async function decideExpense(ctx: Ctx, id: string, approve: boolean, note
     await audit(c, ctx, { action: approve ? 'FIN_DESPESA_APROVADA' : 'FIN_DESPESA_REJEITADA', entityType: 'expense', entityId: id, summary: `${e.description} (${e.amount}) ${approve ? 'aprovada' : 'rejeitada'}${selfDecision ? ' pela própria solicitante (Oficial — segregação dispensada por parâmetro)' : ''}` });
     await notifyUsers(c, [e.requested_by], { kind: approve ? 'FIN_APROVADA' : 'FIN_REJEITADA', title: approve ? 'Despesa aprovada' : 'Despesa rejeitada', body: e.description, link: `/financeiro/despesas/${id}` });
     if (approve) {
-      const payers = (await eligiblePayers(c, { sector_id: e.sector_id, requested_by: e.requested_by, decided_by: ctx.principal.userId })).filter((u) => u !== ctx.principal.userId);
+      const payers = (await eligiblePayers(c, { cost_center_id: e.cost_center_id, requested_by: e.requested_by, decided_by: ctx.principal.userId })).filter((u) => u !== ctx.principal.userId);
       await notifyUsers(c, payers, { kind: 'FIN_A_PAGAR', title: 'Despesa aprovada para pagamento', body: `${e.description} — vence em ${e.due_date}`, link: `/financeiro/despesas/${id}` });
     }
   });
@@ -552,6 +562,7 @@ export async function getExpense(ctx: Ctx, id: string) {
 
 export async function addRevenue(ctx: Ctx, input: { competence: string; receivedOn: string; categoryId: string; description: string; amountCents: number }): Promise<string> {
   requirePermission(ctx, 'financeiro.receitas');
+  await requireFullFinance(getPool(), ctx.principal);
   const d = z.object({ competence: z.string().regex(/^\d{4}-\d{2}$/), receivedOn: z.iso.date(), categoryId: z.uuid(), description: z.string().trim().min(3).max(300), amountCents: cents }).parse(input);
   if (d.receivedOn > todayLocal()) throw new AppError('Recebimento não pode ter data futura.');
   return tx(async (c) => {
@@ -567,6 +578,7 @@ export async function addRevenue(ctx: Ctx, input: { competence: string; received
 /** Estorno: novo lançamento vinculado que anula o original (o original permanece). */
 export async function reverseRevenue(ctx: Ctx, id: string, reason: string): Promise<void> {
   requirePermission(ctx, 'financeiro.receitas');
+  await requireFullFinance(getPool(), ctx.principal);
   if (reason.trim().length < 3) throw new AppError('Informe o motivo do estorno.');
   await tx(async (c) => {
     const r = await queryOne<{ competence: string; category_id: string; description: string; amount: string; reverses_id: string | null }>(c,
@@ -581,7 +593,8 @@ export async function reverseRevenue(ctx: Ctx, id: string, reason: string): Prom
 }
 
 export async function listRevenues(ctx: Ctx, month?: string) {
-  if (!can(ctx.principal, 'financeiro.receitas') && !(scopeFilter(ctx.principal, 'financeiro.ver')?.all)) throw new ForbiddenError();
+  if (!can(ctx.principal, 'financeiro.receitas') && !can(ctx.principal, 'financeiro.ver')) throw new ForbiddenError();
+  await requireFullFinance(getPool(), ctx.principal);
   return query<{ id: string; competence: string; received_on: string; category: string; description: string; amount: string; reverses_id: string | null; reversed: boolean; created_by_name: string }>(
     getPool(),
     `SELECT r.id, r.competence, r.received_on, c.name AS category, r.description, r.amount::text, r.reverses_id,
@@ -683,17 +696,17 @@ async function ownerExempt(db: Db, p: Principal): Promise<boolean> {
 }
 
 /** Quem pode pagar a despesa: tem a permissão e não solicitou nem aprovou — salvo a Oficial, se dispensada. */
-async function eligiblePayers(db: Db, r: { sector_id: string; requested_by: string; decided_by: string }): Promise<string[]> {
+async function eligiblePayers(db: Db, r: { cost_center_id: string; requested_by: string; decided_by: string }): Promise<string[]> {
   const exempt = (await getSetting<boolean>(db, 'financeiro.oficial_sem_segregacao', false)) === true;
   const owner = exempt ? (await queryOne<{ id: string }>(db, 'SELECT id FROM users WHERE is_owner AND status = \'ATIVO\' LIMIT 1'))?.id : undefined;
-  return (await usersWithPermission(db, 'financeiro.pagar', r.sector_id)).filter((u) => u === owner || (u !== r.requested_by && u !== r.decided_by));
+  return (await financeUsers(db, 'financeiro.pagar', r.cost_center_id)).filter((u) => u === owner || (u !== r.requested_by && u !== r.decided_by));
 }
 
 /** Rotina: avisa quem paga sobre despesas aprovadas a vencer (uma vez por vencimento). */
 export async function processFinanceReminders(db: Db = getPool()): Promise<number> {
   const days = await getNumberSetting(db, 'financeiro.aviso_vencimento_dias', 5);
-  const rows = await query<{ id: string; description: string; due_date: string; sector_id: string; requested_by: string; decided_by: string }>(db,
-    `SELECT e.id, e.description, e.due_date, cc.sector_id, e.requested_by, e.decided_by FROM expenses e JOIN cost_centers cc ON cc.id = e.cost_center_id
+  const rows = await query<{ id: string; description: string; due_date: string; cost_center_id: string; requested_by: string; decided_by: string }>(db,
+    `SELECT e.id, e.description, e.due_date, e.cost_center_id, e.requested_by, e.decided_by FROM expenses e
       WHERE e.status = 'APROVADA' AND e.due_date <= $1
         AND NOT EXISTS (SELECT 1 FROM expense_events x WHERE x.expense_id = e.id AND x.event = 'AVISO_VENCIMENTO' AND x.details->>'vencimento' = e.due_date::text)`,
     [addDays(todayLocal(), days)]);
@@ -715,8 +728,10 @@ export async function processFinanceReminders(db: Db = getPool()): Promise<numbe
 export async function paymentBlockers(ctx: Ctx) {
   if (!ctx.principal.isOwner && !can(ctx.principal, 'financeiro.aprovar') && !can(ctx.principal, 'financeiro.cadastros')) return [];
   const db = getPool();
-  const rows = await query<{ id: string; description: string; sector_id: string; requested_by: string; decided_by: string }>(db,
-    `SELECT e.id, e.description, cc.sector_id, e.requested_by, e.decided_by FROM expenses e JOIN cost_centers cc ON cc.id = e.cost_center_id WHERE e.status = 'APROVADA'`);
+  const ccs = await visibleCostCenters(db, ctx.principal);
+  const rows = await query<{ id: string; description: string; cost_center_id: string; requested_by: string; decided_by: string }>(db,
+    `SELECT e.id, e.description, e.cost_center_id, e.requested_by, e.decided_by FROM expenses e
+      WHERE e.status = 'APROVADA' AND ($1::uuid[] IS NULL OR e.cost_center_id = ANY($1::uuid[]))`, [ccs]);
   const out: { id: string; description: string }[] = [];
   for (const r of rows) {
     const payers = await eligiblePayers(db, r);

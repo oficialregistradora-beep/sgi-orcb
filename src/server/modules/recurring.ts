@@ -9,6 +9,7 @@ import { safeFilename } from '../files.ts';
 import { centsToDb } from '../../domain/money.ts';
 import { cellTexts, readZip } from '../xlsx.ts';
 import { findDataSheet } from './asgard.ts';
+import { assertCostCenterInScope, financeScope, requireFullFinance } from './financeAccess.ts';
 
 // Despesas fixas mensais sem contrato (assinaturas, tributos, folha, benefícios…). Cada item gera, ao "Lançar
 // despesas fixas do mês", uma solicitação de despesa para aprovação. Valores variáveis (energia, encargos) são
@@ -25,13 +26,15 @@ function requireView(ctx: Ctx): void {
 
 export async function listRecurring(ctx: Ctx): Promise<RecurringRow[]> {
   requireView(ctx);
+  const ccs = await financeScope(getPool(), ctx.principal);
   return query<RecurringRow>(getPool(),
     `SELECT r.id, r.description, r.supplier_id, s.name AS supplier_name, r.cost_center_id, cc.code || ' — ' || cc.name AS cost_center,
             r.category_id, fc.name AS category, r.amount::text, r.due_day, r.asgard_type, r.notes, r.active,
             (SELECT count(*)::int FROM expenses e WHERE e.recurring_id = r.id) AS generated
        FROM recurring_expenses r JOIN cost_centers cc ON cc.id = r.cost_center_id JOIN finance_categories fc ON fc.id = r.category_id
        LEFT JOIN suppliers s ON s.id = r.supplier_id
-      ORDER BY r.active DESC, r.due_day, r.description`);
+      WHERE ($1::uuid[] IS NULL OR r.cost_center_id = ANY($1::uuid[]))
+      ORDER BY r.active DESC, r.due_day, r.description`, [ccs]);
 }
 
 const saveSchema = z.object({
@@ -51,6 +54,11 @@ export async function saveRecurring(ctx: Ctx, input: z.input<typeof saveSchema>)
   requirePermission(ctx, 'financeiro.cadastros');
   const d = saveSchema.parse(input);
   return tx(async (c) => {
+    await assertCostCenterInScope(c, ctx.principal, d.costCenterId);
+    if (d.id) {
+      const cur = await queryOne<{ cost_center_id: string }>(c, 'SELECT cost_center_id FROM recurring_expenses WHERE id = $1', [d.id]);
+      if (cur) await assertCostCenterInScope(c, ctx.principal, cur.cost_center_id);
+    }
     const params = [d.description, d.supplierId ?? null, d.costCenterId, d.categoryId, d.amountCents != null ? centsToDb(d.amountCents) : null,
       d.dueDay, d.asgardType || null, d.notes || null, d.active, ctx.principal.userId];
     let id = d.id;
@@ -73,9 +81,10 @@ export async function removeRecurring(ctx: Ctx, id: string): Promise<'EXCLUIDA' 
   requirePermission(ctx, 'financeiro.cadastros');
   z.uuid().parse(id);
   return tx(async (c) => {
-    const r = await queryOne<{ description: string; generated: number }>(c,
-      'SELECT description, (SELECT count(*)::int FROM expenses e WHERE e.recurring_id = r.id) AS generated FROM recurring_expenses r WHERE id = $1 FOR UPDATE', [id]);
+    const r = await queryOne<{ description: string; cost_center_id: string; generated: number }>(c,
+      'SELECT description, cost_center_id, (SELECT count(*)::int FROM expenses e WHERE e.recurring_id = r.id) AS generated FROM recurring_expenses r WHERE id = $1 FOR UPDATE', [id]);
     if (!r) throw new NotFoundError('Despesa fixa não encontrada.');
+    await assertCostCenterInScope(c, ctx.principal, r.cost_center_id);
     const result = r.generated ? 'DESATIVADA' : 'EXCLUIDA';
     if (result === 'EXCLUIDA') await query(c, 'DELETE FROM recurring_expenses WHERE id = $1', [id]);
     else await query(c, 'UPDATE recurring_expenses SET active = false, updated_by = $2, updated_at = now() WHERE id = $1', [id, ctx.principal.userId]);
@@ -113,6 +122,7 @@ const importSchema = z.object({ costCenterId: z.uuid(), defaultCategoryId: z.uui
  */
 export async function importRecurring(ctx: Ctx, file: { name: string; bytes: Uint8Array }, input: z.input<typeof importSchema>) {
   requirePermission(ctx, 'financeiro.cadastros');
+  await requireFullFinance(getPool(), ctx.principal);
   const d = importSchema.parse(input);
   if (!/\.xlsx?$/i.test(safeFilename(file.name))) throw new AppError('Envie a planilha no formato do Asgard (.xls ou .xlsx).');
   if (!file.bytes.byteLength || file.bytes.byteLength > 2 * 1024 * 1024) throw new AppError('Planilha vazia ou maior que 2 MB.');

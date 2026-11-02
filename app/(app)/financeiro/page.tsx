@@ -15,6 +15,8 @@ import { financeAdminAction, requestExpenseAction } from '../../actions/phase4b.
 import { withGuard } from '@/server/web/guard.ts';
 import { AsgardReport } from './Asgard.tsx';
 import { RecurringExpenses } from './Recorrentes.tsx';
+import { getPool } from '@/server/db.ts';
+import { financeScope } from '@/server/modules/financeAccess.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Financeiro' };
@@ -50,19 +52,25 @@ async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ aba?: 
   const p = ctx.principal;
   const has = (x: string) => p.isOwner || can(p, x);
   const anyFin = ['financeiro.ver', 'financeiro.solicitar', 'financeiro.aprovar', 'financeiro.pagar', 'financeiro.cadastros', 'financeiro.receitas'].some(has);
-  if (!anyFin) return <div className="stack"><PageHead title="Financeiro" /><div className="alert alert-warn">Você não tem acesso ao módulo financeiro.</div></div>;
+  // Alcance definido pela Oficial: todo o financeiro (administração) ou só os centros de custo habilitados.
+  const scope = await financeScope(getPool(), p);
+  const full = scope === null;
+  if (!anyFin || (scope !== null && scope.length === 0)) {
+    return <div className="stack"><PageHead title="Financeiro" /><div className="alert alert-warn">Nenhum acesso ao financeiro foi habilitado para você. Fale com a Oficial.</div></div>;
+  }
   const TABS = {
     painel: 'Painel', pagar: 'Contas a pagar', nova: 'Solicitar despesa', contratos: 'Contratos', fornecedores: 'Fornecedores', orcamento: 'Orçamento',
     receitas: 'Receitas', relatorios: 'Relatórios', cadastros: 'Centros e categorias',
   } as const;
   const visible: Record<keyof typeof TABS, boolean> = {
     painel: true, pagar: true, nova: has('financeiro.solicitar'), contratos: true, fornecedores: true, orcamento: has('financeiro.cadastros') || has('financeiro.ver'),
-    receitas: has('financeiro.receitas'), relatorios: true, cadastros: has('financeiro.cadastros'),
+    receitas: has('financeiro.receitas') && full, relatorios: true, cadastros: has('financeiro.cadastros') && full,
   };
   const tab = (sp.aba && sp.aba in TABS && visible[sp.aba as keyof typeof TABS] ? sp.aba : 'painel') as keyof typeof TABS;
   const today = todayLocal();
   const month = /^\d{4}-\d{2}$/.test(sp.mes ?? '') ? sp.mes! : today.slice(0, 7);
-  const [ccs, cats] = await Promise.all([listCostCenters(), listFinanceCategories()]);
+  const [allCcs, cats] = await Promise.all([listCostCenters(), listFinanceCategories()]);
+  const ccs = full ? allCcs : allCcs.filter((c) => scope!.includes(c.id));
   const expenseCats = cats.filter((c) => c.kind !== 'RECEITA' && c.active);
   const admin = has('financeiro.cadastros');
 
@@ -152,7 +160,7 @@ async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ aba?: 
                 <div className="field"><label htmlFor="ex-k">Tipo</label><select id="ex-k" name="kind" className="input"><option value="VARIAVEL">Despesa variável</option><option value="FIXA">Despesa fixa</option><option value="COMPRA">Compra</option></select></div>
                 <div className="field" style={{ gridColumn: 'span 2' }}><label htmlFor="ex-d">Descrição</label><input id="ex-d" name="description" className="input" required minLength={3} /></div>
                 <div className="field"><label htmlFor="ex-v">Valor (R$)</label><input id="ex-v" name="amount" className="input" inputMode="decimal" placeholder="0,00" required /></div>
-                <div className="field"><label htmlFor="ex-cc">Centro de custo</label><select id="ex-cc" name="costCenterId" className="input" required>{ccs.filter((c) => c.active && (has('financeiro.cadastros') || can(p, 'financeiro.solicitar', { sectorId: c.sector_id }))).map((c) => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}</select></div>
+                <div className="field"><label htmlFor="ex-cc">Centro de custo</label><select id="ex-cc" name="costCenterId" className="input" required>{ccs.filter((c) => c.active).map((c) => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}</select></div>
                 <div className="field"><label htmlFor="ex-c">Categoria</label><select id="ex-c" name="categoryId" className="input" required>{expenseCats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
                 <div className="field"><label htmlFor="ex-s">Fornecedor</label><select id="ex-s" name="supplierId" className="input"><option value="">—</option>{suppliers.filter((s) => s.active).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
                 <div className="field"><label htmlFor="ex-p">Projeto (opcional)</label><select id="ex-p" name="projectId" className="input"><option value="">—</option>{projects.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
@@ -188,9 +196,9 @@ async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ aba?: 
             </div></div>
             {admin ? (
               <div className="grid grid-2">
-                <div className="card"><div className="card-head"><h2>Lançar despesas fixas do mês</h2><p>Gera, para aprovação, as mensalidades dos contratos vigentes e as despesas fixas mensais com valor (sem duplicar).</p></div>
+                {full ? <div className="card"><div className="card-head"><h2>Lançar despesas fixas do mês</h2><p>Gera, para aprovação, as mensalidades dos contratos vigentes e as despesas fixas mensais com valor (sem duplicar).</p></div>
                   <div className="card-body"><ActionForm action={financeAdminAction} submitLabel="Gerar lançamentos"><input type="hidden" name="op" value="gerar_fixas" /><input name="month" type="month" className="input" aria-label="Competência" defaultValue={month} required /></ActionForm></div>
-                </div>
+                </div> : null}
                 <div className="card"><div className="card-head"><h2>Novo contrato</h2></div>
                   <div className="card-body"><ActionForm action={financeAdminAction} submitLabel="Salvar contrato" resetOnSuccess>
                     <input type="hidden" name="op" value="contrato" />
@@ -304,7 +312,7 @@ async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ aba?: 
       })() : null}
 
       {tab === 'relatorios' ? await (async () => {
-        const canAsgard = p.isOwner || has('financeiro.cadastros') || has('financeiro.pagar');
+        const canAsgard = full && (p.isOwner || has('financeiro.cadastros') || has('financeiro.pagar'));
         const sub = sp.sub === 'asgard' && canAsgard ? 'asgard' : 'resumo';
         const subNav = canAsgard ? (
           <nav className="tabs">

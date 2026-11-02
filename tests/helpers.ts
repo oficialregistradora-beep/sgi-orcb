@@ -115,3 +115,12 @@ export async function pastMonday(weeksAgo: number): Promise<string> {
 }
 
 export const FULL_DAY = ['08:00', '12:00', '13:00', '17:00'];
+
+/** Alcance no financeiro, como a Oficial define em Usuários e permissões: todo o financeiro ou centros de custo. */
+export async function grantFinance(userId: string, opts: { all?: boolean; costCenterIds?: string[] }): Promise<void> {
+  const db = getPool();
+  await query(db, 'UPDATE users SET finance_all = $2 WHERE id = $1', [userId, !!opts.all]);
+  for (const cc of opts.costCenterIds ?? []) {
+    await query(db, 'INSERT INTO finance_access (user_id, cost_center_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [userId, cc]);
+  }
+}

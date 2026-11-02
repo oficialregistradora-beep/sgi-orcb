@@ -8,6 +8,7 @@ import { todayLocal } from '@/domain/time.ts';
 import { fmtDate, fmtDateTime, label, statusTone } from '@/ui/format.ts';
 import { PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
+import { FinanceAccessCard } from './FinanceAccess.tsx';
 import {
   assignRoleAction, createRoleAction, createUserAction, resetMfaAction, correctEmailAction, emailMfaAction, revokeRoleAction, rolePermissionAction, userStatusAction,
 } from '../../actions/admin.ts';
@@ -140,6 +141,7 @@ async function PermissoesPage({ searchParams }: { searchParams: Promise<{ aba?: 
               </div>
             </div>
           ) : <div className="card"><div className="card-body muted small">Selecione um usuário para ver e alterar papéis e acesso.</div></div>}
+          {selected && canUsers && !selected.is_owner ? <FinanceAccessCard ctx={ctx} userId={selected.id} /> : null}
         </div>
       ) : (
         <div className="stack">

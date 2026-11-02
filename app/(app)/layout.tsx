@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { can, scopeFilter } from '@/server/authz.ts';
 import { requirePageCtx } from '@/server/web/session.ts';
 import { unreadCount } from '@/server/modules/notifications.ts';
+import { hasFinanceAccess } from '@/server/modules/financeAccess.ts';
+import { getPool } from '@/server/db.ts';
 import { getConfig } from '@/server/config.ts';
 import { Brand } from '@/ui/Brand.tsx';
 import { Nav, type NavGroup } from '@/ui/Nav.tsx';
@@ -15,6 +17,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const ctx = await requirePageCtx();
   const p = ctx.principal;
   const teamScope = scopeFilter(p, 'pessoas.ver');
+  // Financeiro: papel com alguma permissão do módulo E acesso habilitado pela Oficial (todo ou centros de custo).
+  const financeMenu = ['financeiro.ver', 'financeiro.solicitar', 'financeiro.aprovar', 'financeiro.pagar', 'financeiro.cadastros', 'financeiro.receitas'].some((x) => can(p, x))
+    && (await hasFinanceAccess(getPool(), p));
   const groups: NavGroup[] = [
     {
       title: 'Pessoal',
@@ -44,7 +49,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           { href: '/projetos', label: 'Projetos', icon: <I.IconChart /> },
           { href: '/rotinas', label: 'Rotinas e processos', icon: <I.IconCalendar /> },
         ] : []),
-        ...(['financeiro.ver', 'financeiro.solicitar', 'financeiro.aprovar', 'financeiro.pagar', 'financeiro.cadastros', 'financeiro.receitas'].some((x) => can(p, x)) ? [{ href: '/financeiro', label: 'Financeiro', icon: <I.IconWallet /> }] : []),
+        ...(financeMenu ? [{ href: '/financeiro', label: 'Financeiro', icon: <I.IconWallet /> }] : []),
         ...(['qualidade.ver', 'qualidade.gerenciar', 'qualidade.auditar', 'incidentes.gerenciar', 'ativos.gerenciar'].some((x) => can(p, x))
           ? [{ href: '/qualidade', label: 'Qualidade e segurança', icon: <I.IconCheck /> }]
           : can(p, 'incidentes.registrar') ? [{ href: '/qualidade/incidentes', label: 'Comunicar incidente', icon: <I.IconAlert /> }] : []),

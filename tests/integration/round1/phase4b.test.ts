@@ -8,7 +8,7 @@ import {
 } from '../../../src/server/modules/finance.ts';
 import { createProject, getProject } from '../../../src/server/modules/projects.ts';
 import { addDays, todayLocal } from '../../../src/domain/time.ts';
-import { closePool, ctxFor, ids, makePerson, resetDatabase } from '../../helpers.ts';
+import { closePool, ctxFor, grantFinance, ids, makePerson, resetDatabase } from '../../helpers.ts';
 
 let I: Awaited<ReturnType<typeof ids>>;
 let cOwner: Ctx, cSubst: Ctx, cCoord: Ctx, cColab: Ctx, cAtdCoord: Ctx;
@@ -26,6 +26,7 @@ beforeAll(async () => {
   const a = await makePerson({ name: 'Coord ATD', sectorId: I.sectors.ATD, jobId: I.jobs.atendente, roles: [{ roleId: I.roles.COLABORADOR }, { roleId: I.roles.COORDENACAO_SETOR }] });
   const x = await makePerson({ name: 'Colab', sectorId: I.sectors.RI, jobId: I.jobs.escrevente, roles: [{ roleId: I.roles.COLABORADOR }] });
   cOwner = await ctxFor(o.userId); cSubst = await ctxFor(s.userId); cCoord = await ctxFor(c.userId); cAtdCoord = await ctxFor(a.userId); cColab = await ctxFor(x.userId);
+  await grantFinance(s.userId, { all: true }); // a Oficial habilitou a Substituta para todo o financeiro
   const cats = await listFinanceCategories();
   catMat = cats.find((k) => k.code === 'MATERIAL')!.id;
   catAlug = cats.find((k) => k.code === 'ALUGUEL')!.id;
@@ -38,6 +39,7 @@ describe('Fase 4b — cadastros', () => {
     await expect(saveCostCenter(cCoord, { code: 'RI', name: 'Registro de Imóveis', sectorId: I.sectors.RI, active: true })).rejects.toThrow(/permissão/);
     ccRI = await saveCostCenter(cSubst, { code: 'RI', name: 'Registro de Imóveis', sectorId: I.sectors.RI, active: true });
     ccDIR = await saveCostCenter(cSubst, { code: 'ADM', name: 'Administração', sectorId: I.sectors.DIR, active: true });
+    await grantFinance(cCoord.principal.userId, { costCenterIds: [ccRI] }); // coordenação do RI: só o centro de custo RI
     await expect(saveSupplier(cSubst, { name: 'Papelaria', document: '11.222.333/0001-82' })).rejects.toThrow(/inválido/);
     supplier = await saveSupplier(cSubst, { name: 'Papelaria Fictícia Ltda', document: '11.222.333/0001-81', email: 'contato@papelaria.example' });
     await expect(saveSupplier(cSubst, { name: 'Duplicada', document: '11222333000181' })).rejects.toThrow(/já cadastrado/);

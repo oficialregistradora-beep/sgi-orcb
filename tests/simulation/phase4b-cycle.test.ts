@@ -9,7 +9,7 @@ import {
 import { verifyAuditChain } from '../../src/server/audit.ts';
 import { toCents } from '../../src/domain/money.ts';
 import { dueDateIn, monthsBetween } from '../../src/domain/finance.ts';
-import { closePool, ctxFor, ids, makePerson, resetDatabase } from '../helpers.ts';
+import { closePool, ctxFor, grantFinance, ids, makePerson, resetDatabase } from '../helpers.ts';
 
 // RODADA 3 (Fase 4b) — 9 meses (jan–set/2026): 3 centros de custo, 2 contratos mensais, orçamento anual,
 // ~12 despesas variáveis por mês, decisões e pagamentos por pessoas distintas. Totais conferidos por SQL independente.
@@ -49,6 +49,10 @@ describe('Rodada 3 (4b) — nove meses de operação financeira', () => {
       await saveCostCenter(cOwner, { code: 'ATD', name: 'ATD', sectorId: I.sectors.ATD, active: true }),
       await saveCostCenter(cOwner, { code: 'RCPN', name: 'RCPN', sectorId: I.sectors.RCPN, active: true }),
     ];
+    // Alcance definido pela Oficial: Substituta e pagador, todo o financeiro; cada coordenação, o centro de custo do seu setor.
+    await grantFinance(cSubst.principal.userId, { all: true });
+    await grantFinance(cPayer.principal.userId, { all: true });
+    for (const [i, r] of requesters.entries()) await grantFinance(r.principal.userId, { costCenterIds: [ccs[i]!] });
     const sup = await saveSupplier(cOwner, { name: 'Fornecedor Sim', document: '11.222.333/0001-81' });
     await saveContract(cOwner, { supplierId: sup, object: 'Locação', costCenterId: ccs[0]!, categoryId: cats.ALUGUEL!, startDate: '2025-06-01', monthlyCents: 380000, dueDay: 31 });
     await saveContract(cOwner, { supplierId: sup, object: 'Internet', costCenterId: ccs[1]!, categoryId: cats.SISTEMAS!, startDate: '2026-03-15', endDate: '2026-08-14', monthlyCents: 19990, dueDay: 10 });

@@ -90,7 +90,8 @@ try {
   check('Dados sensíveis exibidos somente sob ação explícita', await page.locator('input[name=cpf]').isVisible());
 
   // 6b. Fase 2b — plantões, checklists e férias (visão da Oficial)
-  await page.goto(`${BASE}/plantoes?mes=${new Date().toISOString().slice(0, 7)}`);
+  // Os plantões fictícios são dos últimos 42 dias: abre o mês de uma semana atrás (no início do mês, o mês anterior).
+  await page.goto(`${BASE}/plantoes?mes=${new Date(Date.now() - 7 * 864e5).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }).slice(0, 7)}`);
   check('Plantões: escala da competência exibida', (await page.locator('table >> tbody tr').count()) > 0);
   const pastLink = page.locator('tbody tr td a').first();
   await pastLink.click();
@@ -324,7 +325,8 @@ try {
   check('Banco de horas do colaborador', await page.locator('text=Créditos por vencimento').isVisible());
   await page.goto(`${BASE}/auditoria`);
   check('Colaborador bloqueado na auditoria', await page.locator('text=Não foi possível exibir esta página').isVisible());
-  await page.goto(`${BASE}/plantoes?mes=${new Date().toISOString().slice(0, 7)}`);
+  // Os plantões fictícios são dos últimos 42 dias: abre o mês de uma semana atrás (no início do mês, o mês anterior).
+  await page.goto(`${BASE}/plantoes?mes=${new Date(Date.now() - 7 * 864e5).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }).slice(0, 7)}`);
   const rows = await page.locator('tbody tr').allTextContents();
   check('Colaborador vê somente plantões em que é responsável ou substituto', rows.every((r) => r.includes('Diego') || r.includes('Nenhum')), `${rows.length} linha(s)`);
   await page.goto(`${BASE}/ferias`);
@@ -355,7 +357,7 @@ try {
   check('Colaborador: agenda visível sem cadastro de eventos', await page.locator('h1:has-text("Agenda")').isVisible() && !(await page.locator('h2:has-text("Novo evento institucional")').count()));
   check('Colaborador não vê o menu Financeiro', !(await page.locator('nav >> text=Financeiro').count()));
   await page.goto(`${BASE}/financeiro`);
-  check('Colaborador sem acesso ao financeiro', await page.locator('text=não tem acesso ao módulo financeiro').isVisible());
+  check('Colaborador sem acesso ao financeiro', await page.locator('text=Nenhum acesso ao financeiro foi habilitado para você').isVisible());
   const finFile = await page.request.get(`${BASE}/api/v1/financeiro/relatorio?de=2026-01&ate=2026-12`);
   check('Colaborador não exporta relatório financeiro', [403, 404].includes(finFile.status()), `HTTP ${finFile.status()}`);
 

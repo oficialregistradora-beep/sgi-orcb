@@ -6,6 +6,7 @@ import {
   saveSector, setRolePermission, setUserStatus, updateNumericSetting,
 } from '@/server/modules/admin.ts';
 import { verifyAuditChain } from '@/server/audit.ts';
+import { setFinanceAccess } from '@/server/modules/financeAccess.ts';
 import { getPool } from '@/server/db.ts';
 import { requirePermission } from '@/server/authz.ts';
 import { markAllRead } from '@/server/modules/notifications.ts';
@@ -45,6 +46,15 @@ export async function ownEmailMfaAction(_p: ActionState, fd: FormData): Promise<
     await setOwnEmailMfa(ctx, off ? null : str(fd, 'email'));
     return off ? 'E-mail pessoal retirado.' : 'E-mail pessoal cadastrado: na tela de código, use "Enviar código para meu e-mail pessoal".';
   }, '/seguranca');
+}
+
+export async function financeAccessAction(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return runAction(async (ctx) => {
+    const all = fd.get('all') === 'on';
+    const costCenterIds = all ? [] : fd.getAll('cc').map(String);
+    await setFinanceAccess(ctx, { userId: str(fd, 'userId'), all, costCenterIds, reason: str(fd, 'reason') });
+    return all ? 'Acesso: todo o financeiro.' : costCenterIds.length ? `Acesso: ${costCenterIds.length} centro(s) de custo.` : 'Acesso ao financeiro retirado.';
+  }, ['/permissoes', '/financeiro']);
 }
 
 export async function resetMfaAction(_p: ActionState, fd: FormData): Promise<ActionState> {

@@ -8,7 +8,7 @@ import {
 import { verifyAuditChain } from '../../../src/server/audit.ts';
 import { invalidateSettingsCache } from '../../../src/server/settings.ts';
 import { todayLocal } from '../../../src/domain/time.ts';
-import { closePool, ctxFor, ids, makePerson, resetDatabase } from '../../helpers.ts';
+import { closePool, ctxFor, grantFinance, ids, makePerson, resetDatabase } from '../../helpers.ts';
 
 let I: Awaited<ReturnType<typeof ids>>;
 let cOwner: Ctx, cSubst: Ctx, cPayer: Ctx, cCoord: Ctx, cAtdCoord: Ctx, cColab: Ctx;
@@ -40,6 +40,10 @@ beforeAll(async () => {
   const cats = await listFinanceCategories();
   catMat = cats.find((k) => k.code === 'MATERIAL')!.id; catAlug = cats.find((k) => k.code === 'ALUGUEL')!.id; catRec = cats.find((k) => k.code === 'RECEITA_EMOL')!.id;
   ccRI = await saveCostCenter(cOwner, { code: 'RI', name: 'RI', sectorId: I.sectors.RI, active: true });
+  // Alcance definido pela Oficial: Substituta e Auxiliar veem todo o financeiro; Coordenação do RI, só o RI; Coordenação do ATD, nada.
+  await grantFinance(s.userId, { all: true });
+  await grantFinance(pay.userId, { all: true });
+  await grantFinance(c.userId, { costCenterIds: [ccRI] });
   supplier = await saveSupplier(cOwner, { name: 'Fornecedor Pessoa Física', document: '529.982.247-25' });
 });
 afterAll(closePool);
