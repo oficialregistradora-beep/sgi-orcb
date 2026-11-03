@@ -502,6 +502,7 @@ Abas:
   - **Redefinir autenticador:** troca de celular.
   - **Financeiro — o que esta pessoa vê:** *Ver todo o financeiro* (administração) ou os centros de custo marcados; motivo e código do autenticador. Ver 6.
   - **Liberar código por e-mail:** e-mail **pessoal** (fora do domínio do cartório) e motivo; pede o seu código. Libere só para quem não pode usar o aplicativo. Para tirar: **Retirar código por e-mail**. O painel mostra o e-mail mascarado (ex.: `b***@gmail.com`) e quantos códigos de reserva a pessoa ainda tem.
+  - **Ligar esta conta a uma ficha:** aparece nas contas **sem ficha**. Use quando a ficha foi criada com um e-mail que não é o da conta Google e a pessoa entra por outra conta (sem ponto, banco de horas e férias). Escolha a ficha e o motivo: a ficha passa para a conta em uso, a conta antiga da ficha é revogada e os papéis, o acesso ao financeiro e o e-mail pessoal para código são transferidos. O autenticador da conta em uso continua valendo; a pessoa só precisa sair e entrar de novo.
   - **Corrigir e-mail:** só enquanto a pessoa nunca entrou. Use o **e-mail principal** da conta no Google Workspace (admin.google.com → Diretório → Usuários, coluna E-mail), não um apelido.
 - **Criar usuário:** para quem não é funcionário. Funcionários ganham acesso pela admissão.
 - **Matriz de permissões:** o que cada papel pode fazer, e o escopo de cada permissão (próprio, setor ou todos).
@@ -592,6 +593,7 @@ Se algum contrato individual previr condição **mais favorável** que a CCT em 
 | Situação | O que fazer |
 |---|---|
 | "Acesso permitido apenas na rede da serventia" | Você está fora da rede do cartório (ou no 4G). Ligue o Wi-Fi da serventia. Se estiver no cartório e várias pessoas forem bloqueadas, o IP mudou: avise a Oficial ou a Substituta (ver 9.5) |
+| Funcionária entra, mas só vê Painel, Solicitações, Agenda e Minha segurança, e não consegue bater ponto | A conta que ela usa não tem ficha (a ficha está ligada a outro e-mail). Oficial: *Usuários e permissões* → conta em uso → **Ligar esta conta a uma ficha** |
 | "Acesso não autorizado. Sua conta precisa estar previamente cadastrada e ativa" | A conta Google usada não bate com o cadastro. Veja em **Auditoria** o registro "Login negado" (mostra o e-mail tentado). Se a pessoa escolheu outra conta, entre por janela anônima e digite o e-mail institucional. Se o cadastro foi feito com um **apelido** (o Google sempre devolve o **e-mail principal**, que aparece em admin.google.com → Usuários), use **Usuários e permissões → a pessoa → Corrigir e-mail** (só antes do primeiro acesso) |
 | Esqueci o celular / sem bateria | Entre com um **código de reserva** (ver 2.7). Se a Oficial liberou, peça o **código por e-mail** |
 | "O envio de e-mail ainda não está configurado no sistema" | O envio pelo Gmail do cartório ainda não foi ligado (ver o guia de produção). Use o aplicativo ou um código de reserva |

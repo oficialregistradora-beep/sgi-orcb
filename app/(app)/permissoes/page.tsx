@@ -3,14 +3,14 @@ import { requirePageCtx } from '@/server/web/session.ts';
 import { can } from '@/server/authz.ts';
 import { ForbiddenError } from '@/server/errors.ts';
 import { getConfig } from '@/server/config.ts';
-import { listPermissionsAndRoles, listSectors, listUserRoles, listUsers } from '@/server/modules/admin.ts';
+import { listEmployeesForLink, listPermissionsAndRoles, listSectors, listUserRoles, listUsers } from '@/server/modules/admin.ts';
 import { todayLocal } from '@/domain/time.ts';
 import { fmtDate, fmtDateTime, label, statusTone } from '@/ui/format.ts';
 import { PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { FinanceAccessCard } from './FinanceAccess.tsx';
 import {
-  assignRoleAction, createRoleAction, createUserAction, resetMfaAction, correctEmailAction, emailMfaAction, revokeRoleAction, rolePermissionAction, userStatusAction,
+  assignRoleAction, createRoleAction, createUserAction, resetMfaAction, correctEmailAction, emailMfaAction, linkEmployeeAction, revokeRoleAction, rolePermissionAction, userStatusAction,
 } from '../../actions/admin.ts';
 
 import { withGuard } from '@/server/web/guard.ts';
@@ -141,6 +141,25 @@ async function PermissoesPage({ searchParams }: { searchParams: Promise<{ aba?: 
               </div>
             </div>
           ) : <div className="card"><div className="card-body muted small">Selecione um usuário para ver e alterar papéis e acesso.</div></div>}
+          {selected && canUsers && !selected.is_owner && !selected.employee_id ? await (async () => {
+            const emps = await listEmployeesForLink(ctx);
+            return (
+              <div className="card">
+                <div className="card-head"><div><h2>Ligar esta conta a uma ficha</h2><p>Esta conta não tem ficha de funcionário (sem ponto, banco de horas e férias). Use quando a ficha foi criada com outro e-mail: a ficha passa para esta conta, a conta antiga da ficha é revogada e os papéis são transferidos. O autenticador desta conta continua valendo.</p></div></div>
+                <div className="card-body">
+                  <ActionForm action={linkEmployeeAction} submitLabel="Ligar à ficha" confirm="Ligar a ficha escolhida a esta conta e revogar a conta antiga da ficha?">
+                    <input type="hidden" name="userId" value={selected.id} />
+                    <div className="field"><label htmlFor="lk-e">Ficha</label>
+                      <select id="lk-e" name="employeeId" className="input" required>
+                        <option value="">Escolha…</option>
+                        {emps.map((e) => <option key={e.id} value={e.id}>{e.full_name} — conta atual: {e.email ?? 'nenhuma'}</option>)}
+                      </select></div>
+                    <div className="field" style={{ marginTop: 8 }}><label htmlFor="lk-r">Motivo</label><input id="lk-r" name="reason" className="input" required minLength={5} /></div>
+                  </ActionForm>
+                </div>
+              </div>
+            );
+          })() : null}
           {selected && canUsers && !selected.is_owner ? <FinanceAccessCard ctx={ctx} userId={selected.id} /> : null}
         </div>
       ) : (

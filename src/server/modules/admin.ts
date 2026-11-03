@@ -130,6 +130,77 @@ export async function correctUserEmail(ctx: Ctx, input: z.input<typeof emailFixS
   });
 }
 
+const relinkSchema = z.object({ userId: uuid, employeeId: uuid, reason: z.string().trim().min(5).max(500) });
+
+/** Fichas e a conta ligada a cada uma (para "Ligar esta conta à ficha"). */
+export async function listEmployeesForLink(ctx: Ctx) {
+  requirePermission(ctx, 'usuarios.gerenciar');
+  return query<{ id: string; full_name: string; status: string; email: string | null }>(getPool(),
+    `SELECT e.id, e.full_name, e.status, u.email FROM employees e LEFT JOIN users u ON u.id = e.user_id
+      WHERE e.status <> 'DESLIGADO' ORDER BY e.full_name`);
+}
+
+/**
+ * Liga a ficha do funcionário à conta que a pessoa realmente usa (ex.: a ficha foi criada com um e-mail que não é o da
+ * conta Google, e outra conta foi criada depois). A conta antiga da ficha é revogada; papéis, acesso ao financeiro e
+ * e-mail pessoal para código passam para a conta em uso. Autenticador e histórico da conta em uso são mantidos.
+ */
+export async function linkUserToEmployee(ctx: Ctx, input: z.input<typeof relinkSchema>): Promise<void> {
+  requirePermission(ctx, 'usuarios.gerenciar');
+  const d = relinkSchema.parse(input);
+  await requireStepUp(getPool(), ctx);
+  await tx(async (c) => {
+    const target = await queryOne<{ id: string; email: string; is_owner: boolean; mfa_email_enc: string | null }>(c,
+      'SELECT id, email, is_owner, mfa_email_enc FROM users WHERE id = $1 FOR UPDATE', [d.userId]);
+    if (!target) throw new NotFoundError('Conta não encontrada.');
+    if (target.is_owner) throw new ForbiddenError('A conta da Oficial não é ligada a fichas por aqui.');
+    if (await queryOne(c, 'SELECT 1 FROM employees WHERE user_id = $1', [d.userId])) throw new AppError('Esta conta já está ligada a uma ficha.');
+    const emp = await queryOne<{ id: string; full_name: string; user_id: string | null }>(c, 'SELECT id, full_name, user_id FROM employees WHERE id = $1 FOR UPDATE', [d.employeeId]);
+    if (!emp) throw new NotFoundError('Ficha não encontrada.');
+    const old = emp.user_id
+      ? await queryOne<{ id: string; email: string; is_owner: boolean; finance_all: boolean; mfa_email_enc: string | null }>(c,
+        'SELECT id, email, is_owner, finance_all, mfa_email_enc FROM users WHERE id = $1 FOR UPDATE', [emp.user_id])
+      : null;
+    if (old?.is_owner) throw new ForbiddenError('A ficha está ligada à conta da Oficial.');
+    await query(c, 'UPDATE employees SET user_id = NULL WHERE id = $1', [emp.id]);
+    await query(c, 'UPDATE employees SET user_id = $2 WHERE id = $1', [emp.id, target.id]);
+    await query(c, "UPDATE users SET status = 'ATIVO' WHERE id = $1", [target.id]);
+    let moved = 0;
+    if (old) {
+      const roles = await query<{ role_id: string; sector_id: string | null; valid_until: string | null }>(c,
+        `SELECT role_id, sector_id, valid_until FROM user_roles WHERE user_id = $1 AND revoked_at IS NULL AND (valid_until IS NULL OR valid_until >= current_date)`, [old.id]);
+      for (const r of roles) {
+        const dup = await queryOne(c, 'SELECT 1 FROM user_roles WHERE user_id = $1 AND role_id = $2 AND revoked_at IS NULL AND sector_id IS NOT DISTINCT FROM $3', [target.id, r.role_id, r.sector_id]);
+        if (dup) continue;
+        await query(c, `INSERT INTO user_roles (user_id, role_id, sector_id, valid_from, valid_until, reason, granted_by) VALUES ($1,$2,$3,current_date,$4,$5,$6)`,
+          [target.id, r.role_id, r.sector_id, r.valid_until, `Transferido da conta ${old.email} (ficha religada)`, ctx.principal.userId]);
+        moved++;
+      }
+      await query(c, 'UPDATE user_roles SET revoked_at = now(), revoked_by = $2 WHERE user_id = $1 AND revoked_at IS NULL', [old.id, ctx.principal.userId]);
+      if (old.finance_all) await query(c, 'UPDATE users SET finance_all = true WHERE id = $1', [target.id]);
+      await query(c, `INSERT INTO finance_access (user_id, cost_center_id, granted_by) SELECT $2, cost_center_id, $3 FROM finance_access WHERE user_id = $1 ON CONFLICT DO NOTHING`,
+        [old.id, target.id, ctx.principal.userId]);
+      await query(c, 'DELETE FROM finance_access WHERE user_id = $1', [old.id]);
+      if (old.mfa_email_enc && !target.mfa_email_enc) await query(c, 'UPDATE users SET mfa_email_enc = $2 WHERE id = $1', [target.id, old.mfa_email_enc]);
+      await query(c, "UPDATE users SET status = 'REVOGADO', finance_all = false WHERE id = $1", [old.id]);
+      await revokeAllUserSessions(c, old.id, 'FICHA_RELIGADA');
+    }
+    // Toda pessoa com ficha tem ao menos o papel básico.
+    const hasRole = await queryOne(c, 'SELECT 1 FROM user_roles WHERE user_id = $1 AND revoked_at IS NULL', [target.id]);
+    if (!hasRole) {
+      await query(c, `INSERT INTO user_roles (user_id, role_id, valid_from, reason, granted_by)
+        SELECT $1, id, current_date, 'Papel básico (ficha religada)', $2 FROM roles WHERE code = 'COLABORADOR'`, [target.id, ctx.principal.userId]);
+    }
+    // A conta em uso passa a ter a ficha: encerra sessões para recarregar menus e permissões.
+    await revokeAllUserSessions(c, target.id, 'FICHA_RELIGADA');
+    await audit(c, ctx, {
+      action: 'USUARIO_FICHA_RELIGADA', entityType: 'employee', entityId: emp.id,
+      summary: `Ficha de ${emp.full_name} ligada à conta ${target.email}${old ? ` (antes: ${old.email}, revogada; ${moved} papel(éis) transferido(s))` : ''}`,
+      data: { reason: d.reason },
+    });
+  });
+}
+
 const statusSchema = z.object({
   userId: uuid,
   status: z.enum(['ATIVO', 'SUSPENSO', 'REVOGADO']),

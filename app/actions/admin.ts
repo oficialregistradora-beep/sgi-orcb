@@ -2,7 +2,7 @@
 
 import { runAction, str, optStr, int, type ActionState } from '@/server/web/action.ts';
 import {
-  addHoliday, assignRole, correctUserEmail, setOwnEmailMfa, setUserEmailMfa, createRole, createSchedule, createUser, removeHoliday, resetUserMfa, revokeUserRole, saveJobTitle,
+  addHoliday, assignRole, correctUserEmail, linkUserToEmployee, setOwnEmailMfa, setUserEmailMfa, createRole, createSchedule, createUser, removeHoliday, resetUserMfa, revokeUserRole, saveJobTitle,
   saveSector, setRolePermission, setUserStatus, updateNumericSetting,
 } from '@/server/modules/admin.ts';
 import { verifyAuditChain } from '@/server/audit.ts';
@@ -55,6 +55,13 @@ export async function financeAccessAction(_p: ActionState, fd: FormData): Promis
     await setFinanceAccess(ctx, { userId: str(fd, 'userId'), all, costCenterIds, reason: str(fd, 'reason') });
     return all ? 'Acesso: todo o financeiro.' : costCenterIds.length ? `Acesso: ${costCenterIds.length} centro(s) de custo.` : 'Acesso ao financeiro retirado.';
   }, ['/permissoes', '/financeiro']);
+}
+
+export async function linkEmployeeAction(_p: ActionState, fd: FormData): Promise<ActionState> {
+  return runAction(async (ctx) => {
+    await linkUserToEmployee(ctx, { userId: str(fd, 'userId'), employeeId: str(fd, 'employeeId'), reason: str(fd, 'reason') });
+    return 'Ficha ligada a esta conta. A pessoa deve sair e entrar de novo; o autenticador dela continua o mesmo.';
+  }, ['/permissoes', '/equipe']);
 }
 
 export async function resetMfaAction(_p: ActionState, fd: FormData): Promise<ActionState> {
