@@ -1,6 +1,7 @@
 // Carga de dados FICTÍCIOS para desenvolvimento e homologação. Nenhum dado real é utilizado.
 // Uso: npm run db:seed   (recusa executar em produção ou em banco que já tenha usuários)
 
+import { saveRegister } from '../src/server/modules/cash.ts';
 import { getConfig } from '../src/server/config.ts';
 import { closePool, getPool, query, queryOne } from '../src/server/db.ts';
 import { ensureProcessedAll } from '../src/server/modules/timeclock.ts';
@@ -241,6 +242,15 @@ const quotes = await query<{ id: string }>(db, 'SELECT id FROM expense_quotes WH
 await chooseQuote(cCamila, quotes[0]!.id);
 await addRevenue(cHelena, { competence: ym, receivedOn: today, categoryId: fcat.RECEITA_EMOL!, description: 'Receitas do período (valor fictício)', amountCents: 2500000 });
 console.log('✓ financeiro fictício (centros, fornecedores, contrato, orçamento, despesas, compra, receita)');
+
+// Controle de caixa fictício: caixas individuais das atendentes e o Apoio compartilhado (sem lançamentos: o dia é aberto na tela).
+const cGabrielaCx = await seedCtx('gabriela.rocha');
+const cHenrique = await seedCtx('henrique.dias');
+await saveRegister(cHelena, { code: 'GABRIELA', name: 'Caixa Gabriela (fictício)', sectorId: await sector('ATD'), shared: false, defaultFloatCents: 10000, operatorIds: [uid(cGabrielaCx)] });
+await saveRegister(cHelena, { code: 'HENRIQUE', name: 'Caixa Henrique (fictício)', sectorId: await sector('ATD'), shared: false, defaultFloatCents: 10000, operatorIds: [uid(cHenrique)] });
+await saveRegister(cHelena, { code: 'APOIO', name: 'Caixa do Apoio (fictício)', sectorId: await sector('DIR'), shared: true, defaultFloatCents: 5000,
+  operatorIds: [uid(cGabrielaCx), uid(cHenrique), uid(await seedCtx('isabel.costa'))] });
+console.log('✓ caixas fictícios (2 individuais e o Apoio compartilhado)');
 
 // Qualidade e segurança fictícias (Fase 5a). Requisitos são EXEMPLOS — a serventia cadastra os reais a partir das fontes oficiais.
 const reqA = await saveRequirement(cBeatriz, { code: 'EX-DOC-01', title: 'Procedimentos operacionais documentados e vigentes (exemplo)', source: 'Exemplo fictício — substituir pela fonte oficial', area: 'Gestão documental', ownerUserId: uid(cCamila) });

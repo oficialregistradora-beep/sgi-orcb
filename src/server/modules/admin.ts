@@ -586,7 +586,7 @@ export async function listSettings(ctx: Ctx, db: Db = getPool()) {
 }
 
 const NUMERIC_LIMITS: Record<string, [number, number]> = {
-  'sessao.inatividade_minutos': [5, 120],
+  'sessao.inatividade_minutos': [0, 480],
   'sessao.duracao_maxima_horas': [1, 24],
   'sessao.reautenticacao_minutos': [1, 30],
   'jornada.intervalo_minimo_entre_marcacoes_segundos': [0, 600],

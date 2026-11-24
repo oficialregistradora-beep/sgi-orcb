@@ -8,6 +8,8 @@ import { loadPrincipal, can } from '../../../src/server/authz.ts';
 import { totpAt, TOTP_STEP_SECONDS } from '../../../src/server/totp.ts';
 import { closePool, ctxFor, DOMAIN, ids, makePerson, resetDatabase } from '../../helpers.ts';
 import type { SessionRow } from '../../../src/server/auth/session.ts';
+import { invalidateSettingsCache } from '../../../src/server/settings.ts';
+import { addDays, localToInstant, todayLocal } from '../../../src/domain/time.ts';
 
 let I: Awaited<ReturnType<typeof ids>>;
 let owner: { userId: string; employeeId: string };
@@ -34,12 +36,25 @@ describe('Rodada 1 — sessões', () => {
     expect(check).toEqual({ ok: false, reason: 'REVOGADA' });
   });
 
-  it('bloqueio por inatividade', async () => {
+  it('padrão: sem queda por inatividade; sessão vale até a meia-noite', async () => {
+    const p = await makePerson({ name: 'Bia Teste', sectorId: I.sectors.ATD, jobId: I.jobs.atendente, roles: [{ roleId: I.roles.COLABORADOR }] });
+    const { token, sessionId } = await createSession(getPool(), p.userId, 'DEV', null, null);
+    await query(getPool(), "UPDATE sessions SET last_seen_at = now() - interval '5 hours' WHERE id = $1", [sessionId]);
+    expect((await validateSession(getPool(), token)).ok).toBe(true);
+    const exp = (await sessionRow(sessionId)).expires_at;
+    expect(exp.getTime()).toBe(localToInstant(addDays(todayLocal(), 1), '00:00').getTime());
+  });
+
+  it('bloqueio por inatividade, quando o parâmetro estiver ligado', async () => {
+    await query(getPool(), "UPDATE settings SET value = '30' WHERE key = 'sessao.inatividade_minutos'");
+    invalidateSettingsCache();
     const p = await makePerson({ name: 'Bruno Teste', sectorId: I.sectors.ATD, jobId: I.jobs.atendente, roles: [{ roleId: I.roles.COLABORADOR }] });
     const { token, sessionId } = await createSession(getPool(), p.userId, 'DEV', null, null);
     await query(getPool(), "UPDATE sessions SET last_seen_at = now() - interval '31 minutes' WHERE id = $1", [sessionId]);
     expect(await validateSession(getPool(), token)).toEqual({ ok: false, reason: 'INATIVIDADE' });
     expect((await sessionRow(sessionId)).revoked_at).not.toBeNull();
+    await query(getPool(), "UPDATE settings SET value = '0' WHERE key = 'sessao.inatividade_minutos'");
+    invalidateSettingsCache();
   });
 
   it('expiração absoluta', async () => {

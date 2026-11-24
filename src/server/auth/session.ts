@@ -1,6 +1,7 @@
 import { type Db, query, queryOne } from '../db.ts';
 import { randomToken, sha256Hex } from '../crypto.ts';
-import { getNumberSetting } from '../settings.ts';
+import { getNumberSetting, getSetting } from '../settings.ts';
+import { addDays, localToInstant, todayLocal } from '../../domain/time.ts';
 import { audit } from '../audit.ts';
 
 export type SessionRow = {
@@ -24,13 +25,16 @@ export async function createSession(
   ip: string | null,
   userAgent: string | null,
 ): Promise<{ token: string; sessionId: string }> {
+  // Padrão da serventia: a sessão vale até a meia-noite (horário de Brasília) ou até fechar o navegador (cookie de sessão).
+  const endOfDay = (await getSetting<boolean>(db, 'sessao.expira_fim_do_dia', true)) === true;
   const maxHours = await getNumberSetting(db, 'sessao.duracao_maxima_horas', 12);
+  const expires = endOfDay ? localToInstant(addDays(todayLocal(), 1), '00:00') : new Date(Date.now() + maxHours * 3_600_000);
   const token = randomToken(32);
   const row = await queryOne<{ id: string }>(
     db,
     `INSERT INTO sessions (user_id, token_hash, auth_method, expires_at, ip, user_agent)
-     VALUES ($1, $2, $3, now() + make_interval(hours => $4), $5, $6) RETURNING id`,
-    [userId, sha256Hex(token), method, maxHours, ip, userAgent?.slice(0, 400) ?? null],
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [userId, sha256Hex(token), method, expires, ip, userAgent?.slice(0, 400) ?? null],
   );
   await query(db, 'UPDATE users SET last_login_at = now() WHERE id = $1', [userId]);
   return { token, sessionId: row!.id };
@@ -61,8 +65,9 @@ export async function validateSession(db: Db, token: string | undefined | null):
     await revokeSession(db, s.id, 'EXPIRADA');
     return { ok: false, reason: 'EXPIRADA' };
   }
-  const idleMinutes = await getNumberSetting(db, 'sessao.inatividade_minutos', 30);
-  if (Date.now() - s.last_seen_at.getTime() > idleMinutes * 60_000) {
+  // 0 = sem bloqueio por inatividade (padrão da serventia desde a v18).
+  const idleMinutes = await getNumberSetting(db, 'sessao.inatividade_minutos', 0);
+  if (idleMinutes > 0 && Date.now() - s.last_seen_at.getTime() > idleMinutes * 60_000) {
     await revokeSession(db, s.id, 'INATIVIDADE');
     return { ok: false, reason: 'INATIVIDADE' };
   }

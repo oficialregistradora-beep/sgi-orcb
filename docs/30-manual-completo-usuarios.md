@@ -12,6 +12,7 @@
 4. Para todos: ponto, banco de horas, documentos, férias, tarefas e outros
 5. Para a gestão (Coordenação, Substituta Legal e Oficial)
 6. Financeiro gerencial
+6A. Controle de caixa (atendimento e administrativo)
 7. Qualidade e segurança da informação
 8. Treinamentos e avaliações de desempenho
 9. Administração (Configurações, Usuários e permissões, Auditoria, Automações, Rede, Convenção coletiva e acordos individuais)
@@ -63,8 +64,8 @@ Dica: no aplicativo autenticador, dê à conta um nome fácil de reconhecer, com
 - o **código enviado ao seu e-mail pessoal**, se a Oficial liberou essa opção para você: clique em **Enviar código para meu e-mail pessoal**, abra o e-mail e digite o código (vale **10 minutos**, uma vez só; para pedir outro, espere 1 minuto).
 
 ### 2.4 Sessão, bloqueio e saída
-- Depois de **30 minutos sem uso**, a sessão expira e é preciso entrar de novo.
-- Uma sessão dura no máximo **12 horas**.
+- A sessão **não cai por falta de uso**: ela vale até a **meia-noite** ou até você **fechar o navegador**. No dia seguinte, entre de novo.
+- (A Oficial pode voltar a ligar o bloqueio por inatividade em *Configurações → Parâmetros*, `sessao.inatividade_minutos`.)
 - Para sair, clique em **Sair**, no canto superior direito. Faça isso sempre em computador compartilhado.
 - Algumas operações pedem o código de novo (**Confirme sua identidade**), por exemplo: alterar permissões, aprovar documentos, registrar manifestação no espelho, dados sensíveis, salário e configurações de rede. Vale o código do aplicativo, um código de reserva ou o código do e-mail (botão **Enviar código para meu e-mail pessoal** no próprio quadro). Essa confirmação vale **10 minutos**.
 - **Cada código só pode ser usado uma vez.** Se o sistema recusar um código recém-usado, espere o próximo (eles mudam a cada 30 segundos).
@@ -421,6 +422,55 @@ Em **Centros e categorias** e em **Fornecedores**:
 
 ---
 
+## 6A. Controle de caixa (atendimento e administrativo)
+
+Menu **Controle de caixa** (aparece para quem opera um caixa, para quem confere — a Bárbara — e para a Oficial). Segue o modelo das planilhas anuais da serventia: um caixa por funcionária (ex.: Larissa, Bianca) e o **Apoio** compartilhado; cada caixa tem os dias de cada mês e o resumo do ano. Abas: **Frente de caixa**, **Mês**, **Ano**, **Conferência**, **Troco**, **Relatórios**, **Conciliação** e **Caixas**.
+
+### 6A.1 Frente de caixa (operadora)
+1. **Abrir caixa** no início do dia. O **fundo de troco** vem sozinho: o que ficou na gaveta no último fechamento (dinheiro contado − enviado ao depósito); dá para ajustar.
+2. **Novo lançamento** — uma linha por pagamento e por forma de pagamento (pagamento misto = duas linhas):
+   - **Entrada (cliente pagou):** nº do protocolo, **valor do protocolo** e forma (dinheiro, PIX, cartão de débito/crédito, depósito). Em **dinheiro**, informe o **valor total recebido**: o sistema mostra na hora o **troco** e quais **notas e moedas** devolver; o recebido não pode ser menor que o protocolo. Em PIX, cartão ou depósito, o recebido é igual ao protocolo.
+   - **Saída — repasse:** dinheiro de terceiro que a parte já pagou (correio, diligência, outra serventia). Pede o protocolo.
+   - **Saída — despesa:** gasto da serventia (ex.: água). Pede só o **favorecido** (ex.: "CASAN – água").
+   - **Saída — devolução:** devolução ao cliente. Pede o protocolo.
+   - **Suprimento** (reforço de troco) e **Sangria** (retirada para cofre/depósito): sempre em dinheiro.
+   - **Comprovante / NSU** e **observação** são opcionais: nada exige comprovante; quem controla é a conferência.
+3. **Nada se apaga.** Lançou errado? Na linha, **Estornar** com o motivo: o estorno entra no caixa de hoje e anula o original.
+4. **Fechamento do dia:** conte a gaveta e informe o **dinheiro contado** e o **enviado para depósito**. O sistema compara com o **dinheiro esperado** (fundo + entradas em dinheiro − saídas em dinheiro ± suprimento/sangria) e mostra a **diferença**. A Bárbara é avisada no sino.
+- No **Apoio** (compartilhado), cada linha grava automaticamente **o usuário que lançou** (pela conta Google de cada um) — não é preciso digitar o nome.
+
+### 6A.2 Conferência (Bárbara, no dia seguinte)
+1. Aba **Conferência** → **Conferir** no dia fechado.
+2. Se algo não bater (ex.: PIX que não está no extrato), escreva na linha, coluna **Conferência**, e clique em **Apontar**: a linha fica destacada e entra na contagem de divergências do mês.
+3. **Confirmar dia** — um único clique confere todas as linhas e trava o dia. Quem lançou naquele dia não confere o próprio caixa (salvo a Oficial).
+4. Contagem errada? **Reabrir** (com motivo) devolve o dia à operadora para refazer o fechamento.
+5. **Aprovação final do mês** (aba **Mês**): disponível quando todos os dias estão conferidos; pede o código do autenticador. Depois dela o mês fica fechado para novos dias.
+
+### 6A.3 Mês, Ano e Troco
+- **Mês:** um quadro por dia (entradas por forma de pagamento, repasses, despesas, devoluções, diferença e situação) e os totais do mês.
+- **Ano:** os 12 meses do caixa, com situação (conferido, aguardando aprovação, aprovado).
+- **Troco:** calculadora avulsa — digite o valor do protocolo e o valor entregue (ex.: R$ 158,47 com R$ 200,00 → troco R$ 41,53: 2 notas de R$ 20, 1 moeda de R$ 1, 1 de R$ 0,50 e 3 de R$ 0,01).
+
+### 6A.4 Relatórios (Bárbara e Oficial)
+- **Fluxo de caixa mensal:** por dia, entradas por forma de pagamento, repasses, despesas, devoluções, saldo do dia e acumulado; por caixa ou consolidado. Na visão consolidada, para quem vê todo o financeiro, entram também as **receitas** e os **pagamentos** do Financeiro e o **previsto** (despesas solicitadas/aprovadas com vencimento no mês).
+- **DRE gerencial:** receita bruta de atos (entradas) − repasses − devoluções = receita líquida; − despesas do caixa − despesas pagas no Financeiro (por categoria) = resultado do período. É gerencial: não substitui a escrituração nem o Livro Diário Auxiliar.
+
+### 6A.5 Conciliação (Bárbara e Oficial)
+1. Aba **Conciliação** → escolha o mês → **Importar extrato do mês**:
+   - **Extrato do banco:** OFX (recomendado; o banco gera no internet banking) ou CSV;
+   - **Extrato da máquina de cartão:** CSV ou XLSX com data, valor bruto e NSU;
+   - **Livro de depósito prévio:** CSV ou XLSX com protocolo, data e valor.
+   Arquivos .xls antigos: abra e salve como .xlsx ou .csv.
+2. O sistema concilia sozinho: banco ↔ PIX e depósitos (mesmo valor, até 3 dias); cartão ↔ cartões (mesmo valor, ±1 dia; NSU igual tem prioridade); depósito prévio ↔ entradas com o **mesmo protocolo e valor**.
+3. No extrato, cada linha mostra o lançamento correspondente; o que sobrar aparece **"Não localizado"** (para conciliar à mão ou apontar divergência) e, embaixo, os **lançamentos do mês sem correspondência**. Na Frente de caixa, a linha conciliada ganha a etiqueta **conciliado: banco / cartão / dep. prévio**.
+
+### 6A.6 Caixas (Oficial)
+Aba **Caixas** → **Novo caixa**: código, nome, setor (atendimento ou administrativo), fundo de troco padrão e operadora(s). **Individual** = uma operadora; **Compartilhado** (Apoio) = vários usuários. A Bárbara confere por padrão (permissão *Conferir dias de caixa*); ajuste na Matriz de permissões, se precisar.
+
+> NFC-e: não se aplica — os atos notariais e de registro têm recibo e selo próprios. Pagamento em PIX/cartão continua sendo conferido pelos extratos.
+
+---
+
 ## 7. Qualidade e segurança da informação
 
 Menu **Qualidade e segurança**. Abas: **Painel**, **Requisitos**, **Auditorias**, **Não conformidades**, **Riscos**, **Ativos**, **Backups** e **Vulnerabilidades**. Os incidentes ficam em **Incidentes**.
@@ -601,7 +651,9 @@ Se algum contrato individual previr condição **mais favorável** que a CCT em 
 | Código do autenticador recusado | Use o código da conta **certa** (produção, não homologação). Espere o código seguinte, porque cada código vale uma vez. Confira se a hora do celular está automática |
 | Troquei ou perdi o celular | Peça para **Redefinir autenticador** (ver 2.6). Se perdeu, comunique um incidente |
 | Um item do menu não aparece | O seu papel não dá acesso. Peça à Oficial, se for necessário para a sua função |
-| A tela voltou para o login | A sessão expirou (30 min sem uso, ou 12 h no total). Entre de novo |
+| A tela voltou para o login | A sessão terminou: passou da meia-noite ou o navegador foi fechado. Entre de novo |
+| "Lançamentos só no dia do caixa" | O caixa aberto é de outro dia: feche aquele dia e abra o de hoje |
+| Não consigo conferir o caixa do dia | Você lançou nele: quem lançou não confere o próprio caixa (salvo a Oficial) |
 | O sistema demora no primeiro acesso do dia | O sistema "acorda" sozinho às 07:45 nos dias úteis. Fora disso, o primeiro acesso pode levar alguns segundos |
 | Anexo recusado | Pode ser: arquivo acima do limite (15 MB em documentos); **vírus detectado**; ou o antivírus ainda carregando, nos primeiros 2 a 3 minutos depois que o sistema "acorda". Tente de novo em alguns minutos |
 | "O documento mensal só pode ser gerado após o término da competência" | O espelho do mês só sai depois que o mês acaba |
