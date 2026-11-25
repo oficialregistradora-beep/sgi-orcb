@@ -6,7 +6,7 @@ import {
 } from '../../../src/server/modules/repository.ts';
 import { getVersion } from '../../../src/server/modules/documents.ts';
 import { verifyAuditChain } from '../../../src/server/audit.ts';
-import { closePool, ctxFor, ids, makePerson, resetDatabase } from '../../helpers.ts';
+import { authorizeSubstitute, closePool, ctxFor, ids, makePerson, resetDatabase } from '../../helpers.ts';
 
 let I: Awaited<ReturnType<typeof ids>>;
 let cOwner: Ctx, cSubst: Ctx, cCoord: Ctx, cRi: Ctx, cAtd: Ctx;
@@ -22,6 +22,7 @@ beforeAll(async () => {
   const ri = await makePerson({ name: 'Escrevente RI', sectorId: I.sectors.RI, jobId: I.jobs.escrevente, roles: [{ roleId: I.roles.COLABORADOR }] });
   const atd = await makePerson({ name: 'Atendente', sectorId: I.sectors.ATD, jobId: I.jobs.atendente, roles: [{ roleId: I.roles.COLABORADOR }] });
   cOwner = await ctxFor(owner.userId);
+  await authorizeSubstitute();
   cSubst = await ctxFor(subst.userId);
   cCoord = await ctxFor(coord.userId);
   cRi = await ctxFor(ri.userId);
@@ -49,7 +50,7 @@ describe('Rodada 2 — integridade no banco', () => {
   it('decisões, eventos e versões são imutáveis; quem submete não decide (CHECK no banco)', async () => {
     const { id, v } = await pendingDoc('Doc decisão');
     await expect(query(getPool(), "UPDATE document_version_reviews SET decision = 'REJEITADA', decided_by = submitted_by, decided_at = now(), decision_notes = 'motivo válido' WHERE version_id = $1", [v]))
-      .rejects.toThrow(/document_version_reviews_check3/);
+      .rejects.toThrow(/Segregação de funções/); // gatilho no banco: só a Oficial é exceção
     await expect(query(getPool(), "UPDATE document_version_reviews SET decision = 'APROVADA', decided_by = $2, decided_at = now() WHERE version_id = $1", [v, cSubst.principal.userId]))
       .rejects.toThrow(/violates check/); // aprovação sem assinatura vinculada
     await decideVersion(cSubst, id, { versionId: v, decision: 'REJEITADA', notes: 'Motivo fictício' });

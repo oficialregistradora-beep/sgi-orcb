@@ -2,19 +2,19 @@ import Link from 'next/link';
 import { requirePageCtx } from '@/server/web/session.ts';
 import { can } from '@/server/authz.ts';
 import {
-  listCategories, listDirectory, listDocuments, listPendingAcknowledgements, listPendingDocApprovals, listReviewsDue, type DocStatus,
+  listCategories, listDirectory, listDocuments, listInConstruction, listPendingAcknowledgements, listPendingDocApprovals, listResponsiblesToCheck, listReviewsDue, type DocStatus,
 } from '@/server/modules/repository.ts';
 import { fmtDate, fmtDateTime, label, statusTone } from '@/ui/format.ts';
 import { Empty, PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
 import { MetaFields } from './MetaFields.tsx';
-import { categoryAction, createDocumentAction } from '../../actions/phase3.ts';
+import { categoryAction, createDocumentAction, workflowAction } from '../../actions/phase3.ts';
 import { withGuard } from '@/server/web/guard.ts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Gestão documental' };
 
-const STATUSES: (DocStatus | 'TODOS')[] = ['VIGENTE', 'EM_APROVACAO', 'RASCUNHO', 'OBSOLETO', 'ARQUIVADO', 'TODOS'];
+const STATUSES: (DocStatus | 'TODOS')[] = ['VIGENTE', 'EM_APROVACAO', 'RASCUNHO', 'OBSOLETO', 'ARQUIVADO', 'EXCLUIDO', 'TODOS'];
 
 async function DocumentosPage({ searchParams }: { searchParams: Promise<{ aba?: string; q?: string; categoria?: string; situacao?: string }> }) {
   const ctx = await requirePageCtx();
@@ -25,6 +25,7 @@ async function DocumentosPage({ searchParams }: { searchParams: Promise<{ aba?: 
   const canApprove = can(p, 'documentos.aprovar');
   const tabs = [
     { key: 'repositorio', label: 'Repositório', show: true },
+    { key: 'construcao', label: 'Em construção', show: true },
     { key: 'ciencia', label: 'Para ciência', show: true },
     { key: 'aprovacoes', label: 'Aprovações', show: canApprove },
     { key: 'revisoes', label: 'Revisões', show: canEdit || canManage || canApprove },
@@ -93,6 +94,26 @@ async function DocumentosPage({ searchParams }: { searchParams: Promise<{ aba?: 
         );
       })() : null}
 
+      {tab === 'construcao' ? await (async () => {
+        const rows = await listInConstruction(ctx);
+        return (
+          <div className="card">
+            <div className="card-head"><h2>Documentos em construção</h2><p>Rascunhos, revisões e aprovações em que você é a responsável, a revisora ou quem criou{p.isOwner ? ' (a Oficial vê todos)' : ''}.</p></div>
+            <div className="card-body flush table-wrap" tabIndex={0}>
+              {rows.length ? (
+                <table className="table"><thead><tr><th>Documento</th><th>Etapa</th><th>Responsável</th><th>Atualizado</th></tr></thead>
+                  <tbody>{rows.map((d) => (
+                    <tr key={d.id}><td><Link href={`/documentos/${d.id}`}>{d.title}</Link>{d.origin_project_name ? <div className="small muted">Projeto {d.origin_project_name}</div> : null}</td>
+                      <td><span className={d.myReview ? 'tag tag-warn' : 'tag'}>{d.stage}{d.myReview ? ' — sua revisão' : ''}</span></td>
+                      <td className="small">{d.responsible_name}</td><td className="small nowrap">{fmtDateTime(d.updated_at)}</td></tr>
+                  ))}</tbody>
+                </table>
+              ) : <Empty>Nenhum documento em construção.</Empty>}
+            </div>
+          </div>
+        );
+      })() : null}
+
       {tab === 'ciencia' ? (
         <div className="card">
           <div className="card-head"><h2>Documentos aguardando sua ciência</h2><p>Leia o documento e registre a ciência (assinatura eletrônica simples, vinculada à versão).</p></div>
@@ -108,16 +129,38 @@ async function DocumentosPage({ searchParams }: { searchParams: Promise<{ aba?: 
 
       {tab === 'aprovacoes' ? await (async () => {
         const rows = await listPendingDocApprovals(ctx);
+        const check = await listResponsiblesToCheck(ctx);
         return (
+          <div className="stack">
           <div className="card">
-            <div className="card-head"><h2>Versões aguardando sua decisão</h2><p>Versões elaboradas ou submetidas por você não aparecem aqui (segregação de funções).</p></div>
+            <div className="card-head"><h2>Versões aguardando sua decisão</h2><p>{p.isOwner ? 'Inclui as versões elaboradas pela senhora (autoaprovação registrada).' : 'Versões elaboradas ou submetidas por você não aparecem aqui (segregação de funções).'}</p></div>
             <div className="card-body flush table-wrap" tabIndex={0}>
               {rows.length ? (
                 <table className="table"><thead><tr><th>Documento</th><th>Versão</th><th>Submetida em</th></tr></thead>
-                  <tbody>{rows.map((d) => <tr key={d.id}><td><Link href={`/documentos/${d.id}`}>{d.title}</Link></td><td>v{d.version}</td><td>{fmtDateTime(d.submitted_at)}</td></tr>)}</tbody>
+                  <tbody>{rows.map((d) => <tr key={d.id}><td><Link href={`/documentos/${d.id}`}>{d.title}</Link>{d.own ? <span className="tag" style={{ marginLeft: 6 }}>elaborado por você</span> : null}</td><td>v{d.version}</td><td>{fmtDateTime(d.submitted_at)}</td></tr>)}</tbody>
                 </table>
               ) : <Empty>Nenhuma versão aguardando decisão.</Empty>}
             </div>
+          </div>
+          {check.documents.length || check.projects.length ? (
+            <div className="card">
+              <div className="card-head"><h2>Responsáveis a conferir</h2><p>Gravados quando o campo vinha pré-selecionado com a primeira pessoa da lista. Confira um a um: confirme ou abra para trocar. Nada é trocado automaticamente.</p></div>
+              <div className="card-body flush table-wrap" tabIndex={0}>
+                <table className="table"><thead><tr><th>Item</th><th>Responsável / Gestor(a)</th><th></th></tr></thead>
+                  <tbody>
+                    {check.documents.map((d) => (
+                      <tr key={d.id}><td>Documento: <Link href={`/documentos/${d.id}`}>{d.title}</Link></td><td>{d.responsible_name}</td>
+                        <td><ActionForm action={workflowAction} submitLabel="Está correto" submitClass="btn btn-sm" inline><input type="hidden" name="documentId" value={d.id} /><input type="hidden" name="op" value="conferir_doc" /></ActionForm></td></tr>
+                    ))}
+                    {check.projects.map((x) => (
+                      <tr key={x.id}><td>Projeto: <Link href={`/projetos/${x.id}?aba=equipe`}>{x.name}</Link></td><td>{x.owner_name}</td>
+                        <td><ActionForm action={workflowAction} submitLabel="Está correto" submitClass="btn btn-sm" inline><input type="hidden" name="documentId" value="" /><input type="hidden" name="projectId" value={x.id} /><input type="hidden" name="op" value="conferir_projeto" /></ActionForm></td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
           </div>
         );
       })() : null}
@@ -145,7 +188,7 @@ async function DocumentosPage({ searchParams }: { searchParams: Promise<{ aba?: 
         const dir = await listDirectory(ctx);
         return (
           <div className="card">
-            <div className="card-head"><h2>Novo documento</h2><p>O documento nasce em rascunho; só fica disponível ao público após aprovação por outra pessoa.</p></div>
+            <div className="card-head"><h2>Novo documento</h2><p>O documento nasce em rascunho. Depois de salvar o texto ou o arquivo, envie com ou sem revisão; só fica disponível ao público após a aprovação da Oficial.</p></div>
             <div className="card-body">
               <ActionForm action={createDocumentAction} submitLabel="Criar rascunho">
                 <MetaFields categories={categories} dir={dir} prefix="novo" />

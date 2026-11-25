@@ -124,3 +124,14 @@ export async function grantFinance(userId: string, opts: { all?: boolean; costCe
     await query(db, 'INSERT INTO finance_access (user_id, cost_center_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [userId, cc]);
   }
 }
+
+/**
+ * Autorização da Oficial para a Substituta Legal aprovar documentos e projetos (Configurações → Gestão documental).
+ * Desde a v19 só a Oficial aprova; os testes que exercitam a aprovação pela Substituta concedem a autorização antes.
+ * Chame depois de criar a Oficial e antes de montar os contextos (as permissões são calculadas no ctxFor).
+ */
+export async function authorizeSubstitute(): Promise<void> {
+  await getPool().query(
+    `INSERT INTO approval_delegations (documents, projects, starts_on, reason, created_by)
+     SELECT true, true, current_date - 1, 'Autorização de teste (fictícia)', id FROM users ORDER BY is_owner DESC, created_at LIMIT 1`);
+}

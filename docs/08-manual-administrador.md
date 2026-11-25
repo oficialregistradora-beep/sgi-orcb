@@ -38,7 +38,7 @@
 
 ## Fase 3 — gestão documental
 - **Categorias** (*Gestão documental → Categorias*): ajuste a revisão periódica e, após definir a tabela de temporalidade, o prazo de retenção **com o fundamento**. Sem prazo, o descarte permanece bloqueado.
-- **Aprovações:** *Gestão documental → Aprovações* lista as versões que você pode decidir (as que você elaborou ou submeteu não aparecem).
+- **Aprovações:** *Gestão documental → Aprovações* lista as versões aguardando a decisão da Oficial, inclusive as que ela elaborou (autoaprovação registrada), e os **Responsáveis a conferir**. A Substituta Legal só aprova com autorização em *Configurações → Gestão documental* (prazo e motivo; revogável; termina sozinha).
 - **Revisões:** *Gestão documental → Revisões* mostra revisões vencidas ou próximas; o responsável recebe aviso automático uma vez por data.
 - **Confidenciais:** indique nominalmente as pessoas. A Substituta Legal, mesmo com gestão documental, só vê o documento se estiver na lista.
 - **Cobertura de ciência:** no documento, quadro *Ciência da versão N*.

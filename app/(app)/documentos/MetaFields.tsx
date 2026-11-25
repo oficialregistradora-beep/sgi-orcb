@@ -3,7 +3,11 @@ import type { CategoryRow, RepoDocRow } from '@/server/modules/repository.ts';
 type Dir = { users: { id: string; display_name: string; sector_name: string | null }[]; sectors: { id: string; name: string }[] };
 
 /** Campos de metadados e de acesso do documento (criação e edição). */
-export function MetaFields({ categories, dir, doc, prefix }: { categories: CategoryRow[]; dir: Dir; doc?: RepoDocRow; prefix: string }) {
+export function MetaFields({ categories, dir, doc, prefix, fromProject, title }: {
+  categories: CategoryRow[]; dir: Dir; doc?: RepoDocRow; prefix: string;
+  /** Envio a partir de projeto: setor e responsável vêm do projeto. */
+  fromProject?: { ownerName: string; sectorName: string }; title?: string;
+}) {
   const id = (n: string) => `${prefix}-${n}`;
   return (
     <>
@@ -14,8 +18,13 @@ export function MetaFields({ categories, dir, doc, prefix }: { categories: Categ
             {categories.filter((c) => c.active || c.id === doc?.category_id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
-        <div className="field"><label htmlFor={id('title')}>Título</label><input id={id('title')} name="title" className="input" required minLength={3} maxLength={200} defaultValue={doc?.title} /></div>
+        <div className="field"><label htmlFor={id('title')}>Título</label><input id={id('title')} name="title" className="input" required minLength={3} maxLength={200} defaultValue={doc?.title ?? title} /></div>
         <div className="field"><label htmlFor={id('code')}>Código (opcional)</label><input id={id('code')} name="code" className="input mono" placeholder="POP-RI-001" defaultValue={doc?.code ?? ''} /></div>
+        {fromProject ? (
+          <div className="field"><span className="label">Setor e responsável</span>
+            <p className="small">Setor {fromProject.sectorName} · Responsável: <strong>{fromProject.ownerName}</strong> <span className="muted">(vem do Gestor(a) do projeto)</span></p>
+          </div>
+        ) : (<>
         <div className="field"><label htmlFor={id('sector')}>Setor responsável</label>
           <select id={id('sector')} name="sectorId" className="input" required defaultValue={doc?.sector_id ?? ''}>
             <option value="" disabled>Selecione…</option>
@@ -23,11 +32,15 @@ export function MetaFields({ categories, dir, doc, prefix }: { categories: Categ
           </select>
         </div>
         <div className="field"><label htmlFor={id('resp')}>Responsável</label>
-          <select id={id('resp')} name="responsibleUserId" className="input" defaultValue={doc?.responsible_user_id ?? ''}>
-            {doc ? null : <option value="">Eu mesmo(a)</option>}
+          {/* Ninguém vem marcado: quem cria escolhe; na edição aparece a pessoa já gravada. */}
+          <select id={id('resp')} name="responsibleUserId" className="input" required defaultValue={doc?.responsible_user_id ?? ''}
+            title="Escolha a responsável">
+            <option value="" disabled>Selecione…</option>
+            {doc && !dir.users.some((u) => u.id === doc.responsible_user_id) ? <option value={doc.responsible_user_id}>{doc.responsible_name}</option> : null}
             {dir.users.map((u) => <option key={u.id} value={u.id}>{u.display_name}</option>)}
           </select>
         </div>
+        </>)}
         <div className="field"><label htmlFor={id('rev')}>Revisão periódica (meses)</label>
           <input id={id('rev')} name="reviewMonths" type="number" min={1} max={120} className="input" placeholder="padrão da categoria" defaultValue={doc?.review_months ?? ''} />
         </div>
@@ -69,5 +82,28 @@ export function MetaFields({ categories, dir, doc, prefix }: { categories: Categ
         </details>
       </fieldset>
     </>
+  );
+}
+
+/** Campo Revisão do envio: sem revisão (direto para a Oficial) ou com revisão por uma ou mais revisoras. Sempre em branco para escolher. */
+export function ReviewFields({ dir, prefix, exclude }: { dir: Dir; prefix: string; exclude?: string }) {
+  const id = (n: string) => `${prefix}-${n}`;
+  return (
+    <div className="stack" style={{ gap: 8 }}>
+      <div className="field"><label htmlFor={id('mode')}>Revisão</label>
+        <select id={id('mode')} name="reviewMode" className="input" required defaultValue="">
+          <option value="" disabled>Selecione…</option>
+          <option value="SEM">Sem revisão — enviar direto para aprovação</option>
+          <option value="COM">Com revisão — indicar a(s) revisora(s) abaixo</option>
+        </select>
+      </div>
+      <details className="disclosure small">
+        <summary><a>Revisoras (para &quot;Com revisão&quot;; todas devolvem antes de seguir para a Oficial)</a></summary>
+        <div className="row">{dir.users.filter((u) => u.id !== exclude).map((u) => (
+          <label key={u.id} className="check"><input type="checkbox" name="reviewerIds" value={u.id} /> {u.display_name}</label>
+        ))}</div>
+      </details>
+      <p className="small muted">A aprovação da Oficial é sempre a etapa final: nenhum documento fica vigente sem ela.</p>
+    </div>
   );
 }

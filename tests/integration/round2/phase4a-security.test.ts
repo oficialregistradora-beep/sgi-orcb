@@ -77,7 +77,7 @@ describe('Rodada 2 (4a) — autorização (IDOR) e segregação', () => {
   it('leitor de projeto não cria tarefas; membro removido perde o acesso', async () => {
     const pid = await createProject(cCoord, { name: 'Projeto restrito', sectorId: I.sectors.RI });
     await setMember(cCoord, pid, atdId, 'LEITOR');
-    expect((await getProject(cAtd, pid)).access).toEqual({ read: true, manage: false, contribute: false });
+    expect((await getProject(cAtd, pid)).access).toEqual({ read: true, manage: false, contribute: false, docs: false, attach: false, approve: false });
     await expect(createTask(cAtd, { title: 'Leitor criando', projectId: pid })).rejects.toThrow(/não participa/);
     await setMember(cCoord, pid, atdId, null);
     await expect(getProject(cAtd, pid)).rejects.toThrow(/não encontrado/);

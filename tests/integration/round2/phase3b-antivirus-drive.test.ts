@@ -8,7 +8,7 @@ import { driveCheck, resetDriveToken } from '../../../src/server/drive.ts';
 import {
   changeLifecycle, createDocument, decideVersion, exportVersion, fileForDownload, getDocument, listCategories, purgeFiles, saveCategory, saveDraft, submitForApproval,
 } from '../../../src/server/modules/repository.ts';
-import { closePool, ctxFor, ids, makePerson, resetDatabase } from '../../helpers.ts';
+import { authorizeSubstitute, closePool, ctxFor, ids, makePerson, resetDatabase } from '../../helpers.ts';
 import { startFakeDrive } from '../../fakeDrive.ts';
 
 // Rodada 2 (Fase 3b) — antivírus real (ClamAV/clamd) e armazenamento no Google Drive (API simulada).
@@ -48,6 +48,7 @@ beforeAll(async () => {
   const s = await makePerson({ name: 'Substituta Ficticia', sectorId: I.sectors.DIR, jobId: I.jobs.substituta, roles: [{ roleId: I.roles.SUBSTITUTA_LEGAL }] });
   const c = await makePerson({ name: 'Coord RI', sectorId: I.sectors.RI, jobId: I.jobs.escrevente, roles: [{ roleId: I.roles.COLABORADOR }, { roleId: I.roles.COORDENACAO_SETOR }] });
   cOwner = await ctxFor(o.userId);
+  await authorizeSubstitute();
   cSubst = await ctxFor(s.userId);
   cCoord = await ctxFor(c.userId);
   catPop = (await listCategories()).find((x) => x.code === 'POP')!.id;

@@ -1,8 +1,8 @@
 {
-  "executadoEm": "2026-11-25T16:40:05.488Z",
+  "executadoEm": "2026-11-25T17:48:07.175Z",
   "metricas": {
     "antes": {
-      "notificacoes": 48,
+      "notificacoes": 46,
       "tarefas": 29,
       "avaliacoes": 2,
       "fila": 0,
@@ -38,7 +38,7 @@
       }
     },
     "depoisDaPrimeira": {
-      "notificacoes": 108,
+      "notificacoes": 106,
       "tarefas": 29,
       "avaliacoes": 9,
       "fila": 0,

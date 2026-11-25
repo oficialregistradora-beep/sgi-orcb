@@ -196,6 +196,10 @@ Menu **Gestão documental**:
 - **Repositório:** documentos vigentes destinados a você. Pesquise pelo título ou por palavras do texto.
 - **Para ciência:** documentos que exigem a sua ciência. Abra, leia, marque a declaração e clique em **Registrar ciência** (pede o código do autenticador). Cada **nova versão** pede nova ciência.
 - Documentos confidenciais só aparecem para as pessoas indicadas nominalmente.
+- **Em construção:** documentos em rascunho, em revisão ou em aprovação em que você é a **responsável** ou a **revisora** (mesmo confidenciais). Quando um documento chega para a sua revisão, o sino avisa e a linha mostra **"— sua revisão"**:
+  1. abra o documento; no quadro **Rascunho**, corrija o texto ou envie o **arquivo corrigido** e clique em **Salvar rascunho**;
+  2. no quadro **Revisão**, escreva um comentário (opcional) e clique em **Devolver à Oficial**.
+  Quando **todas** as revisoras devolvem, o documento segue sozinho para a aprovação da Oficial. Se o projeto de origem tiver criado a tarefa "Revisar …", ela é concluída na devolução.
 
 ### 4.8 Tarefas
 Menu **Tarefas** → **Minhas tarefas**: suas atividades organizadas por urgência (**Imediatas e urgentes**, **Vencidas**, **Hoje**, **Próximas e sem prazo**), inclusive as **rotinas do dia**, que aparecem sozinhas.
@@ -331,21 +335,36 @@ Menu **Relatórios** → **Relatório para a folha de pagamento** → **Exportar
   - adicione checklist, dependências e subtarefas, se precisar;
   - se a tarefa precisar de aprovação, **indique quem aprova a conclusão**. Essa pessoa precisa ser **diferente do responsável**.
 - **Decidir encaminhamento:** registre a orientação ou decisão na própria tarefa.
-- **Projetos:** fases, marcos, custos realizados, equipe, indicadores e cronograma (Gantt). As abas são **Visão geral**, **Tarefas**, **Quadro**, **Cronograma (Gantt)** e **Equipe e dados**. Projeto encerrado não recebe tarefas.
+- **Projetos:** fases, marcos, custos realizados, equipe, indicadores e cronograma (Gantt). As abas são **Visão geral**, **Tarefas**, **Quadro**, **Cronograma (Gantt)**, **Documentos** e **Equipe e dados**. Projeto encerrado não recebe tarefas.
+  - **Gestor(a)**: no novo projeto o campo vem em **"Selecione…"** — ninguém vem marcado; o projeto não é criado sem a escolha.
+  - **Aprovação** (Visão geral): **Aprovar projeto** e **Aprovar fase** — somente a Oficial (a Substituta Legal, só com autorização). Se a Oficial gere ou criou o projeto, fica registrado como autoaprovação.
+  - **Documentos** (veem: gestor(a), quem tem tarefa no projeto e a Oficial):
+    - **Anexar arquivo** (.docx, .pdf, .xlsx, imagens etc.; antivírus e hash SHA-256, como na Gestão documental) ou **Vincular documento existente**;
+    - em cada anexo, **Enviar à Gestão documental**: escolha categoria, confidencialidade, público e o campo **Revisão** (sem revisão = direto para a Oficial; com revisão = marque as revisoras). O setor e a **Responsável = Gestor(a) do projeto** vêm preenchidos. O documento mostra **"Origem: projeto …"** e a situação aparece no projeto (Anexo do projeto, Em elaboração, Em revisão, Em aprovação, Vigente ou **Excluído pela Oficial**, com o motivo);
+    - com revisão, cada revisora recebe a tarefa **"Revisar …"** no projeto;
+    - **Retirar do projeto** (gestor/a ou Oficial, com motivo).
+  - O projeto só é **Concluído** quando os documentos enviados estiverem **vigentes** ou forem **retirados/excluídos**.
 - **Rotinas e processos:**
   - **Rotinas recorrentes:** atividades fixas que viram tarefas sozinhas a cada dia. Exemplo: centrais eletrônicas 4 vezes por dia (09:00, 11:00, 14:00 e 16:00).
   - **Modelos de processo:** uma etapa por linha, no formato `título | prazo | papel | aprovação s/n | documentos`.
   - **Processos em andamento** → **Iniciar processo:** as etapas viram tarefas em sequência.
 
 ### 5.11 Gestão documental (elaboração e aprovação)
-Abas: **Repositório**, **Para ciência**, **Aprovações**, **Revisões**, **Categorias** e **Novo documento**.
+Abas: **Repositório**, **Em construção**, **Para ciência**, **Aprovações**, **Revisões**, **Categorias** e **Novo documento**.
 
-1. **Novo documento** (aba): preencha os dados (Título, Código opcional, Categoria, Resumo, Setor responsável, Responsável, **Público destinatário** — setores ou pessoas —, **Confidencialidade** — restrito exige setores/pessoas; confidencial exige **pessoas nominalmente** — e **Revisão periódica (meses)**) → **Criar rascunho**. Nesta aba ainda **não** há campo de arquivo.
+**Regra geral (decisão da Oficial, 25/11/2026):** nenhum documento fica vigente sem a **aprovação da Oficial Registradora**, com ou sem revisão. Ela aprova inclusive o que ela mesma elaborou (fica registrado como **autoaprovação**). A **Substituta Legal** só aprova com **autorização** da Oficial em *Configurações → Gestão documental* (início, fim opcional, motivo e, se quiser, só algumas categorias); ao fim do prazo a permissão volta a "—" sozinha, e ela nunca aprova o que ela mesma elaborou.
+
+1. **Novo documento** (aba): preencha os dados (Título, Código opcional, Categoria, Resumo, Setor responsável, **Responsável** — vem em **"Selecione…"**, sem ninguém marcado, e é obrigatória —, **Público destinatário** — setores ou pessoas —, **Confidencialidade** — restrito exige setores/pessoas; confidencial exige **pessoas nominalmente** — e **Revisão periódica (meses)**) → **Criar rascunho**. Nesta aba ainda **não** há campo de arquivo.
 2. O sistema abre a página do documento. No quadro **Rascunho**: **Texto do documento** e/ou **Arquivo** (até 15 MB: PDF, DOCX, XLSX, ODT, ODS, PNG, JPG, TXT; passa pelo antivírus) e **Nota da versão** → **Salvar rascunho**. Um documento por arquivo; para vários arquivos, repita o processo.
-3. Ainda na página do documento → **Submeter à aprovação** (o conteúdo é congelado como versão).
-4. **Outra pessoa** aprova em **Gestão documental → Aprovações** → **Aprovar e tornar vigente** (ou **Rejeitar**, com o que precisa ser ajustado). **Quem elaborou/submeteu não aprova** a própria versão — nem a Oficial (decisão de 29/10/2026).
+3. Ainda na página do documento → campo **Revisão** → **Enviar**:
+   - **Sem revisão — enviar direto para aprovação** (ex.: documento do próprio cartório): o conteúdo é congelado como versão e vai para a Oficial;
+   - **Com revisão**: marque uma ou mais **revisoras**. Elas editam o texto ou enviam o arquivo corrigido, comentam e devolvem; quando **todas** devolvem, vira versão e vai para a Oficial.
+4. A **Oficial** decide em **Aprovações** (a lista inclui o que ela elaborou, marcado "elaborado por você"): **Aprovar e tornar vigente**, **Devolver para ajuste** (motivo obrigatório, que aparece para quem recebe) ou **Excluir**.
+   - **Retirar a submissão** (ou **Retirar da revisão**): a autora ou a Oficial, enquanto não houver decisão. O documento volta a rascunho e pode ser editado ou arquivado.
+   - **Excluir** (só a Oficial, com motivo, antes de o documento ter sido vigente): sai do Repositório e do projeto; o registro (quem anexou, quem excluiu, quando, motivo, hash) fica no histórico e na Auditoria, e o arquivo fica guardado pelo prazo de retenção.
+   - **Responsáveis a conferir** (aba Aprovações, só a Oficial): documentos e projetos gravados quando o campo vinha pré-selecionado com a primeira pessoa da lista. Para cada um, **Está correto** ou abra e troque. Nada é trocado sozinho.
 5. Os destinatários registram a **ciência**. O quadro **Ciência da versão N** mostra a cobertura.
-6. **Nova revisão:** **Editar** → **Salvar rascunho**, com a **nota da versão** (o que mudou) → Submeter.
+6. **Nova revisão:** **Editar** → **Salvar rascunho**, com a **nota da versão** (o que mudou) → **Enviar** (com ou sem revisão).
 7. **Declarar obsoleto** (só documento vigente) e **Arquivar**.
 8. **Descarte do conteúdo:** só para documentos obsoletos ou arquivados, com **prazo de retenção definido e fundamentado** na categoria. Os metadados e o hash são preservados.
 9. **Revisões:** mostra as revisões vencidas ou próximas. O responsável é avisado.

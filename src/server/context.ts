@@ -11,7 +11,11 @@ export type Principal = {
   employeeId: string | null;
   employeeSectorId: string | null;
   grants: Map<string, Grant>;
+  /** Autorização temporária da Oficial para a Substituta Legal aprovar (null/ausente = sem autorização). */
+  approvalDelegation?: ApprovalDelegation | null;
 };
+
+export type ApprovalDelegation = { documents: boolean; projects: boolean; categoryIds: string[] | null };
 
 /** Contexto de cada requisição autenticada, propagado a todos os serviços. */
 export type Ctx = {

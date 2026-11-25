@@ -7,7 +7,7 @@ import {
   saveCategory, saveDraft, submitForApproval, updateMetadata,
 } from '../../../src/server/modules/repository.ts';
 import { addMonths, todayLocal } from '../../../src/domain/time.ts';
-import { closePool, ctxFor, ids, makePerson, resetDatabase } from '../../helpers.ts';
+import { authorizeSubstitute, closePool, ctxFor, ids, makePerson, resetDatabase } from '../../helpers.ts';
 
 let I: Awaited<ReturnType<typeof ids>>;
 type P = { userId: string; employeeId: string };
@@ -26,6 +26,7 @@ beforeAll(async () => {
   workerRi = await makePerson({ name: 'Escrevente RI', sectorId: I.sectors.RI, jobId: I.jobs.escrevente, roles: [{ roleId: I.roles.COLABORADOR }] });
   workerAtd = await makePerson({ name: 'Atendente ATD', sectorId: I.sectors.ATD, jobId: I.jobs.atendente, roles: [{ roleId: I.roles.COLABORADOR }] });
   cOwner = await ctxFor(owner.userId);
+  await authorizeSubstitute();
   cSubst = await ctxFor(subst.userId);
   cCoord = await ctxFor(coordRi.userId);
   cRi = await ctxFor(workerRi.userId);
@@ -215,8 +216,10 @@ describe('Fase 3 — confidencialidade', () => {
     expect(await listPendingDocApprovals(cSubst)).toEqual([]);
     await expect(getDocument(cSubst, psi)).rejects.toThrow(/não encontrado/);
     await expect(decideVersion(cSubst, psi, { versionId: v, decision: 'APROVADA', confirmed: true })).rejects.toThrow(/não encontrado/);
-    // A Oficial submeteu: não pode aprovar a própria versão (segregação).
-    await expect(decideVersion(cOwner, psi, { versionId: v, decision: 'APROVADA', confirmed: true })).rejects.toThrow(/Segregação/);
+    // A Oficial submeteu e aprova a própria versão: autoaprovação registrada (v19, decisão da Oficial).
+    await decideVersion(cOwner, psi, { versionId: v, decision: 'APROVADA', confirmed: true, notes: 'Autoaprovação (teste)' });
+    expect((await queryOne<{ self_approved: boolean }>(getPool(), 'SELECT self_approved FROM document_version_reviews WHERE version_id = $1', [v]))!.self_approved).toBe(true);
+    expect((await queryOne<{ n: number }>(getPool(), "SELECT count(*)::int AS n FROM audit_log WHERE action = 'DOC_AUTOAPROVADO' AND entity_id = $1", [v]))!.n).toBe(1);
   });
 
   it('restrito não pode ser destinado a todos', async () => {

@@ -7,9 +7,9 @@ import { ALLOWED_FILES } from '@/server/files.ts';
 import { fmtDate, fmtDateTime, label, statusTone } from '@/ui/format.ts';
 import { PageHead } from '@/ui/Stat.tsx';
 import { ActionForm } from '@/ui/ActionForm.tsx';
-import { MetaFields } from '../MetaFields.tsx';
+import { MetaFields, ReviewFields } from '../MetaFields.tsx';
 import {
-  acknowledgeAction, decideAction, lifecycleAction, saveDraftAction, submitAction, updateMetadataAction,
+  acknowledgeAction, decideAction, lifecycleAction, saveDraftAction, submitAction, updateMetadataAction, workflowAction,
 } from '../../../actions/phase3.ts';
 
 import { withGuard } from '@/server/web/guard.ts';
@@ -20,7 +20,9 @@ export const metadata = { title: 'Documento' };
 const EVENT_LABELS: Record<string, string> = {
   CRIADO: 'Documento criado', METADADOS: 'Dados alterados', RASCUNHO_SALVO: 'Rascunho salvo', SUBMETIDO: 'Versão submetida', REJEITADO: 'Versão rejeitada',
   APROVADO: 'Versão aprovada', CIENCIA: 'Ciência registrada', OBSOLETO: 'Declarado obsoleto', ARQUIVADO: 'Arquivado', DESCARTE: 'Descarte de conteúdo',
-  AVISO_REVISAO: 'Aviso de revisão enviado',
+  AVISO_REVISAO: 'Aviso de revisão enviado', AUTOAPROVADO: 'Versão autoaprovada pela Oficial Registradora', ENVIADO_REVISAO: 'Enviado para revisão',
+  REVISAO_DEVOLVIDA: 'Revisão devolvida', REVISAO_RETIRADA: 'Revisão retirada', SUBMISSAO_RETIRADA: 'Submissão retirada', EXCLUIDO: 'Excluído pela Oficial',
+  RESPONSAVEL_CONFERIDO: 'Responsável conferida pela Oficial',
 };
 
 function ScanTag({ s }: { s: string | null }) {
@@ -35,11 +37,11 @@ function kb(n: number) {
 async function DocumentoPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requirePageCtx();
   const { id } = await params;
-  const { doc, access, versions, events, draftFile, myAck, canDecide } = await getDocument(ctx, id);
+  const { doc, access, versions, events, draftFile, myAck, canDecide, selfAuthored, reviewers, canReturnReview, canWithdraw, canDelete, stage } = await getDocument(ctx, id);
   const current = versions.find((v) => v.id === doc.current_version_id) ?? null;
   const pending = versions.find((v) => v.id === doc.pending_version_id) ?? null;
   const showMeta = access.edit || access.manage;
-  const [categories, dir] = showMeta ? await Promise.all([listCategories(), listDirectory(ctx)]) : [[], { users: [], sectors: [] }];
+  const [categories, dir] = showMeta ? await Promise.all([listCategories(), listDirectory(ctx).catch(() => ({ users: [], sectors: [] }))]) : [[], { users: [], sectors: [] }];
   const report = (access.manage || doc.responsible_user_id === ctx.principal.userId || ctx.principal.isOwner) && doc.requires_acknowledgement
     ? await acknowledgementReport(ctx, id) : null;
   const maxMb = Math.floor((await maxFileBytes()) / 1048576);
@@ -53,13 +55,38 @@ async function DocumentoPage({ params }: { params: Promise<{ id: string }> }) {
         actions={<Link href="/documentos" className="btn btn-ghost">Voltar ao repositório</Link>}
       />
       <div className="row">
-        <span className={statusTone(doc.status)}>{label(doc.status)}</span>
+        <span className={doc.in_review ? 'tag tag-warn' : statusTone(doc.status)}>{stage}</span>
+        {doc.origin_project_id ? <span className="small">Origem: projeto <Link href={`/projetos/${doc.origin_project_id}?aba=documentos`}>{doc.origin_project_name}</Link></span> : null}
         <span className="tag">{label(doc.confidentiality)}</span>
         {doc.effective_from ? <span className="small muted">Vigente desde {fmtDate(doc.effective_from)}</span> : null}
         {doc.next_review_on ? <span className={doc.next_review_on < new Date().toISOString().slice(0, 10) ? 'tag tag-danger' : 'small muted'}>Próxima revisão: {fmtDate(doc.next_review_on)}</span> : null}
         {doc.retention_until ? <span className="small muted">Retenção até {fmtDate(doc.retention_until)}</span> : null}
       </div>
       {doc.summary ? <p className="muted">{doc.summary}</p> : null}
+      {doc.status === 'EXCLUIDO' ? <div className="alert alert-warn small"><div>Excluído pela Oficial em {fmtDateTime(doc.deleted_at)}: {doc.delete_reason}. O registro e os arquivos ficam guardados pelo prazo de retenção.</div></div> : null}
+
+      {doc.in_review || reviewers.length ? (
+        <div className="card">
+          <div className="card-head"><div><h2>Revisão</h2><p>{doc.in_review ? 'Em revisão: quando todas as revisoras devolverem, a versão segue para a aprovação da Oficial.' : 'Rodadas anteriores de revisão.'}</p></div></div>
+          <div className="card-body flush table-wrap" tabIndex={0}>
+            <table className="table"><thead><tr><th>Rodada</th><th>Revisora</th><th>Situação</th><th>Comentário</th></tr></thead>
+              <tbody>{reviewers.map((r) => (
+                <tr key={`${r.round}-${r.user_id}`}><td>{r.round}</td><td>{r.display_name}</td>
+                  <td>{r.returned_at ? <span className="tag tag-ok">Devolvida {fmtDateTime(r.returned_at)}</span> : r.cancelled_at ? <span className="tag">Retirada</span> : <span className="tag tag-warn">Revisando</span>}</td>
+                  <td className="small">{r.comment ?? ''}</td></tr>
+              ))}</tbody></table>
+          </div>
+          {canReturnReview ? (
+            <div className="card-body">
+              <p className="small">Edite o texto ou anexe o arquivo corrigido no rascunho abaixo (salve) e devolva à Oficial.</p>
+              <ActionForm action={workflowAction} submitLabel="Devolver à Oficial" submitClass="btn btn-primary">
+                <input type="hidden" name="documentId" value={doc.id} /><input type="hidden" name="op" value="devolver_revisao" />
+                <input name="comment" className="input" placeholder="Comentário da revisão (opcional)" aria-label="Comentário da revisão" maxLength={2000} />
+              </ActionForm>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {doc.requires_acknowledgement && current && access.audience ? (
         myAck ? <div className="alert alert-ok small"><div>Ciência registrada em {fmtDateTime(myAck)} para a versão {current.version_number}.</div></div> : (
@@ -105,18 +132,42 @@ async function DocumentoPage({ params }: { params: Promise<{ id: string }> }) {
             {pending.content.arquivo ? <div className="row"><a className="btn btn-sm" href={`/api/v1/documentos/${doc.id}/arquivo/${pending.id}`}>Baixar {pending.content.arquivo.nome}</a><ScanTag s={pending.file_scan} /></div> : null}
             <p className="small muted">Hash (SHA-256): <span className="mono hash">{pending.content_sha256}</span></p>
             {canDecide ? (
+              <div className="stack">
+              {selfAuthored ? <p className="small"><strong>Você elaborou esta versão. A aprovação ficará registrada como autoaprovação da Oficial Registradora.</strong></p> : null}
               <div className="grid grid-2">
                 <ActionForm action={decideAction} submitLabel="Aprovar e tornar vigente" confirm="A versão passará a vigorar imediatamente. Confirma?">
                   <input type="hidden" name="documentId" value={doc.id} /><input type="hidden" name="versionId" value={pending.id} /><input type="hidden" name="decision" value="APROVADA" />
-                  <input name="notes" className="input" placeholder="Observação (opcional)" aria-label="Observação" />
+                  <input name="notes" className="input" placeholder={selfAuthored ? 'Justificativa da autoaprovação (opcional)' : 'Observação (opcional)'} aria-label="Observação" />
                   <label className="check" style={{ marginTop: 6 }}><input type="checkbox" name="confirmed" required /> {statementFor('APROVACAO', pending.content_sha256)}</label>
                 </ActionForm>
-                <ActionForm action={decideAction} submitLabel="Rejeitar" submitClass="btn btn-danger">
+                <ActionForm action={decideAction} submitLabel="Devolver para ajuste" submitClass="btn">
                   <input type="hidden" name="documentId" value={doc.id} /><input type="hidden" name="versionId" value={pending.id} /><input type="hidden" name="decision" value="REJEITADA" />
-                  <input name="notes" className="input" placeholder="Motivo da rejeição" aria-label="Motivo da rejeição" required minLength={5} />
+                  <input name="notes" className="input" placeholder="Motivo (aparece para quem recebe)" aria-label="Motivo da devolução" required minLength={5} />
                 </ActionForm>
               </div>
-            ) : access.approve ? <p className="small muted">Você elaborou ou submeteu esta versão: a decisão cabe a outra pessoa (segregação de funções).</p> : null}
+              </div>
+            ) : access.approve ? <p className="small muted">Você elaborou ou submeteu esta versão: a decisão cabe à Oficial (segregação de funções).</p>
+              : <p className="small muted">Aguardando a aprovação da Oficial.</p>}
+          </div>
+        </div>
+      ) : null}
+
+      {canWithdraw || canDelete ? (
+        <div className="card">
+          <div className="card-head"><div><h2>Retirar ou excluir</h2><p>{canDelete ? 'Excluir é exclusivo da Oficial, antes de o documento ficar vigente.' : 'Retire a submissão para voltar a editar ou arquivar.'}</p></div></div>
+          <div className="card-body grid grid-2">
+            {canWithdraw ? (
+              <ActionForm action={workflowAction} submitLabel={doc.in_review ? 'Retirar da revisão' : 'Retirar a submissão'} submitClass="btn" confirm="O documento volta a rascunho. Confirma?">
+                <input type="hidden" name="documentId" value={doc.id} /><input type="hidden" name="op" value="retirar" />
+                <input name="reason" className="input" placeholder="Motivo (opcional)" aria-label="Motivo da retirada" maxLength={1000} />
+              </ActionForm>
+            ) : null}
+            {canDelete ? (
+              <ActionForm action={workflowAction} submitLabel="Excluir documento" submitClass="btn btn-danger" confirm="O documento sai do Repositório e do projeto. O registro fica no histórico e na Auditoria. Confirma?">
+                <input type="hidden" name="documentId" value={doc.id} /><input type="hidden" name="op" value="excluir" />
+                <input name="reason" className="input" placeholder="Motivo da exclusão" aria-label="Motivo da exclusão" required minLength={5} />
+              </ActionForm>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -147,10 +198,12 @@ async function DocumentoPage({ params }: { params: Promise<{ id: string }> }) {
                 </div>
               ) : null}
             </ActionForm>
-            <ActionForm action={submitAction} submitLabel="Submeter à aprovação" submitClass="btn btn-primary" confirm="O conteúdo do rascunho será congelado como nova versão. Confirma?">
+            {doc.in_review ? null : (
+            <ActionForm action={submitAction} submitLabel="Enviar" submitClass="btn btn-primary" confirm="Confirma o envio?">
               <input type="hidden" name="documentId" value={doc.id} />
-              <p className="small muted">Salve o rascunho antes de submeter. A aprovação cabe a outra pessoa com permissão.</p>
-            </ActionForm>
+              <p className="small muted">Salve o rascunho antes de enviar.</p>
+              <ReviewFields dir={dir} prefix="sb" />
+            </ActionForm>)}
             </div>
             </details>
           </div>
@@ -171,7 +224,7 @@ async function DocumentoPage({ params }: { params: Promise<{ id: string }> }) {
         </div>
       ) : null}
 
-      {showMeta ? (
+      {showMeta && doc.status !== 'EXCLUIDO' ? (
         <div className="card">
           <div className="card-head"><div><h2>Dados e acesso</h2><p>{doc.current_version_id && !access.manage ? 'Alterações de acesso em documento publicado exigem permissão de gestão.' : 'Alterações ficam registradas no histórico.'}</p></div></div>
           <div className="card-body">

@@ -7,7 +7,7 @@ import {
   listDocuments, listPendingAcknowledgements, listPendingDocApprovals, processReviewReminders, saveDraft, submitForApproval,
 } from '../../src/server/modules/repository.ts';
 import { verifyAuditChain } from '../../src/server/audit.ts';
-import { closePool, ctxFor, ids, makePerson, resetDatabase } from '../helpers.ts';
+import { authorizeSubstitute, closePool, ctxFor, ids, makePerson, resetDatabase } from '../helpers.ts';
 
 // RODADA 3 (Fase 3) — acervo de 40 documentos nas 21 categorias, 3 ciclos de revisão, rejeições sorteadas,
 // ciência por 12 pessoas em 5 setores e verificação de consistência global (acesso, hashes, ciência, trilha).
@@ -26,6 +26,7 @@ beforeAll(async () => {
   const o = await makePerson({ name: 'Oficial Simulada', sectorId: I.sectors.DIR, jobId: I.jobs.oficial, roles: [{ roleId: I.roles.OFICIAL }], owner: true });
   const s = await makePerson({ name: 'Substituta Simulada', sectorId: I.sectors.DIR, jobId: I.jobs.substituta, roles: [{ roleId: I.roles.SUBSTITUTA_LEGAL }] });
   cOwner = await ctxFor(o.userId);
+  await authorizeSubstitute();
   cSubst = await ctxFor(s.userId);
   const sectors = [I.sectors.RI, I.sectors.RCPN, I.sectors.RTDPJ, I.sectors.ATD, I.sectors.DIR];
   for (let i = 0; i < 10; i++) {

@@ -1,5 +1,5 @@
 import { type Db, query, queryOne } from './db.ts';
-import type { Ctx, Grant, Principal, Scope } from './context.ts';
+import type { ApprovalDelegation, Ctx, Grant, Principal, Scope } from './context.ts';
 import { ForbiddenError, StepUpRequiredError } from './errors.ts';
 import { getNumberSetting } from './settings.ts';
 
@@ -39,6 +39,14 @@ export async function loadPrincipal(db: Db, userId: string): Promise<Principal |
     grants.set(r.permission_code, g);
   }
 
+  // Aprovar documentos e projetos é exclusivo da Oficial: a matriz não concede a mais ninguém. A Substituta Legal só aprova
+  // enquanto houver autorização da Oficial vigente (Configurações → Gestão documental), que termina sozinha no fim do prazo.
+  grants.delete('documentos.aprovar');
+  grants.delete('projetos.aprovar');
+  const approvalDelegation = user.is_owner ? null : await activeDelegationFor(db, user.id);
+  if (approvalDelegation?.documents) grants.set('documentos.aprovar', { scope: 'TODOS', sectorIds: new Set() });
+  if (approvalDelegation?.projects) grants.set('projetos.aprovar', { scope: 'TODOS', sectorIds: new Set() });
+
   return {
     userId: user.id,
     email: user.email,
@@ -47,6 +55,26 @@ export async function loadPrincipal(db: Db, userId: string): Promise<Principal |
     employeeId: user.employee_id,
     employeeSectorId: user.sector_id,
     grants,
+    approvalDelegation,
+  };
+}
+
+/** Autorizações vigentes hoje para quem tem o perfil de Substituta Legal (várias somam; categoria em branco = todas). */
+export async function activeDelegationFor(db: Db, userId: string): Promise<ApprovalDelegation | null> {
+  const rows = await query<{ documents: boolean; projects: boolean; category_ids: string[] | null }>(
+    db,
+    `SELECT d.documents, d.projects, d.category_ids FROM approval_delegations d
+      WHERE d.revoked_at IS NULL AND d.starts_on <= current_date AND (d.ends_on IS NULL OR d.ends_on >= current_date)
+        AND EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id
+                     WHERE ur.user_id = $1 AND r.code = 'SUBSTITUTA_LEGAL' AND ur.revoked_at IS NULL
+                       AND ur.valid_from <= current_date AND (ur.valid_until IS NULL OR ur.valid_until >= current_date))`,
+    [userId]);
+  if (!rows.length) return null;
+  const docs = rows.filter((r) => r.documents);
+  return {
+    documents: docs.length > 0,
+    projects: rows.some((r) => r.projects),
+    categoryIds: docs.some((r) => !r.category_ids) ? null : [...new Set(docs.flatMap((r) => r.category_ids ?? []))],
   };
 }
 

@@ -21,7 +21,7 @@ import { enqueueChat } from './integrations.ts';
 
 export const REPO = 'REPOSITORIO';
 
-export type DocStatus = 'RASCUNHO' | 'EM_APROVACAO' | 'VIGENTE' | 'OBSOLETO' | 'ARQUIVADO';
+export type DocStatus = 'RASCUNHO' | 'EM_APROVACAO' | 'VIGENTE' | 'OBSOLETO' | 'ARQUIVADO' | 'EXCLUIDO';
 export type Confidentiality = 'INTERNO' | 'RESTRITO' | 'CONFIDENCIAL';
 export type AudienceType = 'TODOS' | 'SETORES' | 'USUARIOS';
 export type Draft = { texto: string; notaVersao: string; arquivoId: string | null };
@@ -34,6 +34,12 @@ export type RepoDocRow = {
   pending_version_id: string | null; current_version_id: string | null; current_version_number: number | null;
   obsolete_at: Date | null; archived_at: Date | null; retention_until: string | null;
   aud_sectors: string[]; aud_users: string[];
+  in_review: boolean; review_round: number; review_sent_by: string | null; deleted_at: Date | null; delete_reason: string | null;
+  origin_project_id: string | null; origin_project_name: string | null; responsible_checked_at: Date | null;
+  /** Revisoras com devolução pendente na rodada atual. */
+  reviewers_active: string[];
+  /** Todas as revisoras já designadas (veem o documento em qualquer estado). */
+  reviewers_all: string[];
 };
 
 const DOC_SELECT = `
@@ -42,12 +48,18 @@ const DOC_SELECT = `
          d.next_review_on, d.effective_from, d.audience_type, d.requires_acknowledgement, d.draft, d.draft_updated_by, d.draft_updated_at,
          d.pending_version_id, d.current_version_id, cv.version_number AS current_version_number, d.obsolete_at, d.archived_at, d.retention_until,
          ARRAY(SELECT sector_id FROM document_audience_sectors WHERE document_id = d.id) AS aud_sectors,
-         ARRAY(SELECT user_id FROM document_audience_users WHERE document_id = d.id) AS aud_users
+         ARRAY(SELECT user_id FROM document_audience_users WHERE document_id = d.id) AS aud_users,
+         d.in_review, d.review_round, d.review_sent_by, d.deleted_at, d.delete_reason, d.origin_project_id, op.name AS origin_project_name,
+         d.responsible_checked_at,
+         ARRAY(SELECT user_id FROM document_reviewers dr WHERE dr.document_id = d.id AND d.in_review AND dr.round = d.review_round
+                  AND dr.returned_at IS NULL AND dr.cancelled_at IS NULL) AS reviewers_active,
+         ARRAY(SELECT DISTINCT user_id FROM document_reviewers dr WHERE dr.document_id = d.id) AS reviewers_all
     FROM documents d
     JOIN document_categories c ON c.id = d.category_id
     JOIN sectors s ON s.id = d.sector_id
     JOIN users ru ON ru.id = d.responsible_user_id
-    LEFT JOIN document_versions cv ON cv.id = d.current_version_id`;
+    LEFT JOIN document_versions cv ON cv.id = d.current_version_id
+    LEFT JOIN projects op ON op.id = d.origin_project_id`;
 
 export type Access = {
   /** Pode ler a versão vigente. */
@@ -64,9 +76,14 @@ export type Access = {
 /** Regras de acesso a um documento do repositório (função pura, testada isoladamente). */
 export function accessFor(
   p: Principal,
-  d: Pick<RepoDocRow, 'status' | 'confidentiality' | 'sector_id' | 'responsible_user_id' | 'created_by' | 'audience_type' | 'aud_sectors' | 'aud_users'>,
+  d: Pick<RepoDocRow, 'status' | 'confidentiality' | 'sector_id' | 'responsible_user_id' | 'created_by' | 'audience_type' | 'aud_sectors' | 'aud_users'>
+    & Partial<Pick<RepoDocRow, 'category_id' | 'in_review' | 'reviewers_active' | 'reviewers_all'>>,
 ): Access {
-  const listed = d.aud_users.includes(p.userId) || d.responsible_user_id === p.userId || d.created_by === p.userId;
+  const reviewer = (d.reviewers_all ?? []).includes(p.userId);
+  const reviewerActive = !!d.in_review && (d.reviewers_active ?? []).includes(p.userId);
+  const responsible = d.responsible_user_id === p.userId;
+  // A responsável e as revisoras veem o documento em qualquer estado, mesmo confidencial.
+  const listed = d.aud_users.includes(p.userId) || responsible || d.created_by === p.userId || reviewer;
   const confidential = d.confidentiality === 'CONFIDENCIAL';
   const cleared = !confidential || p.isOwner || listed;
   const audience =
@@ -75,17 +92,19 @@ export function accessFor(
       : d.aud_users.includes(p.userId);
   const manage = cleared && can(p, 'documentos.gerenciar');
   const editScope = cleared && can(p, 'documentos.editar', { sectorId: d.sector_id });
-  const approve = cleared && can(p, 'documentos.aprovar', { sectorId: d.sector_id });
-  const history = p.isOwner || manage || editScope || approve || d.responsible_user_id === p.userId || d.created_by === p.userId;
+  // Aprovar: só a Oficial; a Substituta Legal apenas com autorização vigente (e, se restrita, nas categorias indicadas).
+  const cats = p.approvalDelegation?.categoryIds;
+  const approve = cleared && can(p, 'documentos.aprovar') && (p.isOwner || !cats || (!!d.category_id && cats.includes(d.category_id)));
+  const history = p.isOwner || manage || editScope || approve || responsible || d.created_by === p.userId || reviewer;
   const read = history || (d.status === 'VIGENTE' && audience && can(p, 'documentos.ver'));
   return {
-    read, history, manage, approve,
-    edit: editScope && d.status !== 'OBSOLETO' && d.status !== 'ARQUIVADO',
+    read, history, manage: manage && d.status !== 'EXCLUIDO', approve: approve && d.status !== 'EXCLUIDO',
+    edit: (editScope || responsible || reviewerActive) && d.status !== 'OBSOLETO' && d.status !== 'ARQUIVADO' && d.status !== 'EXCLUIDO',
     audience: audience && can(p, 'documentos.ver'),
   };
 }
 
-async function loadDoc(db: Db, id: string, lock = false): Promise<RepoDocRow> {
+export async function loadDoc(db: Db, id: string, lock = false): Promise<RepoDocRow> {
   z.uuid().parse(id);
   if (lock) await query(db, 'SELECT 1 FROM documents WHERE id = $1 FOR UPDATE', [id]);
   const d = await queryOne<RepoDocRow>(db, `${DOC_SELECT} WHERE d.id = $1 AND d.reference_type = '${REPO}'`, [id]);
@@ -166,7 +185,7 @@ const metaSchema = z.object({
   code: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9._/-]{1,39}$/, 'Código inválido (ex.: POP-RI-001).').optional(),
   summary: z.string().trim().max(1000).optional(),
   sectorId: z.uuid({ error: 'Selecione o setor responsável.' }),
-  responsibleUserId: z.uuid().optional(),
+  responsibleUserId: z.uuid({ error: 'Escolha a responsável.' }).optional(),
   confidentiality: z.enum(['INTERNO', 'RESTRITO', 'CONFIDENCIAL']).optional(),
   audienceType: z.enum(['TODOS', 'SETORES', 'USUARIOS']),
   audienceSectorIds: z.array(z.uuid()).default([]),
@@ -176,7 +195,7 @@ const metaSchema = z.object({
 });
 export type MetaInput = z.input<typeof metaSchema>;
 
-async function normalizeMeta(c: Db, input: MetaInput) {
+export async function normalizeMeta(c: Db, input: MetaInput) {
   const d = metaSchema.parse(input);
   const cat = await queryOne<{ id: string; active: boolean; review_months: number | null; default_confidentiality: Confidentiality }>(
     c, 'SELECT id, active, review_months, default_confidentiality FROM document_categories WHERE id = $1', [d.categoryId]);
@@ -220,22 +239,29 @@ export async function createDocument(ctx: Ctx, input: MetaInput): Promise<string
   return tx(async (c) => {
     const d = await normalizeMeta(c, input);
     requirePermission(ctx, 'documentos.editar', { sectorId: d.sectorId });
-    if (!d.categoryActive) throw new AppError('Categoria inativa.');
-    const responsible = d.responsibleUserId ?? ctx.principal.userId;
-    const row = await queryOne<{ id: string }>(
-      c,
-      `INSERT INTO documents (reference_type, category, category_id, title, code, summary, confidentiality, sector_id, responsible_user_id,
-                              review_months, audience_type, requires_acknowledgement, status, draft, draft_updated_by, draft_updated_at, created_by)
-       VALUES ('${REPO}', (SELECT name FROM document_categories WHERE id = $1), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'RASCUNHO', $11, $12, now(), $12)
-       RETURNING id`,
-      [d.categoryId, d.title, d.code ?? null, d.summary ?? null, d.confidentiality, d.sectorId, responsible, d.reviewMonths, d.audienceType,
-        d.requiresAcknowledgement, JSON.stringify({ texto: '', notaVersao: '', arquivoId: null } satisfies Draft), ctx.principal.userId],
-    ).catch(mapCodeConflict);
-    await writeAudience(c, row!.id, d.sectors, d.users);
-    await event(c, ctx, row!.id, 'CRIADO', { titulo: d.title, confidencialidade: d.confidentiality, publico: d.audienceType });
-    await audit(c, ctx, { action: 'DOC_CRIADO', entityType: 'document', entityId: row!.id, summary: `Documento "${d.title}" criado (rascunho)` });
-    return row!.id;
+    return insertDocument(c, ctx, d, { fileId: null, projectId: null });
   });
+}
+
+export async function insertDocument(c: Db, ctx: Ctx, d: Awaited<ReturnType<typeof normalizeMeta>>, o: { fileId: string | null; projectId: string | null }): Promise<string> {
+  if (!d.categoryActive) throw new AppError('Categoria inativa.');
+  const row = await queryOne<{ id: string }>(
+    c,
+    `INSERT INTO documents (reference_type, category, category_id, title, code, summary, confidentiality, sector_id, responsible_user_id,
+                            review_months, audience_type, requires_acknowledgement, status, draft, draft_updated_by, draft_updated_at, created_by,
+                            origin_project_id, responsible_checked_at)
+     VALUES ('${REPO}', (SELECT name FROM document_categories WHERE id = $1), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'RASCUNHO', $11, $12, now(), $12, $13, now())
+     RETURNING id`,
+    [d.categoryId, d.title, d.code ?? null, d.summary ?? null, d.confidentiality, d.sectorId, d.responsibleUserId ?? ctx.principal.userId, d.reviewMonths, d.audienceType,
+      d.requiresAcknowledgement, JSON.stringify({ texto: '', notaVersao: '', arquivoId: o.fileId } satisfies Draft), ctx.principal.userId, o.projectId],
+  ).catch(mapCodeConflict);
+  await writeAudience(c, row!.id, d.sectors, d.users);
+  await event(c, ctx, row!.id, 'CRIADO', { titulo: d.title, confidencialidade: d.confidentiality, publico: d.audienceType, ...(o.projectId ? { origemProjeto: o.projectId } : {}) });
+  await audit(c, ctx, { action: 'DOC_CRIADO', entityType: 'document', entityId: row!.id, summary: `Documento "${d.title}" criado (rascunho)${o.projectId ? ' a partir de projeto' : ''}` });
+  if (d.responsibleUserId && d.responsibleUserId !== ctx.principal.userId) {
+    await notifyUsers(c, [d.responsibleUserId], { kind: 'DOCUMENTO_RESPONSAVEL', title: 'Você é a responsável por um documento', body: d.title, link: `/documentos/${row!.id}` });
+  }
+  return row!.id;
 }
 
 /**
@@ -245,7 +271,7 @@ export async function updateMetadata(ctx: Ctx, id: string, input: MetaInput): Pr
   await tx(async (c) => {
     const { d: before, a } = await loadWith(c, ctx, id, 'read', true);
     if (!a.edit && !a.manage) throw new ForbiddenError();
-    if (before.status === 'ARQUIVADO') throw new AppError('Documento arquivado não pode ser alterado.');
+    if (before.status === 'ARQUIVADO' || before.status === 'EXCLUIDO') throw new AppError('Documento arquivado ou excluído não pode ser alterado.');
     const d = await normalizeMeta(c, input);
     const accessChanged = d.confidentiality !== before.confidentiality || d.audienceType !== before.audience_type || d.sectorId !== before.sector_id
       || (d.responsibleUserId ?? before.responsible_user_id) !== before.responsible_user_id || d.requiresAcknowledgement !== before.requires_acknowledgement
@@ -264,7 +290,7 @@ export async function updateMetadata(ctx: Ctx, id: string, input: MetaInput): Pr
               sector_id=$7, responsible_user_id=$8, review_months=$9, audience_type=$10, requires_acknowledgement=$11,
               next_review_on = CASE WHEN effective_from IS NOT NULL AND $9::int IS NOT NULL THEN (effective_from + make_interval(months => $9::int))::date
                                     WHEN $9::int IS NULL THEN NULL ELSE next_review_on END,
-              updated_at=now() WHERE id=$1`,
+              responsible_checked_at=now(), updated_at=now() WHERE id=$1`,
       [id, d.categoryId, d.title, d.code ?? null, d.summary ?? null, d.confidentiality, d.sectorId, after.responsible_user_id, d.reviewMonths,
         d.audienceType, d.requiresAcknowledgement],
     ).catch(mapCodeConflict);
@@ -322,7 +348,8 @@ export async function saveDraft(
     await query(c, 'UPDATE documents SET draft=$2, draft_updated_by=$3, draft_updated_at=now(), updated_at=now() WHERE id=$1', [id, JSON.stringify(draft), ctx.principal.userId]);
     await event(c, ctx, id, 'RASCUNHO_SALVO', {
       caracteres: draft.texto.length,
-      arquivo: prepared ? { nome: prepared.checked.filename, bytes: prepared.checked.size, antivirus: prepared.scan.status, armazenamento: prepared.driveId ? 'DRIVE' : 'BANCO' }
+      ...(doc.in_review ? { durante: 'revisão' } : {}),
+      arquivo: prepared ? { nome: prepared.checked.filename, bytes: prepared.checked.size, sha256: prepared.sha256, antivirus: prepared.scan.status, armazenamento: prepared.driveId ? 'DRIVE' : 'BANCO' }
         : d.removeFile ? 'removido' : undefined,
     });
   }).catch(async (err) => {
@@ -341,6 +368,13 @@ export type VersionContent = {
 export async function submitForApproval(ctx: Ctx, id: string): Promise<string> {
   return tx(async (c) => {
     const { d } = await loadWith(c, ctx, id, 'edit', true);
+    if (d.in_review) throw new AppError('O documento está em revisão: aguarde a devolução das revisoras.');
+    return freezeDraft(c, ctx, d, ctx.principal.userId);
+  });
+}
+
+/** Congela o rascunho como nova versão, aguardando a decisão da Oficial. */
+export async function freezeDraft(c: Db, ctx: Ctx, d: RepoDocRow, submittedBy: string): Promise<string> {
     if (d.pending_version_id) throw new AppError('Já existe versão aguardando aprovação.');
     const draft = d.draft;
     if (!draft || (!draft.texto.trim() && !draft.arquivoId)) throw new AppError('O rascunho está vazio: inclua o texto ou um arquivo.');
@@ -358,23 +392,157 @@ export async function submitForApproval(ctx: Ctx, id: string): Promise<string> {
       elaboradoPor: author ? { id: author.id, nome: author.display_name } : null,
     };
     const hash = sha256Hex(canonicalJson(content));
-    const next = (await queryOne<{ n: number }>(c, 'SELECT coalesce(max(version_number),0)+1 AS n FROM document_versions WHERE document_id = $1', [id]))!.n;
+    const next = (await queryOne<{ n: number }>(c, 'SELECT coalesce(max(version_number),0)+1 AS n FROM document_versions WHERE document_id = $1', [d.id]))!.n;
     const v = await queryOne<{ id: string }>(
       c, 'INSERT INTO document_versions (document_id, version_number, content, content_sha256, created_by) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-      [id, next, JSON.stringify(content), hash, ctx.principal.userId]);
-    await query(c, 'INSERT INTO document_version_reviews (version_id, submitted_by, file_id) VALUES ($1,$2,$3)', [v!.id, ctx.principal.userId, file?.id ?? null]);
+      [d.id, next, JSON.stringify(content), hash, ctx.principal.userId]);
+    await query(c, 'INSERT INTO document_version_reviews (version_id, submitted_by, file_id) VALUES ($1,$2,$3)', [v!.id, submittedBy, file?.id ?? null]);
     await query(
       c,
       `UPDATE documents SET pending_version_id=$2, status = CASE WHEN status = 'RASCUNHO' THEN 'EM_APROVACAO' ELSE status END,
               draft=NULL, draft_updated_by=NULL, draft_updated_at=NULL, updated_at=now() WHERE id=$1`,
-      [id, v!.id]);
-    await event(c, ctx, id, 'SUBMETIDO', { versao: next, sha256: hash });
+      [d.id, v!.id]);
+    await event(c, ctx, d.id, 'SUBMETIDO', { versao: next, sha256: hash, ...(file ? { arquivoSha256: file.sha256 } : {}) });
     await audit(c, ctx, { action: 'DOC_SUBMETIDO', entityType: 'document_version', entityId: v!.id, summary: `"${d.title}" v${next} submetida à aprovação (sha256 ${hash.slice(0, 16)}…)` });
-    const approvers = (await usersWithPermission(c, 'documentos.aprovar', d.sector_id))
-      .filter((u) => u !== ctx.principal.userId && u !== d.draft_updated_by);
-    const visible = await filterUsersWithAccess(c, approvers, d, 'approve');
-    await notifyUsers(c, visible, { kind: 'DOCUMENTO_PARA_APROVACAO', title: 'Documento aguardando aprovação', body: `${d.title} — versão ${next}`, link: `/documentos/${id}` });
+    const approvers = (await docApprovers(c, d)).filter((u) => u !== ctx.principal.userId || ctx.principal.isOwner);
+    await notifyUsers(c, approvers, { kind: 'DOCUMENTO_PARA_APROVACAO', title: 'Documento aguardando aprovação', body: `${d.title} — versão ${next}`, link: `/documentos/${d.id}` });
     return v!.id;
+}
+
+/** Quem pode aprovar este documento agora: a Oficial e, se autorizada, a Substituta Legal (respeita a confidencialidade). */
+async function docApprovers(c: Db, d: RepoDocRow): Promise<string[]> {
+  const candidates = await query<{ id: string }>(c,
+    `SELECT DISTINCT u.id FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id AND ur.revoked_at IS NULL LEFT JOIN roles r ON r.id = ur.role_id
+      WHERE u.status = 'ATIVO' AND (u.is_owner OR r.code = 'SUBSTITUTA_LEGAL')`);
+  const out: string[] = [];
+  for (const { id } of candidates) {
+    const p = await loadPrincipal(c, id);
+    if (p && accessFor(p, d).approve) out.push(id);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Revisão (opcional, uma ou mais revisoras; todas devolvem antes de seguir para a Oficial)
+// ---------------------------------------------------------------------------
+
+export async function sendToReview(ctx: Ctx, id: string, reviewerIds: string[]): Promise<void> {
+  const ids = [...new Set(z.array(z.uuid()).parse(reviewerIds))];
+  if (!ids.length) throw new AppError('Indique ao menos uma revisora.');
+  await tx(async (c) => {
+    const { d } = await loadWith(c, ctx, id, 'edit', true);
+    await startReview(c, ctx, d, ids);
+  });
+}
+
+export async function startReview(c: Db, ctx: Ctx, d: RepoDocRow, ids: string[]) {
+  if (d.pending_version_id) throw new AppError('Há versão aguardando aprovação.');
+  if (d.in_review) throw new AppError('O documento já está em revisão.');
+  if (!d.draft || (!d.draft.texto.trim() && !d.draft.arquivoId)) throw new AppError('O rascunho está vazio: inclua o texto ou um arquivo.');
+  const ok = await query<{ id: string; display_name: string }>(c, "SELECT id, display_name FROM users WHERE id = ANY($1::uuid[]) AND status = 'ATIVO'", [ids]);
+  if (ok.length !== ids.length) throw new AppError('Há revisora inexistente ou inativa.');
+  const round = d.review_round + 1;
+  await query(c, 'UPDATE documents SET in_review = true, review_round = $2, review_sent_by = $3, updated_at = now() WHERE id = $1', [d.id, round, ctx.principal.userId]);
+  const project = d.origin_project_id
+    ? await queryOne<{ sector_id: string; status: string }>(c, 'SELECT sector_id, status FROM projects WHERE id = $1', [d.origin_project_id]) : null;
+  for (const u of ids) {
+    // Documento nascido em projeto: a revisão vira tarefa no projeto, concluída quando a revisora devolve.
+    const task = project && project.status !== 'CONCLUIDO' && project.status !== 'CANCELADO'
+      ? await queryOne<{ id: string }>(c,
+          `INSERT INTO tasks (project_id, title, description, priority, sector_id, assignee_user_id, created_by, position)
+           VALUES ($1, $2, $3, 'ALTA', $4, $5, $6, extract(epoch from now())) RETURNING id`,
+          [d.origin_project_id, `Revisar ${d.title}`.slice(0, 200), `Revisão do documento na Gestão documental: /documentos/${d.id}`, project.sector_id, u, ctx.principal.userId])
+      : null;
+    await query(c, 'INSERT INTO document_reviewers (document_id, round, user_id, assigned_by, task_id) VALUES ($1,$2,$3,$4,$5)', [d.id, round, u, ctx.principal.userId, task?.id ?? null]);
+  }
+  await event(c, ctx, d.id, 'ENVIADO_REVISAO', { rodada: round, revisoras: ok.map((x) => x.display_name) });
+  await audit(c, ctx, { action: 'DOC_REVISAO_ENVIADA', entityType: 'document', entityId: d.id, summary: `"${d.title}" enviado para revisão (${ok.map((x) => x.display_name).join(', ')})` });
+  await notifyUsers(c, ids.filter((u) => u !== ctx.principal.userId), { kind: 'DOCUMENTO_PARA_REVISAO', title: 'Documento para sua revisão', body: d.title, link: `/documentos/${d.id}`, priority: 'ALTA' });
+}
+
+/** A revisora devolve o documento; quando todas devolvem, a versão segue para a aprovação da Oficial. */
+export async function returnReview(ctx: Ctx, id: string, comment?: string | null): Promise<{ submitted: boolean }> {
+  const note = z.string().trim().max(2000).optional().nullable().parse(comment) || null;
+  return tx(async (c) => {
+    const { d } = await loadWith(c, ctx, id, 'read', true);
+    if (!d.in_review || !d.reviewers_active.includes(ctx.principal.userId)) throw new AppError('Você não tem revisão pendente neste documento.');
+    const rv = await queryOne<{ id: string; task_id: string | null }>(c,
+      'UPDATE document_reviewers SET returned_at = now(), comment = $4 WHERE document_id = $1 AND round = $2 AND user_id = $3 RETURNING id, task_id',
+      [id, d.review_round, ctx.principal.userId, note]);
+    if (rv?.task_id) {
+      await query(c, "UPDATE tasks SET status = 'CONCLUIDA', completed_at = now(), completed_by = $2, updated_at = now() WHERE id = $1 AND status NOT IN ('CONCLUIDA','CANCELADA')",
+        [rv.task_id, ctx.principal.userId]);
+    }
+    await event(c, ctx, id, 'REVISAO_DEVOLVIDA', { rodada: d.review_round, ...(note ? { comentario: note } : {}) });
+    const left = d.reviewers_active.filter((u) => u !== ctx.principal.userId);
+    if (left.length) return { submitted: false };
+    await query(c, 'UPDATE documents SET in_review = false WHERE id = $1', [id]);
+    const fresh = await loadDoc(c, id);
+    await freezeDraft(c, ctx, fresh, d.review_sent_by ?? ctx.principal.userId);
+    return { submitted: true };
+  });
+}
+
+/** Retira a submissão (ou a revisão em curso). Autora e Oficial. A versão retirada fica no histórico e volta a ser rascunho. */
+export async function withdrawSubmission(ctx: Ctx, id: string, reason?: string | null): Promise<void> {
+  const note = z.string().trim().max(1000).optional().nullable().parse(reason) || null;
+  await tx(async (c) => {
+    const { d } = await loadWith(c, ctx, id, 'read', true);
+    const me = ctx.principal.userId;
+    if (d.in_review) {
+      if (!ctx.principal.isOwner && d.review_sent_by !== me && d.responsible_user_id !== me) throw new ForbiddenError('Somente quem enviou para revisão ou a Oficial.');
+      await cancelReview(c, d);
+      await event(c, ctx, id, 'REVISAO_RETIRADA', { rodada: d.review_round, ...(note ? { motivo: note } : {}) });
+      await audit(c, ctx, { action: 'DOC_REVISAO_RETIRADA', entityType: 'document', entityId: id, summary: `Revisão de "${d.title}" retirada` });
+      return;
+    }
+    if (!d.pending_version_id) throw new AppError('Não há submissão pendente.');
+    const v = await queryOne<{ id: string; version_number: number; content: VersionContent; submitted_by: string }>(c,
+      'SELECT v.id, v.version_number, v.content, r.submitted_by FROM document_versions v JOIN document_version_reviews r ON r.version_id = v.id WHERE v.id = $1',
+      [d.pending_version_id]);
+    if (!ctx.principal.isOwner && v!.submitted_by !== me && v!.content.elaboradoPor?.id !== me) throw new ForbiddenError('Somente a autora ou a Oficial retiram a submissão.');
+    await query(c, "UPDATE document_version_reviews SET decision='RETIRADA', decided_by=$2, decided_at=now(), decision_notes=$3 WHERE version_id=$1", [v!.id, me, note]);
+    const draft: Draft = { texto: v!.content.texto, notaVersao: v!.content.notaVersao, arquivoId: v!.content.arquivo?.id ?? null };
+    await query(c, `UPDATE documents SET pending_version_id=NULL, status = CASE WHEN current_version_id IS NULL THEN 'RASCUNHO' ELSE status END,
+                    draft=$2, draft_updated_by=$3, draft_updated_at=now(), updated_at=now() WHERE id=$1`,
+      [id, JSON.stringify(draft), v!.content.elaboradoPor?.id ?? v!.submitted_by]);
+    await event(c, ctx, id, 'SUBMISSAO_RETIRADA', { versao: v!.version_number, ...(note ? { motivo: note } : {}) });
+    await audit(c, ctx, { action: 'DOC_SUBMISSAO_RETIRADA', entityType: 'document_version', entityId: v!.id, summary: `"${d.title}" v${v!.version_number}: submissão retirada` });
+  });
+}
+
+async function cancelReview(c: Db, d: RepoDocRow) {
+  const open = await query<{ task_id: string | null }>(c,
+    'UPDATE document_reviewers SET cancelled_at = now() WHERE document_id = $1 AND round = $2 AND returned_at IS NULL AND cancelled_at IS NULL RETURNING task_id',
+    [d.id, d.review_round]);
+  for (const t of open) if (t.task_id) await query(c, "UPDATE tasks SET status = 'CANCELADA', updated_at = now() WHERE id = $1 AND status NOT IN ('CONCLUIDA','CANCELADA')", [t.task_id]);
+  await query(c, 'UPDATE documents SET in_review = false, updated_at = now() WHERE id = $1', [d.id]);
+}
+
+/**
+ * Exclusão pela Oficial, com motivo, em qualquer estado antes de vigente. O documento sai do Repositório e do projeto;
+ * o registro e os arquivos ficam guardados (ocultos) pelo prazo de retenção da categoria.
+ */
+export async function deleteDocument(ctx: Ctx, id: string, reason: string): Promise<void> {
+  if (!ctx.principal.isOwner) throw new ForbiddenError('Excluir documento é exclusivo da Oficial Registradora.');
+  if (reason.trim().length < 5) throw new AppError('Informe o motivo da exclusão.');
+  await tx(async (c) => {
+    const d = await loadDoc(c, id, true);
+    if (d.status === 'EXCLUIDO') throw new AppError('Documento já excluído.');
+    if (d.current_version_id) throw new AppError('Documento que já foi vigente não é excluído: declare-o obsoleto ou arquive-o.');
+    if (d.in_review) await cancelReview(c, d);
+    const files = await query<{ sha256: string; filename: string }>(c,
+      `SELECT DISTINCT f.sha256, f.filename FROM document_files f WHERE f.id IN (
+         SELECT r.file_id FROM document_version_reviews r JOIN document_versions v ON v.id = r.version_id WHERE v.document_id = $1) OR f.id::text = $2`,
+      [id, d.draft?.arquivoId ?? '']);
+    if (d.pending_version_id) await query(c, 'UPDATE document_version_reviews SET superseded_at = now() WHERE version_id = $1 AND superseded_at IS NULL', [d.pending_version_id]);
+    const retention = await retentionUntil(c, d.category_id, todayLocal());
+    await query(c, `UPDATE documents SET status = 'EXCLUIDO', pending_version_id = NULL, deleted_at = now(), deleted_by = $2, delete_reason = $3,
+                    retention_until = $4, next_review_on = NULL, updated_at = now() WHERE id = $1`, [id, ctx.principal.userId, reason.trim(), retention]);
+    await event(c, ctx, id, 'EXCLUIDO', { motivo: reason.trim(), arquivos: files, retencaoAte: retention });
+    await audit(c, ctx, { action: 'DOC_EXCLUIDO', entityType: 'document', entityId: id, summary: `"${d.title}" excluído pela Oficial: ${reason.trim()}`, data: { arquivos: files } });
+    await notifyUsers(c, [d.responsible_user_id, d.created_by].filter((u, i, a) => u !== ctx.principal.userId && a.indexOf(u) === i),
+      { kind: 'DOCUMENTO_EXCLUIDO', title: 'Documento excluído pela Oficial', body: `${d.title}: ${reason.trim()}`, link: `/documentos/${id}` });
   });
 }
 
@@ -417,10 +585,12 @@ export async function decideVersion(ctx: Ctx, id: string, input: z.input<typeof 
          JOIN document_version_reviews r ON r.version_id = v.id WHERE v.id = $1 AND v.document_id = $2`,
       [d.versionId, id]);
     if (!v) throw new NotFoundError('Versão não encontrada.');
-    // Segregação de funções: quem elaborou ou submeteu não aprova.
-    if (v.submitted_by === ctx.principal.userId || v.content.elaboradoPor?.id === ctx.principal.userId) {
+    // Segregação de funções: quem elaborou ou submeteu não decide — exceto a Oficial Registradora (autoaprovação registrada).
+    const own = v.submitted_by === ctx.principal.userId || v.content.elaboradoPor?.id === ctx.principal.userId;
+    if (own && !ctx.principal.isOwner) {
       throw new ForbiddenError('Segregação de funções: quem elaborou ou submeteu a versão não pode decidir sobre ela.');
     }
+    const selfApproved = own && ctx.principal.isOwner;
     if (sha256Hex(canonicalJson(v.content)) !== v.content_sha256) {
       throw new AppError('Falha de integridade: o conteúdo não corresponde ao hash registrado. Operação bloqueada.', 500, 'INTEGRIDADE');
     }
@@ -439,14 +609,15 @@ export async function decideVersion(ctx: Ctx, id: string, input: z.input<typeof 
                       draft=$2, draft_updated_by=$3, draft_updated_at=now(), updated_at=now() WHERE id=$1`,
         [id, JSON.stringify(draft), v.content.elaboradoPor?.id ?? v.submitted_by]);
       await event(c, ctx, id, 'REJEITADO', { versao: v.version_number, motivo: d.notes });
-      await audit(c, ctx, { action: 'DOC_REJEITADO', entityType: 'document_version', entityId: v.id, summary: `"${doc.title}" v${v.version_number} rejeitada` });
-      await notifyUsers(c, [v.submitted_by], { kind: 'DOCUMENTO_REJEITADO', title: 'Versão rejeitada', body: `${doc.title}: ${d.notes}`, link: `/documentos/${id}`, priority: 'ALTA' });
+      await audit(c, ctx, { action: 'DOC_REJEITADO', entityType: 'document_version', entityId: v.id, summary: `"${doc.title}" v${v.version_number} devolvida para ajuste: ${d.notes}` });
+      const to = [v.submitted_by, doc.responsible_user_id, v.content.elaboradoPor?.id].filter((u, i, a): u is string => !!u && u !== ctx.principal.userId && a.indexOf(u) === i);
+      await notifyUsers(c, to, { kind: 'DOCUMENTO_REJEITADO', title: 'Documento devolvido para ajuste', body: `${doc.title}: ${d.notes}`, link: `/documentos/${id}`, priority: 'ALTA' });
       return;
     }
     const signatureId = await recordSignature(c, ctx, { id: v.id, contentSha256: v.content_sha256, title: doc.title, versionNumber: v.version_number }, 'APROVACAO', d.notes);
     const today = todayLocal();
-    await query(c, "UPDATE document_version_reviews SET decision='APROVADA', decided_by=$2, decided_at=now(), decision_notes=$3, signature_id=$4 WHERE version_id=$1",
-      [v.id, ctx.principal.userId, d.notes ?? null, signatureId]);
+    await query(c, "UPDATE document_version_reviews SET decision='APROVADA', decided_by=$2, decided_at=now(), decision_notes=$3, signature_id=$4, self_approved=$5 WHERE version_id=$1",
+      [v.id, ctx.principal.userId, d.notes ?? null, signatureId, selfApproved]);
     if (doc.current_version_id) {
       await query(c, 'UPDATE document_version_reviews SET superseded_at=now() WHERE version_id=$1 AND superseded_at IS NULL', [doc.current_version_id]);
     }
@@ -454,8 +625,11 @@ export async function decideVersion(ctx: Ctx, id: string, input: z.input<typeof 
       c,
       `UPDATE documents SET current_version_id=$2, pending_version_id=NULL, status='VIGENTE', effective_from=$3, next_review_on=$4, updated_at=now() WHERE id=$1`,
       [id, v.id, today, doc.review_months ? addMonths(today, doc.review_months) : null]);
-    await event(c, ctx, id, 'APROVADO', { versao: v.version_number, vigencia: today, anterior: doc.current_version_number });
-    await audit(c, ctx, { action: 'DOC_APROVADO', entityType: 'document_version', entityId: v.id, summary: `"${doc.title}" v${v.version_number} aprovada e vigente desde ${today}` });
+    await event(c, ctx, id, selfApproved ? 'AUTOAPROVADO' : 'APROVADO', { versao: v.version_number, vigencia: today, anterior: doc.current_version_number, sha256: v.content_sha256 });
+    await audit(c, ctx, selfApproved
+      ? { action: 'DOC_AUTOAPROVADO', entityType: 'document_version', entityId: v.id,
+          summary: `Versão autoaprovada pela Oficial Registradora: "${doc.title}" v${v.version_number}, vigente desde ${today} (sha256 ${v.content_sha256})` }
+      : { action: 'DOC_APROVADO', entityType: 'document_version', entityId: v.id, summary: `"${doc.title}" v${v.version_number} aprovada e vigente desde ${today}` });
     await notifyUsers(c, [v.submitted_by, doc.responsible_user_id].filter((u) => u !== ctx.principal.userId), {
       kind: 'DOCUMENTO_APROVADO', title: 'Documento aprovado e vigente', body: `${doc.title} — versão ${v.version_number}`, link: `/documentos/${id}`,
     });
@@ -536,6 +710,7 @@ export async function changeLifecycle(ctx: Ctx, id: string, op: 'OBSOLETO' | 'AR
     const { d } = await loadWith(c, ctx, id, 'manage', true);
     if (d.pending_version_id) throw new AppError('Há versão aguardando aprovação: decida-a antes.');
     if (op === 'OBSOLETO' && d.status !== 'VIGENTE') throw new AppError('Somente documento vigente pode ser declarado obsoleto.');
+    if (d.in_review) throw new AppError('O documento está em revisão: retire a revisão antes.');
     if (op === 'ARQUIVADO' && d.status === 'ARQUIVADO') throw new AppError('Documento já arquivado.');
     const today = todayLocal();
     const retention = await retentionUntil(c, d.category_id, today);
@@ -559,8 +734,11 @@ export async function purgeFiles(ctx: Ctx, id: string, reason: string): Promise<
   if (reason.trim().length < 5) throw new AppError('Informe o fundamento do descarte.');
   await requireStepUp(getPool(), ctx);
   return tx(async (c) => {
-    const { d } = await loadWith(c, ctx, id, 'manage', true);
-    if (d.status !== 'ARQUIVADO' && d.status !== 'OBSOLETO') throw new AppError('Somente documentos obsoletos ou arquivados podem ter conteúdo descartado.');
+    const d = await loadDoc(c, id, true);
+    const a = accessFor(ctx.principal, d);
+    if (!a.read) throw new NotFoundError('Documento não encontrado.');
+    if (!(a.manage || (d.status === 'EXCLUIDO' && ctx.principal.isOwner))) throw new ForbiddenError();
+    if (d.status !== 'ARQUIVADO' && d.status !== 'OBSOLETO' && d.status !== 'EXCLUIDO') throw new AppError('Somente documentos obsoletos, arquivados ou excluídos podem ter conteúdo descartado.');
     if (!d.retention_until) throw new AppError('Prazo de retenção não definido para este documento: descarte bloqueado.');
     if (d.retention_until > todayLocal()) throw new AppError(`Prazo de retenção vigente até ${d.retention_until}.`);
     const files = await query<{ id: string; storage: string; drive_file_id: string | null }>(
@@ -605,8 +783,9 @@ export async function listDocuments(ctx: Ctx, f: ListFilter = {}) {
     params.push(f.status);
     where.push(`d.status = $${params.length}`);
   } else if (!f.status) {
-    where.push(`d.status <> 'ARQUIVADO'`);
+    where.push(`d.status NOT IN ('ARQUIVADO','EXCLUIDO')`);
   }
+  if (f.status === 'TODOS') where.push(`d.status <> 'EXCLUIDO'`);
   params.push(ctx.principal.userId);
   const rows = await query<RepoDocRow & { my_ack: boolean }>(
     getPool(),
@@ -652,8 +831,102 @@ export async function listPendingDocApprovals(ctx: Ctx) {
        JOIN document_versions pv ON pv.id = d.pending_version_id JOIN document_version_reviews r ON r.version_id = pv.id
       WHERE d.reference_type = '${REPO}' ORDER BY r.submitted_at`);
   return rows
-    .filter((d) => accessFor(ctx.principal, d).approve && d.submitted_by !== ctx.principal.userId && d.author_id !== ctx.principal.userId)
-    .map((d) => ({ id: d.id, title: d.title, code: d.code, version: d.version_number, submitted_at: d.submitted_at }));
+    .filter((d) => accessFor(ctx.principal, d).approve && (ctx.principal.isOwner || (d.submitted_by !== ctx.principal.userId && d.author_id !== ctx.principal.userId)))
+    .map((d) => ({ id: d.id, title: d.title, code: d.code, version: d.version_number, submitted_at: d.submitted_at,
+      own: d.submitted_by === ctx.principal.userId || d.author_id === ctx.principal.userId }));
+}
+
+/** Documentos em construção (rascunho, em revisão, em aprovação) para a responsável, as revisoras, quem criou e a Oficial. */
+export async function listInConstruction(ctx: Ctx) {
+  const rows = await query<RepoDocRow>(getPool(),
+    `${DOC_SELECT} WHERE d.reference_type = '${REPO}' AND d.status NOT IN ('EXCLUIDO','ARQUIVADO','OBSOLETO')
+       AND (d.status IN ('RASCUNHO','EM_APROVACAO') OR d.in_review OR d.pending_version_id IS NOT NULL OR d.draft IS NOT NULL)
+     ORDER BY d.updated_at DESC`);
+  const me = ctx.principal.userId;
+  return rows
+    .filter((d) => ctx.principal.isOwner || d.responsible_user_id === me || d.created_by === me || d.reviewers_all.includes(me) || accessFor(ctx.principal, d).approve)
+    .map((d) => ({ id: d.id, title: d.title, code: d.code, stage: workflowStage(d), responsible_name: d.responsible_name, updated_at: d.updated_at,
+      myReview: d.in_review && d.reviewers_active.includes(me), origin_project_name: d.origin_project_name }));
+}
+
+/** Etapa do fluxo, para exibição. */
+export function workflowStage(d: Pick<RepoDocRow, 'status' | 'in_review' | 'pending_version_id'>): string {
+  if (d.status === 'EXCLUIDO') return 'Excluído pela Oficial';
+  if (d.in_review) return 'Em revisão';
+  if (d.pending_version_id) return d.status === 'VIGENTE' ? 'Vigente · revisão em aprovação' : 'Em aprovação';
+  if (d.status === 'RASCUNHO') return 'Em elaboração';
+  return d.status === 'VIGENTE' ? 'Vigente' : d.status === 'OBSOLETO' ? 'Obsoleto' : 'Arquivado';
+}
+
+/** Responsáveis gravados quando o campo vinha pré-selecionado (primeira pessoa da lista): a Oficial confere um a um. */
+export async function listResponsiblesToCheck(ctx: Ctx) {
+  if (!ctx.principal.isOwner) return { documents: [], projects: [] };
+  const db = getPool();
+  const documents = await query<{ id: string; title: string; responsible_name: string; created_at: Date }>(db,
+    `SELECT d.id, d.title, u.display_name AS responsible_name, d.created_at FROM documents d JOIN users u ON u.id = d.responsible_user_id
+      WHERE d.reference_type = '${REPO}' AND d.responsible_checked_at IS NULL AND d.status <> 'EXCLUIDO' ORDER BY d.created_at`);
+  const projects = await query<{ id: string; name: string; owner_name: string; created_at: Date }>(db,
+    `SELECT p.id, p.name, u.display_name AS owner_name, p.created_at FROM projects p JOIN users u ON u.id = p.owner_user_id
+      WHERE p.owner_checked_at IS NULL ORDER BY p.created_at`);
+  return { documents, projects };
+}
+
+export async function confirmResponsible(ctx: Ctx, kind: 'documento' | 'projeto', id: string): Promise<void> {
+  if (!ctx.principal.isOwner) throw new ForbiddenError();
+  z.uuid().parse(id);
+  await tx(async (c) => {
+    if (kind === 'documento') {
+      const r = await queryOne<{ title: string }>(c, `UPDATE documents SET responsible_checked_at = now() WHERE id = $1 AND reference_type = '${REPO}' RETURNING title`, [id]);
+      if (!r) throw new NotFoundError('Documento não encontrado.');
+      await event(c, ctx, id, 'RESPONSAVEL_CONFERIDO', {});
+      await audit(c, ctx, { action: 'DOC_RESPONSAVEL_CONFERIDO', entityType: 'document', entityId: id, summary: `Responsável de "${r.title}" conferida pela Oficial` });
+    } else {
+      const r = await queryOne<{ name: string }>(c, 'UPDATE projects SET owner_checked_at = now() WHERE id = $1 RETURNING name', [id]);
+      if (!r) throw new NotFoundError('Projeto não encontrado.');
+      await audit(c, ctx, { action: 'PROJETO_GESTOR_CONFERIDO', entityType: 'project', entityId: id, summary: `Gestor(a) de "${r.name}" conferido(a) pela Oficial` });
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Autorização da Substituta Legal para aprovar (Configurações → Gestão documental)
+// ---------------------------------------------------------------------------
+
+const delegationSchema = z.object({
+  documents: z.boolean(), projects: z.boolean(), categoryIds: z.array(z.uuid()).default([]),
+  startsOn: z.iso.date(), endsOn: z.iso.date().nullable(), reason: z.string().trim().min(5, 'Informe o motivo (ex.: férias da Oficial).').max(500),
+});
+
+export async function saveDelegation(ctx: Ctx, input: z.input<typeof delegationSchema>): Promise<string> {
+  if (!ctx.principal.isOwner) throw new ForbiddenError('Somente a Oficial autoriza a Substituta Legal.');
+  const d = delegationSchema.parse(input);
+  if (!d.documents && !d.projects) throw new AppError('Marque documentos e/ou projetos.');
+  if (d.endsOn && d.endsOn < d.startsOn) throw new AppError('O fim não pode ser anterior ao início.');
+  return tx(async (c) => {
+    const r = await queryOne<{ id: string }>(c,
+      `INSERT INTO approval_delegations (documents, projects, category_ids, starts_on, ends_on, reason, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+      [d.documents, d.projects, d.categoryIds.length ? d.categoryIds : null, d.startsOn, d.endsOn, d.reason, ctx.principal.userId]);
+    await audit(c, ctx, { action: 'APROVACAO_AUTORIZADA', entityType: 'approval_delegation', entityId: r!.id,
+      summary: `Substituta Legal autorizada a aprovar ${[d.documents && 'documentos', d.projects && 'projetos'].filter(Boolean).join(' e ')} de ${d.startsOn} a ${d.endsOn ?? 'revogação'}: ${d.reason}`, data: d });
+    return r!.id;
+  });
+}
+
+export async function revokeDelegation(ctx: Ctx, id: string): Promise<void> {
+  if (!ctx.principal.isOwner) throw new ForbiddenError();
+  await tx(async (c) => {
+    const r = await queryOne<{ id: string }>(c, 'UPDATE approval_delegations SET revoked_at = now(), revoked_by = $2 WHERE id = $1 AND revoked_at IS NULL RETURNING id', [z.uuid().parse(id), ctx.principal.userId]);
+    if (!r) throw new NotFoundError('Autorização não encontrada ou já revogada.');
+    await audit(c, ctx, { action: 'APROVACAO_AUTORIZACAO_REVOGADA', entityType: 'approval_delegation', entityId: id, summary: 'Autorização da Substituta Legal para aprovar revogada pela Oficial' });
+  });
+}
+
+export async function listDelegations() {
+  return query<{ id: string; documents: boolean; projects: boolean; category_ids: string[] | null; starts_on: string; ends_on: string | null; reason: string;
+    created_at: Date; revoked_at: Date | null; active: boolean }>(getPool(),
+    `SELECT id, documents, projects, category_ids, starts_on, ends_on, reason, created_at, revoked_at,
+            (revoked_at IS NULL AND starts_on <= current_date AND (ends_on IS NULL OR ends_on >= current_date)) AS active
+       FROM approval_delegations ORDER BY created_at DESC LIMIT 50`);
 }
 
 export type VersionRow = {
@@ -689,11 +962,22 @@ export async function getDocument(ctx: Ctx, id: string) {
     ? await queryOne<{ signed_at: Date }>(db, "SELECT signed_at FROM signatures WHERE document_version_id = $1 AND signer_user_id = $2 AND act = 'CIENCIA'", [d.current_version_id, ctx.principal.userId])
     : null;
   const pending = versions.find((v) => v.id === d.pending_version_id);
-  const canDecide = !!pending && a.approve && pending.content.elaboradoPor?.id !== ctx.principal.userId
-    && !(await queryOne(db, 'SELECT 1 FROM document_version_reviews WHERE version_id = $1 AND submitted_by = $2', [pending.id, ctx.principal.userId]));
+  const me = ctx.principal.userId;
+  const ownPending = !!pending && (pending.content.elaboradoPor?.id === me
+    || !!(await queryOne(db, 'SELECT 1 FROM document_version_reviews WHERE version_id = $1 AND submitted_by = $2', [pending.id, me])));
+  const canDecide = !!pending && a.approve && (!ownPending || ctx.principal.isOwner);
+  const reviewers = a.history
+    ? await query<{ round: number; display_name: string; user_id: string; assigned_at: Date; returned_at: Date | null; cancelled_at: Date | null; comment: string | null }>(db,
+        `SELECT r.round, u.display_name, r.user_id, r.assigned_at, r.returned_at, r.cancelled_at, r.comment FROM document_reviewers r JOIN users u ON u.id = r.user_id
+          WHERE r.document_id = $1 ORDER BY r.round DESC, u.display_name`, [id])
+    : [];
+  const canWithdraw = d.in_review ? (ctx.principal.isOwner || d.review_sent_by === me || d.responsible_user_id === me)
+    : !!pending && (ctx.principal.isOwner || ownPending);
   return {
     doc: { ...d, draft: a.history ? d.draft : null, aud_users: a.history ? d.aud_users : [], aud_sectors: d.aud_sectors },
-    access: a, versions: visibleVersions, events, draftFile, myAck: myAck?.signed_at ?? null, canDecide,
+    access: a, versions: visibleVersions, events, draftFile, myAck: myAck?.signed_at ?? null, canDecide, selfAuthored: ownPending,
+    reviewers, canReturnReview: d.in_review && d.reviewers_active.includes(me), canWithdraw,
+    canDelete: ctx.principal.isOwner && !d.current_version_id && d.status !== 'EXCLUIDO', stage: workflowStage(d),
   };
 }
 
@@ -779,7 +1063,7 @@ export async function processReviewReminders(db: Db = getPool()): Promise<number
 
 /** Pessoas e setores para escolha de público e responsável (somente para quem elabora ou gere documentos). */
 export async function listDirectory(ctx: Ctx) {
-  if (!can(ctx.principal, 'documentos.editar') && !can(ctx.principal, 'documentos.gerenciar')) throw new ForbiddenError();
+  if (!can(ctx.principal, 'documentos.editar') && !can(ctx.principal, 'documentos.gerenciar') && !can(ctx.principal, 'documentos.ver')) throw new ForbiddenError();
   const db = getPool();
   const users = await query<{ id: string; display_name: string; sector_name: string | null }>(
     db,

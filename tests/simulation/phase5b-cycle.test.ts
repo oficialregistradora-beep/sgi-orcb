@@ -11,7 +11,7 @@ import { runAutomations, saveRule } from '../../src/server/modules/automation.ts
 import { acknowledge, createDocument, decideVersion, saveDraft, submitForApproval } from '../../src/server/modules/repository.ts';
 import { verifyAuditChain } from '../../src/server/audit.ts';
 import { addDays, todayLocal } from '../../src/domain/time.ts';
-import { closePool, ctxFor, ids, makePerson, resetDatabase } from '../helpers.ts';
+import { authorizeSubstitute, closePool, ctxFor, ids, makePerson, resetDatabase } from '../helpers.ts';
 
 // RODADA 3 (Fase 5b) — um ano de desenvolvimento de pessoas: 12 admissões ao longo do ano com programação 30/60/90 dias,
 // avaliações preenchidas e manifestadas (ciência, concordância, discordância, retificação, encerramento sem ciência),
@@ -31,6 +31,7 @@ beforeAll(async () => {
   await resetDatabase();
   const I = await ids();
   await makePerson({ name: 'Oficial', sectorId: I.sectors.DIR, jobId: I.jobs.oficial, roles: [{ roleId: I.roles.OFICIAL }], owner: true });
+  await authorizeSubstitute();
   cSubst = await ctxOf((await makePerson({ name: 'Substituta', sectorId: I.sectors.DIR, jobId: I.jobs.substituta, roles: [{ roleId: I.roles.SUBSTITUTA_LEGAL }], admission: addDays(today, -900) })).userId);
   for (const s of [I.sectors.RI, I.sectors.ATD]) {
     const c = await makePerson({ name: 'Coord', sectorId: s, jobId: I.jobs.escrevente, roles: [{ roleId: I.roles.COLABORADOR }, { roleId: I.roles.COORDENACAO_SETOR }], admission: addDays(today, -900) });

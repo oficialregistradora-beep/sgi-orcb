@@ -13,7 +13,7 @@ import { availableWidgets, myWidgets, resetWidgets, runAutomations, saveRule, sa
 import { acknowledge, createDocument, decideVersion, saveDraft, submitForApproval } from '../../../src/server/modules/repository.ts';
 import { verifyAuditChain } from '../../../src/server/audit.ts';
 import { addDays, addMonths, todayLocal } from '../../../src/domain/time.ts';
-import { closePool, ctxFor, ids, makePerson, resetDatabase } from '../../helpers.ts';
+import { authorizeSubstitute, closePool, ctxFor, ids, makePerson, resetDatabase } from '../../helpers.ts';
 
 let I: Awaited<ReturnType<typeof ids>>;
 let cOwner: Ctx, cSubst: Ctx, cCoord: Ctx, cColab: Ctx, cColab2: Ctx, cAtd: Ctx, cAtdCoord: Ctx;
@@ -32,6 +32,7 @@ beforeAll(async () => {
     return ctxFor(p.userId);
   };
   cOwner = await mk('owner', 'Oficial', I.sectors.DIR, ['OFICIAL'], true);
+  await authorizeSubstitute();
   cSubst = await mk('subst', 'Substituta', I.sectors.DIR, ['SUBSTITUTA_LEGAL']);
   cCoord = await mk('coord', 'Coord RI', I.sectors.RI, ['COLABORADOR', 'COORDENACAO_SETOR']);
   cColab = await mk('colab', 'Colab RI', I.sectors.RI, ['COLABORADOR']);

@@ -158,6 +158,10 @@ try {
   await page.fill('#novo-title', 'Ata de reunião E2E (fictícia)');
   await page.selectOption('#novo-sector', { index: 1 });
   await page.click('button:has-text("Criar rascunho")');
+  await page.waitForTimeout(500);
+  check('Responsável não vem pré-selecionada: sem escolha, não cria', /\/documentos\?aba=novo/.test(page.url()));
+  await page.selectOption('#novo-resp', { label: 'Helena Martins (fictícia)' });
+  await page.click('button:has-text("Criar rascunho")');
   await page.waitForURL(/\/documentos\/[0-9a-f-]+$/, { timeout: 10000 });
   await page.fill('#d-texto', 'Pauta fictícia de homologação.');
   await page.setInputFiles('#d-file', { name: 'ata.txt', mimeType: 'text/plain', buffer: Buffer.from('Ata fictícia — teste E2E\n') });
@@ -173,9 +177,10 @@ try {
   const dl = await page.request.get(new URL(await page.locator('a:has-text("ata.txt")').getAttribute('href'), BASE).toString());
   check('Download autorizado como anexo, sem interpretação', dl.status() === 200 && /attachment/.test(dl.headers()['content-disposition'] ?? '') && dl.headers()['x-content-type-options'] === 'nosniff');
   page.once('dialog', (d) => d.accept());
-  await page.click('button:has-text("Submeter à aprovação")');
+  await page.selectOption('#sb-mode', 'SEM');
+  await page.click('button:has-text("Enviar")');
   await page.waitForSelector('text=aguardando aprovação', { timeout: 10000 });
-  check('Autor não decide a própria versão (segregação)', await page.locator('text=segregação de funções').isVisible());
+  check('Oficial pode aprovar a própria versão (autoaprovação registrada)', await page.locator('text=autoaprovação da Oficial Registradora').isVisible());
 
   // 6e. Fase 4a — tarefas, projetos, rotinas e processos (Oficial)
   await page.goto(`${BASE}/tarefas?visao=painel`);

@@ -56,7 +56,7 @@ async function ProjetosPage({ searchParams }: { searchParams: Promise<{ encerrad
                 <div className="field"><label htmlFor="np-code">Código (opcional)</label><input id="np-code" name="code" className="input mono" placeholder="PQTA-2027" /></div>
                 <div className="field"><label htmlFor="np-sec">Setor</label><select id="np-sec" name="sectorId" className="input" required defaultValue={ctx.principal.employeeSectorId ?? ''}>
                   <option value="" disabled>Selecione…</option>{dir.sectors.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-                <div className="field"><label htmlFor="np-own">Gestor(a)</label><select id="np-own" name="ownerUserId" className="input" defaultValue={ctx.principal.userId}>{dir.users.map((u) => <option key={u.id} value={u.id}>{u.display_name}</option>)}</select></div>
+                <div className="field"><label htmlFor="np-own">Gestor(a)</label><select id="np-own" name="ownerUserId" className="input" required defaultValue=""><option value="" disabled>Selecione…</option>{dir.users.map((u) => <option key={u.id} value={u.id}>{u.display_name}</option>)}</select></div>
                 <div className="field"><label htmlFor="np-sd">Início</label><input id="np-sd" name="startDate" type="date" className="input" /></div>
                 <div className="field"><label htmlFor="np-dd">Término previsto</label><input id="np-dd" name="dueDate" type="date" className="input" /></div>
                 <div className="field"><label htmlFor="np-cost">Custo estimado (R$)</label><input id="np-cost" name="estimatedCost" className="input" inputMode="decimal" placeholder="0,00" /></div>

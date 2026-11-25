@@ -7,7 +7,11 @@ import {
   addAttachment, addChecklistItem, addComment, addDependency, createTask, escalate, removeDependency, resolveEscalation, reviewTask, setStatus,
   toggleChecklistItem, updateTask, type Priority, type TaskStatus,
 } from '@/server/modules/tasks.ts';
-import { addCost, addMilestone, addPhase, createProject, saveIndicator, setMember, toggleMilestone, updateProject, type ProjectStatus } from '@/server/modules/projects.ts';
+import {
+  addCost, addMilestone, addPhase, approveProject, attachProjectFile, createProject, linkProjectDocument, removeProjectDocument, saveIndicator,
+  sendAttachmentToRepository, setMember, toggleMilestone, updateProject, type ProjectStatus,
+} from '@/server/modules/projects.ts';
+import type { MetaInput } from '@/server/modules/repository.ts';
 import { cancelProcess, saveProcessTemplate, saveRoutine, startProcess, AREAS } from '@/server/modules/routines.ts';
 
 const nul = (fd: FormData, k: string) => optStr(fd, k) ?? null;
@@ -89,6 +93,8 @@ export async function quickStatusAction(_p: ActionState, fd: FormData): Promise<
 }
 
 function projectFields(fd: FormData) {
+  // Nenhum campo de pessoa vem pré-selecionado: o(a) gestor(a) é escolhido(a) por quem cria.
+  if (!optStr(fd, 'ownerUserId')) throw new AppError('Escolha o(a) gestor(a) do projeto.');
   return {
     name: str(fd, 'name'), code: optStr(fd, 'code'), description: optStr(fd, 'description'), sectorId: str(fd, 'sectorId'),
     ownerUserId: optStr(fd, 'ownerUserId'), startDate: nul(fd, 'startDate'), dueDate: nul(fd, 'dueDate'), estimatedCost: money(fd, 'estimatedCost'),
@@ -119,6 +125,29 @@ export async function projectAction(_p: ActionState, fd: FormData): Promise<Acti
         if (amount === null) throw new AppError('Informe o valor.');
         await addCost(ctx, id, { description: str(fd, 'description'), amount, spentOn: str(fd, 'spentOn') });
         return 'Custo lançado.';
+      }
+      case 'aprovar': await approveProject(ctx, id, { notes: optStr(fd, 'notes') }); return 'Projeto aprovado.';
+      case 'aprovar_fase': await approveProject(ctx, id, { phaseId: str(fd, 'phaseId'), notes: optStr(fd, 'notes') }); return 'Fase aprovada.';
+      case 'anexar': {
+        const f = fd.get('file');
+        if (!(f instanceof File) || !f.size) throw new AppError('Escolha o arquivo.');
+        await attachProjectFile(ctx, id, { name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) }, optStr(fd, 'title'));
+        return 'Arquivo anexado ao projeto.';
+      }
+      case 'vincular': await linkProjectDocument(ctx, id, str(fd, 'documentId')); return 'Documento vinculado ao projeto.';
+      case 'retirar_doc': await removeProjectDocument(ctx, str(fd, 'attachmentId'), str(fd, 'reason')); return 'Documento retirado do projeto.';
+      case 'enviar_doc': {
+        const review = str(fd, 'reviewMode');
+        if (review !== 'SEM' && review !== 'COM') throw new AppError('Escolha a revisão: sem revisão (direto para aprovação) ou com revisão.');
+        const meta: Omit<MetaInput, 'sectorId' | 'responsibleUserId'> = {
+          categoryId: str(fd, 'categoryId'), title: str(fd, 'title'), code: optStr(fd, 'code'), summary: optStr(fd, 'summary'),
+          confidentiality: (optStr(fd, 'confidentiality') as MetaInput['confidentiality']) ?? undefined,
+          audienceType: str(fd, 'audienceType') as MetaInput['audienceType'],
+          audienceSectorIds: fd.getAll('audienceSectorIds').map(String), audienceUserIds: fd.getAll('audienceUserIds').map(String),
+          requiresAcknowledgement: fd.get('requiresAcknowledgement') === 'on',
+        };
+        await sendAttachmentToRepository(ctx, str(fd, 'attachmentId'), meta, { mode: review, reviewerIds: fd.getAll('reviewerIds').map(String) });
+        return review === 'COM' ? 'Documento criado e enviado para revisão.' : 'Documento criado e enviado à aprovação da Oficial.';
       }
       case 'indicador': await saveIndicator(ctx, id, { id: optStr(fd, 'indicatorId'), name: str(fd, 'name'), unit: optStr(fd, 'unit'), target: Number(str(fd, 'target').replace(',', '.')), current: Number(str(fd, 'current').replace(',', '.')) }); return 'Indicador salvo.';
       default: throw new AppError('Operação desconhecida.');

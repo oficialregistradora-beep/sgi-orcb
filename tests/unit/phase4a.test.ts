@@ -118,7 +118,7 @@ describe('Tarefas e projetos — acesso', () => {
     expect(taskAccess(principal('x'), { ...task, member_role: 'GESTOR' })).toMatchObject({ manage: true });
     expect(taskAccess(principal('x'), { ...task, member_role: 'MEMBRO' })).toMatchObject({ read: true, comment: true, work: false });
     expect(taskAccess(principal('x'), { ...task, member_role: 'LEITOR' })).toMatchObject({ read: true, comment: false, work: false });
-    expect(projectAccess(principal('x'), { sector_id: 'S1', member_role: 'LEITOR' })).toEqual({ read: true, manage: false, contribute: false });
+    expect(projectAccess(principal('x'), { sector_id: 'S1', member_role: 'LEITOR' })).toMatchObject({ read: true, manage: false, contribute: false, approve: false });
     expect(projectAccess(principal('x'), { sector_id: 'S1', member_role: null }).read).toBe(false);
     expect(projectAccess(principal('of', {}, null, true), { sector_id: 'S1', member_role: null }).manage).toBe(true);
   });

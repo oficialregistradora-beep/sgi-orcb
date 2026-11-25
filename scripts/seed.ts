@@ -167,7 +167,7 @@ async function publish(author: Ctx, approver: Ctx, meta: Parameters<typeof creat
 await publish(cBeatriz, cHelena, { categoryId: await cat('CODIGO_ETICA'), title: 'Código de Ética (modelo fictício)', code: 'CE-001', sectorId: await sector('DIR'),
   audienceType: 'TODOS', requiresAcknowledgement: true, summary: 'Texto fictício para homologação.' },
   '1. Atender com urbanidade e imparcialidade.\n2. Preservar o sigilo das informações.\n3. Comunicar conflitos de interesse à Oficial.\n(Conteúdo fictício de homologação.)');
-const pop = await publish(cCamila, cBeatriz, { categoryId: await cat('POP'), title: 'POP — Prenotação de títulos (fictício)', code: 'POP-RI-001', sectorId: await sector('RI'),
+const pop = await publish(cCamila, cHelena, { categoryId: await cat('POP'), title: 'POP — Prenotação de títulos (fictício)', code: 'POP-RI-001', sectorId: await sector('RI'),
   audienceType: 'SETORES', audienceSectorIds: [await sector('RI')], requiresAcknowledgement: true },
   '1. Receber o título e conferir os requisitos formais.\n2. Lançar no protocolo.\n3. Observar os prazos de qualificação.\n(Conteúdo fictício.)');
 await saveDraft(cCamila, pop, { texto: '1. Receber o título.\n2. Lançar no protocolo.\n3. Observar os prazos.\n4. Comunicar exigências.\n(Conteúdo fictício.)', notaVersao: 'Inclusão do passo 4' });
