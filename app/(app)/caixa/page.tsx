@@ -3,7 +3,7 @@ import { requirePageCtx } from '@/server/web/session.ts';
 import { withGuard } from '@/server/web/guard.ts';
 import type { Ctx } from '@/server/context.ts';
 import {
-  canConfer, canManageCash, canSeeCashReports, cashFlowReport, dreReport, findSession, getSession, listRegisters, monthView, pendingConference, yearView,
+  canCashTab, canCloseCash, canConfer, canManageCash, cashFlowReport, dreReport, findSession, getSession, listRegisters, monthView, pendingClose, pendingConference, yearView,
 } from '@/server/modules/cash.ts';
 import { getStatement, listStatements, SOURCE_LABEL, type Source } from '@/server/modules/cashReconcile.ts';
 import { listSectors } from '@/server/modules/admin.ts';
@@ -73,7 +73,7 @@ async function DayDetail({ ctx, sessionId }: { ctx: Ctx; sessionId: string }) {
                   <td className="small">{e.kind === 'ESTORNO' ? `Estorno de ${CASH_KIND_LABEL[e.orig_kind!].split(' (')[0]!.toLowerCase()}` : CASH_KIND_LABEL[e.kind]}{e.reversed_by_id ? <div className="muted">estornado</div> : null}</td>
                   <td className="small">{CASH_METHOD_LABEL[e.method]}</td>
                   <td className="small">{e.protocol ?? e.payee ?? '—'}</td>
-                  <td className="num">{money(e.amount)}</td>
+                  <td className="num">{money(e.amount)}{e.protocol_total && e.protocol_total !== e.amount ? <div className="small muted">de {money(e.protocol_total)}</div> : null}</td>
                   <td className="num small">{e.received ? money(e.received) : ''}</td>
                   <td className="num small">{toCents(e.change_given) ? money(e.change_given) : ''}</td>
                   <td className="small">{[e.reference, e.description].filter(Boolean).join(' · ')}
@@ -100,8 +100,21 @@ async function DayDetail({ ctx, sessionId }: { ctx: Ctx; sessionId: string }) {
           ) : <Empty>Nenhum lançamento neste dia.</Empty>}
         </div></div>
 
+      {v.can.sangria ? (
+        <div className="card"><div className="card-head"><h2>Sangria</h2><p>Retirada de dinheiro da gaveta (cofre ou depósito). Só quem fecha o caixa.</p></div>
+          <div className="card-body">
+            <ActionForm action={cashOperateAction} submitLabel="Lançar sangria" resetOnSuccess>
+              <input type="hidden" name="op" value="lancar" /><input type="hidden" name="sessionId" value={s.id} /><input type="hidden" name="kind" value="SANGRIA" />
+              <div className="form-grid">
+                <div className="field"><label htmlFor="sg-a">Valor</label><input id="sg-a" name="amount" className="input" inputMode="decimal" required placeholder="0,00" /></div>
+                <div className="field"><label htmlFor="sg-d">Destino / observação</label><input id="sg-d" name="description" className="input" maxLength={500} placeholder="ex.: cofre" /></div>
+              </div>
+            </ActionForm>
+          </div></div>
+      ) : null}
+
       {v.can.close ? (
-        <div className="card"><div className="card-head"><h2>Fechamento do dia</h2><p>Conte o dinheiro da gaveta. O sistema compara com o esperado ({formatCents(sum.expectedCash)}) e avisa a conferência.</p></div>
+        <div className="card"><div className="card-head"><h2>Fechamento do dia</h2><p>Conte o dinheiro da gaveta. O sistema compara com o esperado ({formatCents(sum.expectedCash)}). Pode ser feito na manhã do dia útil seguinte.</p></div>
           <div className="card-body">
             <ActionForm action={cashOperateAction} submitLabel="Fechar o caixa" confirm="Fechar o caixa do dia? Depois só a conferência reabre.">
               <input type="hidden" name="op" value="fechar" /><input type="hidden" name="sessionId" value={s.id} />
@@ -147,14 +160,16 @@ async function CaixaPage({ searchParams }: { searchParams: Promise<SP> }) {
   const registers = await listRegisters(ctx);
   const confer = canConfer(p);
   const manage = canManageCash(p);
-  const reports = canSeeCashReports(p);
-  if (!registers.length && !confer && !manage) {
+  const tabOk = (t: Parameters<typeof canCashTab>[1]) => canCashTab(p, t);
+  if (!registers.length && !confer && !manage && !tabOk('troco')) {
     return <div className="stack"><PageHead title="Controle de caixa" /><div className="alert alert-warn">Você não opera nenhum caixa. Fale com a Oficial.</div></div>;
   }
+  // Cada aba é uma permissão (Usuários e permissões → Matriz de permissões → módulo Financeiro, "Caixa: …").
   const TABS: [string, string, boolean][] = [
-    ['hoje', 'Frente de caixa', registers.length > 0], ['mes', 'Mês', registers.length > 0], ['ano', 'Ano', registers.length > 0],
-    ['conferencia', 'Conferência', confer], ['troco', 'Troco', true], ['relatorios', 'Relatórios', reports], ['conciliacao', 'Conciliação', confer || manage], ['caixas', 'Caixas', manage],
+    ['hoje', 'Frente de caixa', registers.length > 0 && (tabOk('hoje') || canCloseCash(p))], ['mes', 'Mês', registers.length > 0 && tabOk('mes')], ['ano', 'Ano', registers.length > 0 && tabOk('ano')],
+    ['conferencia', 'Conferência', tabOk('conferencia')], ['troco', 'Troco', tabOk('troco')], ['relatorios', 'Relatórios', tabOk('relatorios')], ['conciliacao', 'Conciliação', tabOk('conciliacao')], ['caixas', 'Caixas', tabOk('caixas')],
   ];
+  if (!TABS.some((t) => t[2])) return <div className="stack"><PageHead title="Controle de caixa" /><div className="alert alert-warn">Nenhuma aba do caixa foi liberada para você. Fale com a Oficial.</div></div>;
   const visible = TABS.filter((t) => t[2]);
   const tab = sp.dia ? 'dia' : visible.some((t) => t[0] === sp.aba) ? sp.aba! : visible[0]![0];
   const today = todayLocal();
@@ -167,16 +182,23 @@ async function CaixaPage({ searchParams }: { searchParams: Promise<SP> }) {
   return (
     <div className="stack">
       <PageHead title="Controle de caixa" subtitle="Atendimento e administrativo: abertura, lançamentos, troco, fechamento, conferência da Bárbara no dia seguinte e aprovação final do mês." />
-      <nav className="tabs">{visible.map(([k, l]) => <Link key={k} href={`/caixa?aba=${k}${reg ? `&caixa=${reg.id}` : ''}`} aria-current={tab === k ? 'page' : undefined}>{l}</Link>)}</nav>
+      <nav className="tabs" aria-label="Abas do caixa">{visible.map(([k, l]) => <Link key={k} href={`/caixa?aba=${k}${reg ? `&caixa=${reg.id}` : ''}`} aria-current={tab === k ? 'page' : undefined}>{l}</Link>)}</nav>
 
       {tab === 'dia' ? <DayDetail ctx={ctx} sessionId={sp.dia!} /> : null}
 
       {tab === 'hoje' && reg ? await (async () => {
         const sid = await findSession(ctx, reg.id, today);
+        const toClose = await pendingClose(ctx);
+        const operates = p.isOwner || reg.operators.some((o) => o.id === p.userId);
         return (
           <div className="stack">
+            {toClose.length ? (
+              <div className="card"><div className="card-head"><h2>Dias aguardando sangria e fechamento</h2><p>Pode ser feito na manhã do dia útil seguinte.</p></div>
+                <div className="card-body flush table-wrap" tabIndex={0}><table className="table"><thead><tr><th>Dia</th><th>Caixa</th><th>Aberto por</th><th></th></tr></thead>
+                  <tbody>{toClose.map((d) => <tr key={d.id}><td>{fmtDate(d.work_date)}</td><td>{d.register_name}</td><td>{d.opened_by_name}</td><td><Link className="btn btn-sm btn-primary" href={`/caixa?dia=${d.id}`}>Sangria e fechamento</Link></td></tr>)}</tbody></table></div></div>
+            ) : null}
             {regPicker('hoje')}
-            {sid ? <DayDetail ctx={ctx} sessionId={sid} /> : (
+            {sid ? <DayDetail ctx={ctx} sessionId={sid} /> : !operates ? <p className="small muted">O caixa de hoje de {reg.name} ainda não foi aberto pela operadora.</p> : (
               <div className="card"><div className="card-head"><h2>Abrir o caixa de hoje — {reg.name}</h2><p>O fundo de troco vem do que ficou na gaveta no último fechamento (ou do padrão do caixa).</p></div>
                 <div className="card-body">
                   <ActionForm action={cashOperateAction} submitLabel="Abrir caixa">

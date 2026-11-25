@@ -10,7 +10,7 @@ import { cellTexts, readZip, sheets } from '../xlsx.ts';
 import { centsToDb, formatCents, toCents } from '../../domain/money.ts';
 import { addDays, addMonths } from '../../domain/time.ts';
 import { normalizeProtocol } from '../../domain/cash.ts';
-import { canConfer, canManageCash } from './cash.ts';
+import { canCashTab } from './cash.ts';
 
 // Conciliação mensal: extrato do banco (PIX e depósitos), extrato da máquina de cartão e livro de depósito prévio,
 // cruzados com os lançamentos do caixa. O cruzamento automático é conservador (mesmo valor e data próxima; no depósito
@@ -23,7 +23,7 @@ export type ParsedLine = { date: string; cents: number; description: string | nu
 const MAX_BYTES = 5 * 1024 * 1024;
 
 function requireReconcile(ctx: Ctx) {
-  if (!canConfer(ctx.principal) && !canManageCash(ctx.principal)) throw new ForbiddenError();
+  if (!canCashTab(ctx.principal, 'conciliacao')) throw new ForbiddenError();
 }
 
 // ---------------------------------------------------------------------------

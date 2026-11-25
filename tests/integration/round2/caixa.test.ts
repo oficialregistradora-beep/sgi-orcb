@@ -3,7 +3,7 @@ import { getPool, query, queryOne } from '../../../src/server/db.ts';
 import type { Ctx } from '../../../src/server/context.ts';
 import {
   addEntry, approveMonth, cashFlowReport, closeSession, confirmSession, dreReport, getSession, hasCashAccess, listRegisters, markDivergence, monthView, openSession,
-  pendingConference, reopenSession, reverseEntry, saveRegister, yearView,
+  canCashTab, pendingClose, pendingConference, reopenSession, reverseEntry, saveRegister, yearView,
 } from '../../../src/server/modules/cash.ts';
 import { getStatement, importStatement, matchLine, parseCsv, parseOfx } from '../../../src/server/modules/cashReconcile.ts';
 import { changeBreakdown, checkEntry } from '../../../src/domain/cash.ts';
@@ -33,15 +33,18 @@ afterAll(closePool);
 
 describe('Regras puras', () => {
   it('troco e cédulas (exemplo da planilha: R$ 158,47 com R$ 200,00)', () => {
-    expect(checkEntry({ kind: 'ENTRADA', method: 'DINHEIRO', amount: 15847, received: 20000, protocol: '123' })).toEqual({ received: 20000, change: 4153 });
+    expect(checkEntry({ kind: 'ENTRADA', method: 'DINHEIRO', amount: 15847, received: 20000, protocol: '123' })).toEqual({ paid: 15847, received: 20000, change: 4153, pending: 0, protocolTotal: 15847 });
     expect(changeBreakdown(4153)).toEqual([
       { label: 'R$ 20', coin: false, count: 2 }, { label: 'R$ 1', coin: true, count: 1 }, { label: 'R$ 0,50', coin: true, count: 1 }, { label: 'R$ 0,01', coin: true, count: 3 },
     ]);
-    expect(() => checkEntry({ kind: 'ENTRADA', method: 'DINHEIRO', amount: 15847, received: 10000, protocol: '1' })).toThrow(/menor/);
-    expect(() => checkEntry({ kind: 'ENTRADA', method: 'PIX', amount: 15847, received: 20000, protocol: '1' })).toThrow(/igual/);
+    // pagamento dividido: protocolo de 1.000,00 = 500,00 em dinheiro + 500,00 no cartão (sem trava de valor menor)
+    expect(checkEntry({ kind: 'ENTRADA', method: 'DINHEIRO', amount: 100000, received: 50000, protocol: '1' })).toEqual({ paid: 50000, received: 50000, change: 0, pending: 50000, protocolTotal: 100000 });
+    expect(checkEntry({ kind: 'ENTRADA', method: 'CARTAO_CREDITO', amount: 100000, received: 50000, protocol: '1' })).toEqual({ paid: 50000, received: 50000, change: 0, pending: 50000, protocolTotal: 100000 });
+    expect(checkEntry({ kind: 'ENTRADA', method: 'PIX', amount: 300, protocol: '1' })).toMatchObject({ paid: 300, pending: 0 });
+    expect(() => checkEntry({ kind: 'ENTRADA', method: 'PIX', amount: 15847, received: 20000, protocol: '1' })).toThrow(/não pode passar/);
     expect(() => checkEntry({ kind: 'ENTRADA', method: 'PIX', amount: 100 })).toThrow(/protocolo/);
     expect(() => checkEntry({ kind: 'SAIDA_DESPESA', method: 'DINHEIRO', amount: 100 })).toThrow(/favorecido/);
-    expect(checkEntry({ kind: 'SAIDA_DESPESA', method: 'DINHEIRO', amount: 100, payee: 'CASAN – água' })).toEqual({ received: null, change: 0 });
+    expect(checkEntry({ kind: 'SAIDA_DESPESA', method: 'DINHEIRO', amount: 100, payee: 'CASAN – água' })).toEqual({ paid: 100, received: null, change: 0, pending: 0, protocolTotal: null });
   });
 });
 
@@ -69,13 +72,13 @@ describe('Dia de caixa', () => {
   });
 
   it('entradas por forma de pagamento, troco gravado, repasse × despesa × devolução, sangria; estorno anula', async () => {
-    const e1 = await addEntry(cLarissa, day, { kind: 'ENTRADA', method: 'DINHEIRO', protocol: '1001', amountCents: 15847, receivedCents: 20000 });
+    const { id: e1 } = await addEntry(cLarissa, day, { kind: 'ENTRADA', method: 'DINHEIRO', protocol: '1001', amountCents: 15847, receivedCents: 20000 });
     await addEntry(cLarissa, day, { kind: 'ENTRADA', method: 'PIX', protocol: '1002', amountCents: 30000 });
     await addEntry(cLarissa, day, { kind: 'ENTRADA', method: 'CARTAO_DEBITO', protocol: '1003', amountCents: 12000, reference: 'NSU 778899' });
     await addEntry(cLarissa, day, { kind: 'SAIDA_REPASSE', method: 'DINHEIRO', protocol: '1001', amountCents: 2500, description: 'Correios' });
     await addEntry(cLarissa, day, { kind: 'SAIDA_DESPESA', method: 'DINHEIRO', payee: 'CASAN – água', amountCents: 8000 });
     await expect(addEntry(cLarissa, day, { kind: 'SAIDA_DESPESA', method: 'DINHEIRO', amountCents: 8000 })).rejects.toThrow(/favorecido/);
-    const wrong = await addEntry(cLarissa, day, { kind: 'ENTRADA', method: 'DINHEIRO', protocol: '1004', amountCents: 5000 });
+    const { id: wrong } = await addEntry(cLarissa, day, { kind: 'ENTRADA', method: 'DINHEIRO', protocol: '1004', amountCents: 5000 });
     await reverseEntry(cLarissa, wrong, 'Lançado em duplicidade');
     await expect(reverseEntry(cLarissa, wrong, 'De novo')).rejects.toThrow(/já foi estornado/);
     await expect(query(getPool(), 'DELETE FROM cash_entries WHERE id = $1', [e1])).rejects.toThrow();
@@ -88,14 +91,20 @@ describe('Dia de caixa', () => {
     expect(v.summary.expectedCash).toBe(15347);
   });
 
-  it('fechamento calcula esperado e diferença e avisa a conferência; reabertura pela Bárbara', async () => {
-    const r = await closeSession(cLarissa, day, { countedCents: 15300, sentToDepositCents: 5000 });
+  it('sangria e fechamento só por quem fecha (Bárbara); operadora não; calcula esperado e diferença; reabertura', async () => {
+    await expect(addEntry(cLarissa, day, { kind: 'SANGRIA', method: 'DINHEIRO', amountCents: 1000 })).rejects.toThrow(/sangria/i);
+    await expect(closeSession(cLarissa, day, { countedCents: 15347 })).rejects.toThrow(/fechar o caixa/);
+    expect((await getSession(cLarissa, day)).can).toMatchObject({ add: true, sangria: false, close: false });
+    expect((await getSession(cBarbara, day)).can).toMatchObject({ add: false, sangria: true, close: true });
+    expect((await pendingClose(cBarbara)).map((d) => d.id)).toEqual([day]);
+    expect(await pendingClose(cLarissa)).toEqual([]);
+    const r = await closeSession(cBarbara, day, { countedCents: 15300, sentToDepositCents: 5000 });
     expect(r).toEqual({ expected: 15347, difference: -47 });
     await expect(addEntry(cLarissa, day, { kind: 'ENTRADA', method: 'PIX', protocol: '9', amountCents: 100 })).rejects.toThrow(/fechado/);
-    expect((await queryOne<{ n: number }>(getPool(), "SELECT count(*)::int AS n FROM notifications WHERE user_id = $1 AND kind = 'CAIXA_CONFERIR'", [cBarbara.principal.userId]))!.n).toBe(1);
+    expect((await queryOne<{ n: number }>(getPool(), "SELECT count(*)::int AS n FROM notifications WHERE user_id = $1 AND kind = 'CAIXA_CONFERIR'", [cOwner.principal.userId]))!.n).toBe(1);
     expect((await pendingConference(cBarbara)).map((p) => p.id)).toEqual([day]);
     await reopenSession(cBarbara, day, 'Contagem refeita');
-    await closeSession(cLarissa, day, { countedCents: 15347, sentToDepositCents: 5000 });
+    await closeSession(cBarbara, day, { countedCents: 15347, sentToDepositCents: 5000 });
   });
 
   it('Bárbara aponta divergência e confirma o dia com um clique; quem lançou não confere; depois trava', async () => {
@@ -117,13 +126,36 @@ describe('Dia de caixa', () => {
     await addEntry(cLarissa, d, { kind: 'ENTRADA', method: 'DINHEIRO', protocol: '2002', amountCents: 1000 });
     const v = await getSession(cOwner, d);
     expect(v.entries.map((e) => e.operator_name)).toEqual(['Bianca Fictícia', 'Larissa Fictícia']);
-    await closeSession(cBianca, d, { countedCents: 6000 });
+    await closeSession(cOwner, d, { countedCents: 6000 });
     await query(getPool(), "INSERT INTO cash_register_operators (register_id, user_id) VALUES ($1, $2)", [cxApoio, cBarbara.principal.userId]);
     await query(getPool(), "UPDATE cash_sessions SET status = 'ABERTO', closed_at = NULL, counted_cash = NULL WHERE id = $1", [d]);
     await addEntry(cBarbara, d, { kind: 'SUPRIMENTO', method: 'DINHEIRO', amountCents: 1000 });
-    await closeSession(cBianca, d, { countedCents: 7000 });
+    await closeSession(cOwner, d, { countedCents: 7000 });
     await expect(confirmSession(cBarbara, d)).rejects.toThrow(/próprio caixa/);
     await confirmSession(cOwner, d);
+  });
+});
+
+describe('Pagamento dividido e permissões por aba', () => {
+  it('protocolo de 1.000,00 pago 500,00 em dinheiro + 500,00 no cartão', async () => {
+    const d = await openSession(cBianca, cxApoio).catch(async () => (await query<{ id: string }>(getPool(), "SELECT id FROM cash_sessions WHERE register_id = $1 AND work_date = $2", [cxApoio, today]))[0]!.id);
+    await query(getPool(), "UPDATE cash_sessions SET status = 'ABERTO', closed_at = NULL, counted_cash = NULL WHERE id = $1", [d]);
+    const a = await addEntry(cBianca, d, { kind: 'ENTRADA', method: 'DINHEIRO', protocol: '5000', amountCents: 100000, receivedCents: 50000 });
+    expect(a.pending).toBe(50000);
+    const b = await addEntry(cBianca, d, { kind: 'ENTRADA', method: 'CARTAO_CREDITO', protocol: '5000', amountCents: 100000, receivedCents: 50000 });
+    expect(b.pending).toBe(50000);
+    const rows = (await getSession(cOwner, d)).entries.filter((e) => e.protocol === '5000');
+    expect(rows.map((e) => [e.method, e.amount, e.protocol_total])).toEqual([['DINHEIRO', '500.00', '1000.00'], ['CARTAO_CREDITO', '500.00', '1000.00']]);
+    for (const e of rows) await reverseEntry(cBianca, e.id, 'Teste de pagamento dividido');
+    await closeSession(cOwner, d, { countedCents: 7000 });
+    await confirmSession(cOwner, d);
+  });
+
+  it('cada aba é uma permissão: caixa vê só Frente de caixa e Troco; Bárbara e Oficial veem tudo', () => {
+    const tabs = ['hoje', 'mes', 'ano', 'conferencia', 'troco', 'relatorios', 'conciliacao', 'caixas'] as const;
+    expect(tabs.filter((t) => canCashTab(cLarissa.principal, t))).toEqual(['hoje', 'troco']);
+    expect(tabs.filter((t) => canCashTab(cBarbara.principal, t))).toEqual(['hoje', 'mes', 'ano', 'conferencia', 'troco', 'relatorios', 'conciliacao']);
+    expect(tabs.filter((t) => canCashTab(cOwner.principal, t))).toEqual([...tabs]);
   });
 });
 
@@ -135,7 +167,9 @@ describe('Mês, ano e relatórios', () => {
     await expect(approveMonth({ ...cBarbara, stepUpAt: null }, cxLarissa, month)).rejects.toThrow('reautenticação');
     await approveMonth(cBarbara, cxLarissa, month, 'Mês conferido');
     await expect(approveMonth(cBarbara, cxLarissa, month)).rejects.toThrow(/já foi aprovado/);
-    expect((await monthView(cLarissa, cxLarissa, month)).approval).not.toBeNull();
+    await expect(monthView(cLarissa, cxLarissa, month)).rejects.toThrow(); // caixas não veem Mês nem Ano
+    await expect(yearView(cLarissa, cxLarissa, 2026)).rejects.toThrow();
+    expect((await monthView(cOwner, cxLarissa, month)).approval).not.toBeNull();
     const y = await yearView(cBarbara, cxLarissa, Number(month.slice(0, 4)));
     expect(y.find((r) => r.month === month)).toMatchObject({ days: 1, approved: true });
   });

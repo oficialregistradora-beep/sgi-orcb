@@ -47,15 +47,30 @@ try {
   await gabi.reload();
   check('Três lançamentos e troco gravado', (await gabi.locator('h2:has-text("Lançamentos") + p').textContent()).includes('3') && await gabi.locator('td:has-text("R$ 41,53")').isVisible());
   check('Dinheiro esperado: 100,00 + 158,47 − 80,00', await gabi.locator('text=R$ 178,47').first().isVisible());
-  gabi.on('dialog', (d) => d.accept());
-  await gabi.fill('#cf-c', '178,47');
-  await gabi.fill('#cf-d', '100,00');
-  await gabi.click('button:has-text("Fechar o caixa")');
-  await gabi.waitForSelector('text=Fechado — aguardando conferência', { timeout: 15000 });
-  check('Fechamento sem diferença', await gabi.locator('text=diferença').first().isVisible());
+  // pagamento dividido: protocolo de 1.000,00 = 500,00 em dinheiro + 500,00 no cartão
+  await gabi.fill('#ce-p', '1005'); await gabi.fill('#ce-a', '1000,00'); await gabi.fill('#ce-r', '500,00');
+  await gabi.click('button:has-text("Lançar")');
+  await gabi.waitForSelector('text=Falta R$ 500,00', { timeout: 15000 });
+  await gabi.selectOption('#ce-m', 'CARTAO_CREDITO'); await gabi.fill('#ce-p', '1005'); await gabi.fill('#ce-a', '1000,00'); await gabi.fill('#ce-r', '500,00');
+  await gabi.click('button:has-text("Lançar")');
+  await gabi.waitForFunction(() => document.querySelectorAll('td').length && [...document.querySelectorAll('td')].filter((t) => t.textContent?.trim() === '1005').length === 2, null, { timeout: 15000 });
+  check('Pagamento dividido aceito (500 dinheiro + 500 cartão de um protocolo de 1.000)', await gabi.locator('text=de R$ 1.000,00').first().isVisible());
+  const tabs = await gabi.locator('nav[aria-label="Abas do caixa"] a, .tabs a').allTextContents();
+  check('Caixa vê só Frente de caixa e Troco; sem sangria nem fechamento', !tabs.some((t) => /Mês|Ano|Conferência|Relatórios/.test(t)) && !(await gabi.locator('button:has-text("Fechar o caixa")').count()) && !(await gabi.locator('h2:has-text("Sangria")').count()), tabs.join(','));
 
   const bia = await login('Beatriz');
   bia.on('dialog', (d) => d.accept());
+  await bia.goto(`${BASE}/caixa`);
+  await bia.click('a:has-text("Sangria e fechamento")');
+  await bia.waitForURL(/dia=/);
+  await bia.fill('#sg-a', '500,00'); await bia.fill('#sg-d', 'cofre');
+  await bia.click('button:has-text("Lançar sangria")');
+  await bia.waitForSelector('td:has-text("cofre")', { timeout: 15000 });
+  await bia.fill('#cf-c', '178,47');
+  await bia.fill('#cf-d', '100,00');
+  await bia.click('button:has-text("Fechar o caixa")');
+  await bia.waitForSelector('text=Fechado — aguardando conferência', { timeout: 15000 });
+  check('Bárbara faz sangria e fechamento sem diferença', await bia.locator('text=diferença').first().isVisible());
   await bia.goto(`${BASE}/caixa?aba=conferencia`);
   check('Conferência lista o dia fechado', await bia.locator('td:has-text("Caixa Gabriela")').isVisible());
   await bia.click('a:has-text("Conferir")');

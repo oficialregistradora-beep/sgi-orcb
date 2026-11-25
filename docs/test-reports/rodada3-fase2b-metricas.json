@@ -1,17 +1,17 @@
 {
-  "executadoEm": "2026-10-23T20:42:30.784Z",
+  "executadoEm": "2026-11-25T16:40:26.126Z",
   "periodo": {
-    "de": "2026-04-23",
-    "ate": "2026-10-22"
+    "de": "2026-05-26",
+    "ate": "2026-11-24"
   },
   "metricas": {
-    "plantoes": 55,
+    "plantoes": 56,
     "chamados_sem_comparecimento": 20,
     "chamados_com_comparecimento": 40,
-    "minutos_sobreaviso": 29901,
+    "minutos_sobreaviso": 30501,
     "minutos_efetivo_banco": 2509,
     "minutos_efetivo_pagamento": 652,
     "ferias_simuladas_aceitas": 7,
-    "ferias_simuladas_recusadas": 48
+    "ferias_simuladas_recusadas": 47
   }
 }

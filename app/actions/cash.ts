@@ -31,12 +31,12 @@ export async function cashOperateAction(_p: ActionState, fd: FormData): Promise<
       case 'lancar': {
         const kind = str(fd, 'kind') as 'ENTRADA' | 'SAIDA_REPASSE' | 'SAIDA_DESPESA' | 'SAIDA_DEVOLUCAO' | 'SUPRIMENTO' | 'SANGRIA';
         const method = (kind === 'SUPRIMENTO' || kind === 'SANGRIA' ? 'DINHEIRO' : str(fd, 'method')) as CashMethod;
-        await addEntry(ctx, str(fd, 'sessionId'), {
+        const r = await addEntry(ctx, str(fd, 'sessionId'), {
           kind, method, protocol: optStr(fd, 'protocol'), payee: optStr(fd, 'payee'), amountCents: money(fd, 'amount')!,
-          receivedCents: method === 'DINHEIRO' && kind === 'ENTRADA' ? money(fd, 'received', false) : null,
+          receivedCents: kind === 'ENTRADA' ? money(fd, 'received', false) : null,
           description: optStr(fd, 'description'), reference: optStr(fd, 'reference'),
         });
-        return 'Lançamento registrado.';
+        return r.pending ? `Lançamento registrado. Falta ${formatCents(r.pending)} deste protocolo: lance o restante na outra forma de pagamento.` : 'Lançamento registrado.';
       }
       case 'estornar':
         await reverseEntry(ctx, str(fd, 'entryId'), str(fd, 'reason'));

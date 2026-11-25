@@ -424,29 +424,48 @@ Em **Centros e categorias** e em **Fornecedores**:
 
 ## 6A. Controle de caixa (atendimento e administrativo)
 
-Menu **Controle de caixa** (aparece para quem opera um caixa, para quem confere — a Bárbara — e para a Oficial). Segue o modelo das planilhas anuais da serventia: um caixa por funcionária (ex.: Larissa, Bianca) e o **Apoio** compartilhado; cada caixa tem os dias de cada mês e o resumo do ano. Abas: **Frente de caixa**, **Mês**, **Ano**, **Conferência**, **Troco**, **Relatórios**, **Conciliação** e **Caixas**.
+Menu **Controle de caixa** (aparece para quem tem ao menos uma aba do caixa liberada). Segue o modelo das planilhas anuais da serventia: um caixa por funcionária (ex.: Larissa, Bianca) e o **Apoio** compartilhado; cada caixa tem os dias de cada mês e o resumo do ano. Abas: **Frente de caixa**, **Mês**, **Ano**, **Conferência**, **Troco**, **Relatórios**, **Conciliação** e **Caixas**.
+
+**Cada aba é uma permissão** que a Oficial dá ou tira em *Usuários e permissões → Matriz de permissões*, módulo **Financeiro**, linhas que começam com **"Caixa:"**. Padrão:
+
+| Permissão | Oficial | Substituta (Bárbara) | Colaboradoras (caixas) |
+|---|---|---|---|
+| Caixa: Frente de caixa | ✔ | ✔ | ✔ |
+| Caixa: calculadora de Troco | ✔ | ✔ | ✔ |
+| Caixa: visão do Mês / do Ano | ✔ | ✔ | — |
+| Caixa: Conferência | ✔ | ✔ | — |
+| Caixa: Relatórios | ✔ | ✔ | — |
+| Caixa: Conciliação | ✔ | ✔ | — |
+| Caixa: Sangria e fechamento do dia | ✔ | ✔ | — |
+| Caixa: cadastro de Caixas | ✔ | — | — |
+
+Para liberar algo a **uma pessoa só**, crie um perfil novo na Matriz (ex.: "Caixa – vê o mês"), marque só a permissão desejada e atribua esse perfil à pessoa, além do perfil que ela já tem.
 
 ### 6A.1 Frente de caixa (operadora)
 1. **Abrir caixa** no início do dia. O **fundo de troco** vem sozinho: o que ficou na gaveta no último fechamento (dinheiro contado − enviado ao depósito); dá para ajustar.
-2. **Novo lançamento** — uma linha por pagamento e por forma de pagamento (pagamento misto = duas linhas):
-   - **Entrada (cliente pagou):** nº do protocolo, **valor do protocolo** e forma (dinheiro, PIX, cartão de débito/crédito, depósito). Em **dinheiro**, informe o **valor total recebido**: o sistema mostra na hora o **troco** e quais **notas e moedas** devolver; o recebido não pode ser menor que o protocolo. Em PIX, cartão ou depósito, o recebido é igual ao protocolo.
+2. **Novo lançamento** — uma linha por forma de pagamento:
+   - **Entrada (cliente pagou):** nº do protocolo, **valor do protocolo** e forma (dinheiro, PIX, cartão de débito/crédito, depósito). Em **dinheiro**, informe o **valor recebido em dinheiro**: se for maior, o sistema mostra o **troco** e quais **notas e moedas** devolver. Em PIX, cartão ou depósito, informe o **valor pago nesta forma** (em branco = valor do protocolo inteiro).
+   - **Pagamento dividido** (ex.: protocolo de R$ 1.000,00 pago com R$ 500,00 em dinheiro e R$ 500,00 no cartão): lance a linha do dinheiro (protocolo 1.000,00, recebido 500,00); o sistema avisa **"Falta R$ 500,00 deste protocolo"**; lance a segunda linha com o mesmo protocolo, forma cartão, recebido 500,00. Cada linha mostra o valor pago e, embaixo, "de R$ 1.000,00".
    - **Saída — repasse:** dinheiro de terceiro que a parte já pagou (correio, diligência, outra serventia). Pede o protocolo.
    - **Saída — despesa:** gasto da serventia (ex.: água). Pede só o **favorecido** (ex.: "CASAN – água").
    - **Saída — devolução:** devolução ao cliente. Pede o protocolo.
-   - **Suprimento** (reforço de troco) e **Sangria** (retirada para cofre/depósito): sempre em dinheiro.
+   - **Suprimento** (reforço de troco): sempre em dinheiro. A **sangria** não aparece para as caixas (ver item 4).
    - **Comprovante / NSU** e **observação** são opcionais: nada exige comprovante; quem controla é a conferência.
 3. **Nada se apaga.** Lançou errado? Na linha, **Estornar** com o motivo: o estorno entra no caixa de hoje e anula o original.
-4. **Fechamento do dia:** conte a gaveta e informe o **dinheiro contado** e o **enviado para depósito**. O sistema compara com o **dinheiro esperado** (fundo + entradas em dinheiro − saídas em dinheiro ± suprimento/sangria) e mostra a **diferença**. A Bárbara é avisada no sino.
+4. **Sangria e fechamento do dia — somente a Bárbara** (permissão *Caixa: Sangria e fechamento do dia*), no fim do dia ou **na manhã do dia útil seguinte**. Na Frente de caixa dela aparece o quadro **"Dias aguardando sangria e fechamento"** → **Sangria e fechamento**:
+   - **Sangria:** valor e destino (ex.: cofre);
+   - **Fechamento:** conte a gaveta e informe o **dinheiro contado** e o **enviado para depósito**. O sistema compara com o **dinheiro esperado** (fundo + entradas em dinheiro − saídas em dinheiro ± suprimento/sangria) e mostra a **diferença**. Quem confere é avisado no sino.
+   - A caixa só lança no dia de hoje; depois de fechado, ninguém lança mais.
 - No **Apoio** (compartilhado), cada linha grava automaticamente **o usuário que lançou** (pela conta Google de cada um) — não é preciso digitar o nome.
 
 ### 6A.2 Conferência (Bárbara, no dia seguinte)
 1. Aba **Conferência** → **Conferir** no dia fechado.
 2. Se algo não bater (ex.: PIX que não está no extrato), escreva na linha, coluna **Conferência**, e clique em **Apontar**: a linha fica destacada e entra na contagem de divergências do mês.
 3. **Confirmar dia** — um único clique confere todas as linhas e trava o dia. Quem lançou naquele dia não confere o próprio caixa (salvo a Oficial).
-4. Contagem errada? **Reabrir** (com motivo) devolve o dia à operadora para refazer o fechamento.
+4. Contagem errada? **Reabrir** (com motivo) devolve o dia para refazer a contagem e o fechamento.
 5. **Aprovação final do mês** (aba **Mês**): disponível quando todos os dias estão conferidos; pede o código do autenticador. Depois dela o mês fica fechado para novos dias.
 
-### 6A.3 Mês, Ano e Troco
+### 6A.3 Mês, Ano e Troco (as caixas veem só o Troco)
 - **Mês:** um quadro por dia (entradas por forma de pagamento, repasses, despesas, devoluções, diferença e situação) e os totais do mês.
 - **Ano:** os 12 meses do caixa, com situação (conferido, aguardando aprovação, aprovado).
 - **Troco:** calculadora avulsa — digite o valor do protocolo e o valor entregue (ex.: R$ 158,47 com R$ 200,00 → troco R$ 41,53: 2 notas de R$ 20, 1 moeda de R$ 1, 1 de R$ 0,50 e 3 de R$ 0,01).
@@ -465,7 +484,7 @@ Menu **Controle de caixa** (aparece para quem opera um caixa, para quem confere 
 3. No extrato, cada linha mostra o lançamento correspondente; o que sobrar aparece **"Não localizado"** (para conciliar à mão ou apontar divergência) e, embaixo, os **lançamentos do mês sem correspondência**. Na Frente de caixa, a linha conciliada ganha a etiqueta **conciliado: banco / cartão / dep. prévio**.
 
 ### 6A.6 Caixas (Oficial)
-Aba **Caixas** → **Novo caixa**: código, nome, setor (atendimento ou administrativo), fundo de troco padrão e operadora(s). **Individual** = uma operadora; **Compartilhado** (Apoio) = vários usuários. A Bárbara confere por padrão (permissão *Conferir dias de caixa*); ajuste na Matriz de permissões, se precisar.
+Aba **Caixas** → **Novo caixa**: código, nome, setor (atendimento ou administrativo), fundo de troco padrão e operadora(s). **Individual** = uma operadora; **Compartilhado** (Apoio) = vários usuários. A Bárbara confere, faz a sangria e fecha por padrão; ajuste as abas de cada pessoa na Matriz de permissões (ver o quadro no início desta seção).
 
 > NFC-e: não se aplica — os atos notariais e de registro têm recibo e selo próprios. Pagamento em PIX/cartão continua sendo conferido pelos extratos.
 

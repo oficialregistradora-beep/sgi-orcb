@@ -19,6 +19,18 @@ import { notifyUsers, usersWithPermission } from './notifications.ts';
 export const canConfer = (p: Principal) => p.isOwner || can(p, 'caixa.conferir');
 export const canManageCash = (p: Principal) => p.isOwner || can(p, 'caixa.gerenciar');
 
+/** Cada aba do caixa é uma permissão, dada ou retirada pela Oficial na Matriz de permissões. */
+export const CASH_TABS = {
+  hoje: 'caixa.frente', mes: 'caixa.mes', ano: 'caixa.ano', conferencia: 'caixa.conferir', troco: 'caixa.troco',
+  relatorios: 'caixa.relatorios', conciliacao: 'caixa.conciliacao', caixas: 'caixa.gerenciar',
+} as const;
+export type CashTab = keyof typeof CASH_TABS;
+export const canCashTab = (p: Principal, tab: CashTab) => p.isOwner || can(p, CASH_TABS[tab]);
+/** Sangria e fechamento do dia (Bárbara, por padrão). */
+export const canCloseCash = (p: Principal) => p.isOwner || can(p, 'caixa.fechar');
+/** Visões que alcançam todos os caixas (não só os que a pessoa opera). */
+const seesAllRegisters = (p: Principal) => p.isOwner || ['caixa.conferir', 'caixa.gerenciar', 'caixa.mes', 'caixa.ano', 'caixa.relatorios', 'caixa.conciliacao', 'caixa.fechar'].some((x) => can(p, x));
+
 export type RegisterRow = {
   id: string; code: string; name: string; sector_id: string; sector_name: string; shared: boolean; default_float: string; active: boolean;
   operators: { id: string; name: string }[];
@@ -35,12 +47,13 @@ async function registersQuery(db: Db, where: string, params: unknown[]): Promise
 /** Caixas que a pessoa enxerga: todos para quem confere ou gerencia; senão, os que ela opera. */
 export async function listRegisters(ctx: Ctx): Promise<RegisterRow[]> {
   const db = getPool();
-  if (canConfer(ctx.principal) || canManageCash(ctx.principal)) return registersQuery(db, '', []);
+  if (seesAllRegisters(ctx.principal)) return registersQuery(db, '', []);
   return registersQuery(db, 'WHERE r.active AND EXISTS (SELECT 1 FROM cash_register_operators o WHERE o.register_id = r.id AND o.user_id = $1)', [ctx.principal.userId]);
 }
 
 export async function hasCashAccess(db: Db, p: Principal): Promise<boolean> {
-  if (canConfer(p) || canManageCash(p)) return true;
+  if (seesAllRegisters(p) || (can(p, 'caixa.troco') && !can(p, 'caixa.frente'))) return true;
+  if (!can(p, 'caixa.frente')) return false;
   return !!(await queryOne(db, `SELECT 1 FROM cash_register_operators o JOIN cash_registers r ON r.id = o.register_id WHERE o.user_id = $1 AND r.active`, [p.userId]));
 }
 
@@ -49,12 +62,13 @@ async function isOperator(db: Db, registerId: string, userId: string): Promise<b
 }
 
 async function assertSee(db: Db, ctx: Ctx, registerId: string): Promise<void> {
-  if (canConfer(ctx.principal) || canManageCash(ctx.principal)) return;
+  if (seesAllRegisters(ctx.principal)) return;
   if (!(await isOperator(db, registerId, ctx.principal.userId))) throw new NotFoundError('Caixa não encontrado.');
 }
 
 async function assertOperate(db: Db, ctx: Ctx, registerId: string): Promise<void> {
   if (ctx.principal.isOwner) return;
+  if (!can(ctx.principal, 'caixa.frente')) throw new ForbiddenError('Sem acesso à Frente de caixa.');
   if (!(await isOperator(db, registerId, ctx.principal.userId))) throw new ForbiddenError('Você não opera este caixa.');
 }
 
@@ -111,7 +125,7 @@ const SESSION_SELECT = `SELECT s.id, s.register_id, r.code AS register_code, r.n
   LEFT JOIN users uc ON uc.id = s.closed_by LEFT JOIN users uk ON uk.id = s.checked_by`;
 
 export type EntryRow = {
-  id: string; session_id: string; kind: CashKind; method: CashMethod; protocol: string | null; payee: string | null; amount: string; received: string | null;
+  id: string; session_id: string; kind: CashKind; method: CashMethod; protocol: string | null; payee: string | null; amount: string; received: string | null; protocol_total: string | null;
   change_given: string; description: string | null; reference: string | null; reverses_entry_id: string | null; reversed_by_id: string | null;
   operator_id: string; operator_name: string; created_at: Date; divergence: string | null; divergence_by: string | null;
   orig_kind: CashKind | null; orig_method: CashMethod | null; orig_amount: string | null; reconciled: string[];
@@ -120,7 +134,7 @@ export type EntryRow = {
 async function loadEntries(db: Db, sessionIds: string[]): Promise<EntryRow[]> {
   if (!sessionIds.length) return [];
   return query<EntryRow>(db,
-    `SELECT e.id, e.session_id, e.kind, e.method, e.protocol, e.payee, e.amount::text, e.received::text, e.change_given::text, e.description, e.reference,
+    `SELECT e.id, e.session_id, e.kind, e.method, e.protocol, e.payee, e.amount::text, e.received::text, e.protocol_total::text, e.change_given::text, e.description, e.reference,
             e.reverses_entry_id, (SELECT x.id FROM cash_entries x WHERE x.reverses_entry_id = e.id) AS reversed_by_id,
             e.operator_id, u.display_name AS operator_name, e.created_at, d.note AS divergence, du.display_name AS divergence_by,
             o.kind AS orig_kind, o.method AS orig_method, o.amount::text AS orig_amount,
@@ -175,12 +189,14 @@ export async function getSession(ctx: Ctx, sessionId: string) {
   const entries = await loadEntries(db, [s.id]);
   const operator = ctx.principal.isOwner || (await isOperator(db, s.register_id, ctx.principal.userId));
   const conferente = canConfer(ctx.principal);
-  const ownLines = entries.some((e) => e.operator_id === ctx.principal.userId);
+  const closer = canCloseCash(ctx.principal);
+  const ownLines = entries.some((e) => e.operator_id === ctx.principal.userId && e.kind !== 'SANGRIA');
   return {
     session: s, entries, summary: summarize(s, entries),
     can: {
-      add: s.status === 'ABERTO' && operator && s.work_date === todayLocal(),
-      close: s.status === 'ABERTO' && operator,
+      add: s.status === 'ABERTO' && operator && (ctx.principal.isOwner || can(ctx.principal, 'caixa.frente')) && s.work_date === todayLocal(),
+      sangria: s.status === 'ABERTO' && closer,
+      close: s.status === 'ABERTO' && closer,
       diverge: s.status === 'FECHADO' && conferente,
       confirm: s.status === 'FECHADO' && conferente && (ctx.principal.isOwner || !ownLines),
       reopen: s.status === 'FECHADO' && conferente,
@@ -205,31 +221,38 @@ const entrySchema = z.object({
   reference: z.string().trim().max(120).optional(),
 });
 
-async function lockOpenSession(c: Db, ctx: Ctx, sessionId: string): Promise<{ id: string; register_id: string; register_code: string; work_date: string }> {
+async function lockOpenSession(c: Db, ctx: Ctx, sessionId: string, sangria = false): Promise<{ id: string; register_id: string; register_code: string; work_date: string }> {
   const s = await queryOne<{ id: string; register_id: string; register_code: string; work_date: string; status: string }>(c,
     'SELECT s.id, s.register_id, r.code AS register_code, s.work_date, s.status FROM cash_sessions s JOIN cash_registers r ON r.id = s.register_id WHERE s.id = $1 FOR UPDATE OF s', [sessionId]);
   if (!s) throw new NotFoundError('Dia de caixa não encontrado.');
-  await assertOperate(c, ctx, s.register_id);
   if (s.status !== 'ABERTO') throw new AppError('O caixa deste dia já foi fechado.');
-  if (s.work_date !== todayLocal()) throw new AppError('Lançamentos só no dia do caixa. Feche este dia e abra o de hoje.');
+  // Sangria: só quem fecha o caixa, e vale também no dia útil seguinte, antes do fechamento.
+  if (sangria) {
+    if (!canCloseCash(ctx.principal)) throw new ForbiddenError('A sangria é feita por quem fecha o caixa.');
+    return s;
+  }
+  await assertOperate(c, ctx, s.register_id);
+  if (s.work_date !== todayLocal()) throw new AppError('Lançamentos só no dia do caixa. Este dia aguarda o fechamento; abra o caixa de hoje.');
   return s;
 }
 
-export async function addEntry(ctx: Ctx, sessionId: string, input: z.input<typeof entrySchema>): Promise<string> {
+/** Lança uma linha. `pending` > 0 indica pagamento dividido: falta lançar o restante do protocolo em outra forma. */
+export async function addEntry(ctx: Ctx, sessionId: string, input: z.input<typeof entrySchema>): Promise<{ id: string; pending: number }> {
   const d = entrySchema.parse(input);
-  let checked: { received: number | null; change: number };
+  let checked: ReturnType<typeof checkEntry>;
   try { checked = checkEntry({ kind: d.kind, method: d.method, amount: d.amountCents, received: d.receivedCents, protocol: d.protocol, payee: d.payee }); }
   catch (e) { throw new AppError((e as Error).message); }
   return tx(async (c) => {
-    const s = await lockOpenSession(c, ctx, z.uuid().parse(sessionId));
+    const s = await lockOpenSession(c, ctx, z.uuid().parse(sessionId), d.kind === 'SANGRIA');
     const r = (await queryOne<{ id: string }>(c,
-      `INSERT INTO cash_entries (session_id, kind, method, protocol, payee, amount, received, change_given, description, reference, operator_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
-      [s.id, d.kind, d.method, d.protocol || null, d.payee || null, centsToDb(d.amountCents), checked.received != null ? centsToDb(checked.received) : null,
-        centsToDb(checked.change), d.description || null, d.reference || null, ctx.principal.userId]))!;
+      `INSERT INTO cash_entries (session_id, kind, method, protocol, payee, amount, received, change_given, description, reference, operator_id, protocol_total)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+      [s.id, d.kind, d.method, d.protocol || null, d.payee || null, centsToDb(checked.paid), checked.received != null ? centsToDb(checked.received) : null,
+        centsToDb(checked.change), d.description || null, d.reference || null, ctx.principal.userId, checked.protocolTotal != null ? centsToDb(checked.protocolTotal) : null]))!;
     await audit(c, ctx, { action: 'CAIXA_LANCAMENTO', entityType: 'cash_entry', entityId: r.id,
-      summary: `Caixa ${s.register_code} ${s.work_date}: ${CASH_KIND_LABEL[d.kind]} ${formatCents(d.amountCents)} (${d.method.toLowerCase()})${d.protocol ? ` — prot. ${d.protocol}` : ''}${d.payee ? ` — ${d.payee}` : ''}` });
-    return r.id;
+      summary: `Caixa ${s.register_code} ${s.work_date}: ${CASH_KIND_LABEL[d.kind]} ${formatCents(checked.paid)} (${d.method.toLowerCase()})${d.protocol ? ` — prot. ${d.protocol}` : ''}`
+        + `${checked.protocolTotal && checked.protocolTotal !== checked.paid ? ` de ${formatCents(checked.protocolTotal)}` : ''}${d.payee ? ` — ${d.payee}` : ''}` });
+    return { id: r.id, pending: checked.pending };
   });
 }
 
@@ -261,14 +284,14 @@ const closeSchema = z.object({
   notes: z.string().trim().max(1000).optional(),
 });
 
-/** Fechamento: a operadora informa o dinheiro contado e o enviado ao depósito; o sistema calcula o esperado e a diferença. */
+/** Fechamento (quem tem "caixa.fechar", inclusive no dia útil seguinte): dinheiro contado e enviado ao depósito; o sistema calcula esperado e diferença. */
 export async function closeSession(ctx: Ctx, sessionId: string, input: z.input<typeof closeSchema>): Promise<{ expected: number; difference: number }> {
   const d = closeSchema.parse(input);
   if (d.sentToDepositCents > d.countedCents) throw new AppError('O valor enviado ao depósito não pode ser maior que o dinheiro contado.');
   return tx(async (c) => {
     const s = await queryOne<SessionRow>(c, `${SESSION_SELECT} WHERE s.id = $1 FOR UPDATE OF s`, [z.uuid().parse(sessionId)]);
     if (!s) throw new NotFoundError('Dia de caixa não encontrado.');
-    await assertOperate(c, ctx, s.register_id);
+    if (!canCloseCash(ctx.principal)) throw new ForbiddenError('O fechamento do dia é feito por quem tem a permissão de fechar o caixa.');
     if (s.status !== 'ABERTO') throw new AppError('Este dia já foi fechado.');
     const sum = summarize(s, await loadEntries(c, [s.id]));
     const difference = d.countedCents - sum.expectedCash;
@@ -319,7 +342,8 @@ export async function markDivergence(ctx: Ctx, entryId: string, note: string | n
 export async function confirmSession(ctx: Ctx, sessionId: string, notes?: string): Promise<void> {
   await tx(async (c) => {
     const s = await lockForConference(c, ctx, sessionId);
-    if (!ctx.principal.isOwner && await queryOne(c, 'SELECT 1 FROM cash_entries WHERE session_id = $1 AND operator_id = $2', [s.id, ctx.principal.userId])) {
+    // Sangria é parte do fechamento: não impede quem fecha de conferir. Os demais lançamentos, sim.
+    if (!ctx.principal.isOwner && await queryOne(c, "SELECT 1 FROM cash_entries WHERE session_id = $1 AND operator_id = $2 AND kind <> 'SANGRIA'", [s.id, ctx.principal.userId])) {
       throw new ForbiddenError('Quem lançou no caixa do dia não confere o próprio caixa.');
     }
     const div = (await queryOne<{ n: number }>(c, 'SELECT count(*)::int AS n FROM cash_entry_divergences d JOIN cash_entries e ON e.id = d.entry_id WHERE e.session_id = $1', [s.id]))!.n;
@@ -358,6 +382,15 @@ export async function approveMonth(ctx: Ctx, registerId: string, month: string, 
   });
 }
 
+/** Dias ainda abertos (de hoje ou anteriores), para quem faz a sangria e o fechamento. */
+export async function pendingClose(ctx: Ctx) {
+  if (!canCloseCash(ctx.principal)) return [];
+  return query<{ id: string; register_code: string; register_name: string; work_date: string; opened_by_name: string }>(getPool(),
+    `SELECT s.id, r.code AS register_code, r.name AS register_name, s.work_date, u.display_name AS opened_by_name
+       FROM cash_sessions s JOIN cash_registers r ON r.id = s.register_id JOIN users u ON u.id = s.opened_by
+      WHERE s.status = 'ABERTO' ORDER BY s.work_date, r.code`);
+}
+
 export async function pendingConference(ctx: Ctx) {
   if (!canConfer(ctx.principal)) return [];
   return query<{ id: string; register_code: string; register_name: string; work_date: string; difference: string | null; closed_by_name: string | null }>(getPool(),
@@ -371,6 +404,7 @@ export async function pendingConference(ctx: Ctx) {
 // ---------------------------------------------------------------------------
 
 export async function monthView(ctx: Ctx, registerId: string, month: string) {
+  if (!canCashTab(ctx.principal, 'mes') && !canCashTab(ctx.principal, 'ano')) throw new ForbiddenError();
   const db = getPool();
   const m = z.string().regex(/^\d{4}-\d{2}$/).parse(month);
   await assertSee(db, ctx, z.uuid().parse(registerId));
@@ -397,6 +431,7 @@ export async function monthView(ctx: Ctx, registerId: string, month: string) {
 }
 
 export async function yearView(ctx: Ctx, registerId: string, year: number) {
+  if (!canCashTab(ctx.principal, 'ano')) throw new ForbiddenError();
   const out = [];
   for (let mo = 1; mo <= 12; mo++) {
     const m = `${year}-${String(mo).padStart(2, '0')}`;
@@ -411,7 +446,7 @@ export async function yearView(ctx: Ctx, registerId: string, year: number) {
 // ---------------------------------------------------------------------------
 
 export function canSeeCashReports(p: Principal): boolean {
-  return canConfer(p) || canManageCash(p);
+  return canCashTab(p, 'relatorios');
 }
 
 async function cashTotalsByDay(db: Db, from: string, toExcl: string, registerId: string | null) {

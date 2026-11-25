@@ -6,10 +6,10 @@ import { formatCents, parseBRL } from '../domain/money.ts';
 
 const safe = (v: string): number | null => { try { return parseBRL(v); } catch { return null; } };
 
-/** Troco e cédulas a devolver, calculados na hora (evita erro de troco no balcão). */
+/** Troco e cédulas a devolver, calculados na hora (evita erro de troco no balcão). Pagamento dividido: mostra quanto falta. */
 export function ChangePreview({ amount, received }: { amount: number | null; received: number | null }) {
   if (amount == null || received == null) return null;
-  if (received < amount) return <p className="small neg" role="status">Faltam {formatCents(amount - received)}: o valor entregue é menor que o do protocolo.</p>;
+  if (received < amount) return <p className="small" role="status"><strong>Pagamento dividido:</strong> faltam {formatCents(amount - received)} deste protocolo — lance o restante na outra forma de pagamento (ex.: cartão).</p>;
   const change = received - amount;
   return (
     <div className="alert alert-info small" role="status">
@@ -19,11 +19,11 @@ export function ChangePreview({ amount, received }: { amount: number | null; rec
   );
 }
 
-const KINDS: Exclude<CashKind, 'ESTORNO'>[] = ['ENTRADA', 'SAIDA_REPASSE', 'SAIDA_DESPESA', 'SAIDA_DEVOLUCAO', 'SUPRIMENTO', 'SANGRIA'];
+const KINDS: Exclude<CashKind, 'ESTORNO' | 'SANGRIA'>[] = ['ENTRADA', 'SAIDA_REPASSE', 'SAIDA_DESPESA', 'SAIDA_DEVOLUCAO', 'SUPRIMENTO'];
 
 /** Campos do lançamento: mostram só o que cada tipo pede (protocolo, favorecido, valor recebido e troco). */
 export function CashEntryFields() {
-  const [kind, setKind] = useState<Exclude<CashKind, 'ESTORNO'>>('ENTRADA');
+  const [kind, setKind] = useState<Exclude<CashKind, 'ESTORNO' | 'SANGRIA'>>('ENTRADA');
   const [method, setMethod] = useState<CashMethod>('DINHEIRO');
   const [amount, setAmount] = useState('');
   const [received, setReceived] = useState('');
@@ -36,9 +36,9 @@ export function CashEntryFields() {
     form.addEventListener('reset', reset);
     return () => form.removeEventListener('reset', reset);
   }, []);
-  const cashOnly = kind === 'SUPRIMENTO' || kind === 'SANGRIA';
+  const cashOnly = kind === 'SUPRIMENTO';
   const needsProtocol = kind === 'ENTRADA' || kind === 'SAIDA_REPASSE' || kind === 'SAIDA_DEVOLUCAO';
-  const showReceived = kind === 'ENTRADA' && method === 'DINHEIRO';
+  const showReceived = kind === 'ENTRADA';
   return (
     <div className="stack" ref={box}>
       <div className="form-grid">
@@ -56,12 +56,13 @@ export function CashEntryFields() {
         {kind === 'SAIDA_DESPESA' ? <div className="field"><label htmlFor="ce-f">Favorecido (ex.: CASAN – água)</label><input id="ce-f" name="payee" className="input" required maxLength={160} /></div> : null}
         <div className="field"><label htmlFor="ce-a">{kind === 'ENTRADA' ? 'Valor do protocolo' : 'Valor'}</label>
           <input id="ce-a" name="amount" className="input" inputMode="decimal" required placeholder="0,00" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
-        {showReceived ? <div className="field"><label htmlFor="ce-r">Valor total recebido (dinheiro entregue)</label>
-          <input id="ce-r" name="received" className="input" inputMode="decimal" placeholder="igual ao protocolo" value={received} onChange={(e) => setReceived(e.target.value)} /></div> : null}
+        {showReceived ? <div className="field"><label htmlFor="ce-r">{method === 'DINHEIRO' ? 'Valor recebido em dinheiro (entregue)' : 'Valor pago nesta forma'}</label>
+          <input id="ce-r" name="received" className="input" inputMode="decimal" placeholder="vazio = valor do protocolo" value={received} onChange={(e) => setReceived(e.target.value)} /></div> : null}
         <div className="field"><label htmlFor="ce-n">Comprovante / NSU (opcional)</label><input id="ce-n" name="reference" className="input" maxLength={120} /></div>
         <div className="field"><label htmlFor="ce-d">Observação (opcional)</label><input id="ce-d" name="description" className="input" maxLength={500} /></div>
       </div>
       {showReceived && received ? <ChangePreview amount={safe(amount)} received={safe(received)} /> : null}
+      {showReceived ? <p className="small muted">Pagamento dividido (ex.: protocolo de R$ 1.000 com R$ 500 em dinheiro e R$ 500 no cartão): lance uma linha para cada forma, com o mesmo protocolo e o mesmo valor do protocolo, informando em cada uma o valor recebido naquela forma.</p> : null}
     </div>
   );
 }

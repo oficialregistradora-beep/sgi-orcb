@@ -37,23 +37,26 @@ export function changeBreakdown(changeCents: number): { label: string; coin: boo
 }
 
 /**
- * Valida um lançamento e calcula o troco. Entrada em dinheiro: o recebido não pode ser menor que o protocolo.
- * Demais formas: o recebido é igual ao protocolo (não há troco).
+ * Valida um lançamento. Na entrada, `amount` é o VALOR DO PROTOCOLO (total do ato) e `received` o que o cliente entregou
+ * NESTA forma de pagamento. Pagamento dividido é permitido (protocolo de 1.000 = 500 em dinheiro + 500 no cartão):
+ * a linha registra o valor pago nesta forma (`paid`) e o que falta (`pending`) vai em outra linha.
+ * Dinheiro entregue acima do protocolo gera troco; PIX, cartão e depósito não passam do valor do protocolo.
  */
 export function checkEntry(e: { kind: Exclude<CashKind, 'ESTORNO'>; method: CashMethod; amount: number; received?: number | null; protocol?: string | null; payee?: string | null }):
-  { received: number | null; change: number } {
+  { paid: number; received: number | null; change: number; pending: number; protocolTotal: number | null } {
   if (!Number.isInteger(e.amount) || e.amount <= 0) throw new Error('Informe o valor.');
   if (['ENTRADA', 'SAIDA_REPASSE', 'SAIDA_DEVOLUCAO'].includes(e.kind) && !e.protocol?.trim()) throw new Error('Informe o número do protocolo.');
   if (e.kind === 'SAIDA_DESPESA' && !e.payee?.trim()) throw new Error('Informe o favorecido da despesa (ex.: CASAN – água).');
   if ((e.kind === 'SUPRIMENTO' || e.kind === 'SANGRIA') && e.method !== 'DINHEIRO') throw new Error('Suprimento e sangria são sempre em dinheiro.');
-  if (e.kind !== 'ENTRADA') return { received: null, change: 0 };
-  if (e.method !== 'DINHEIRO') {
-    if (e.received != null && e.received !== e.amount) throw new Error('Em PIX, cartão ou depósito, o valor recebido deve ser igual ao valor do protocolo.');
-    return { received: e.amount, change: 0 };
-  }
+  if (e.kind !== 'ENTRADA') return { paid: e.amount, received: null, change: 0, pending: 0, protocolTotal: null };
   const received = e.received ?? e.amount;
-  if (received < e.amount) throw new Error('O valor recebido em dinheiro não pode ser menor que o valor do protocolo.');
-  return { received, change: received - e.amount };
+  if (!Number.isInteger(received) || received <= 0) throw new Error('Informe o valor recebido.');
+  if (e.method === 'DINHEIRO') {
+    const paid = Math.min(received, e.amount);
+    return { paid, received, change: received - paid, pending: e.amount - paid, protocolTotal: e.amount };
+  }
+  if (received > e.amount) throw new Error('Em PIX, cartão ou depósito, o valor recebido não pode passar do valor do protocolo.');
+  return { paid: received, received, change: 0, pending: e.amount - received, protocolTotal: e.amount };
 }
 
 export type EntryLike = { kind: CashKind; method: CashMethod; amount: number; reversed?: { kind: CashKind; method: CashMethod; amount: number } | null };
