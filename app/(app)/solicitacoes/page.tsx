@@ -119,6 +119,14 @@ async function SolicitacoesPage({ searchParams }: { searchParams: Promise<{ aba?
                 <div className="field"><label htmlFor="ar-s">Assunto</label><input id="ar-s" name="subject" className="input" required minLength={3} maxLength={200} /></div>
               </div>
               <div className="field" style={{ marginTop: 8 }}><label htmlFor="ar-b">Descreva o pedido</label><textarea id="ar-b" name="body" className="input" rows={5} required minLength={5} maxLength={5000} /></div>
+              <div className="field" style={{ marginTop: 8 }}><label htmlFor="ar-f">Anexar arquivo(s) — opcional; obrigatório para atestado</label>
+                <input id="ar-f" name="files" type="file" className="input" multiple accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.odt,.ods,.txt" />
+                <span className="small muted">Até 5 arquivos (foto ou PDF do atestado, declaração, comprovante). Passam pelo antivírus.</span></div>
+              <fieldset className="form-grid" style={{ marginTop: 8 }}>
+                <legend className="small muted">Para &quot;Atestado / ausência&quot;: período da ausência</legend>
+                <div className="field"><label htmlFor="ar-i">Primeiro dia</label><input id="ar-i" name="absenceStart" type="date" className="input" /></div>
+                <div className="field"><label htmlFor="ar-e">Último dia</label><input id="ar-e" name="absenceEnd" type="date" className="input" /></div>
+              </fieldset>
               <label className="check" style={{ marginTop: 8 }}><input type="checkbox" name="onlyOwner" /> Somente para a Oficial (ninguém mais da administração vê)</label>
             </ActionForm>
           </div>

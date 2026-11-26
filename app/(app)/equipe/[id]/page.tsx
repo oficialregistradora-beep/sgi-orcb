@@ -179,7 +179,7 @@ async function FuncionarioPage({ params, searchParams }: { params: Promise<{ id:
               <tbody>{absences.map((a) => (
                 <tr key={a.id} className={a.status === 'CANCELADA' ? 'row-muted' : undefined}>
                   <td>{label(a.type)}</td><td className="nowrap">{fmtDate(a.start_date)} – {fmtDate(a.end_date)}</td><td>{a.counts_as_worked ? 'Sim' : 'Não'}</td>
-                  <td className="small">{a.notes}</td><td>{a.status === 'ATIVA' ? 'Ativa' : 'Cancelada'}</td>
+                  <td className="small">{a.notes}{a.request_id ? <div><Link href={`/solicitacoes/administracao/${a.request_id}`}>Ver pedido e atestado anexado</Link></div> : null}</td><td>{a.status === 'ATIVA' ? 'Ativa' : 'Cancelada'}</td>
                   <td>{a.status === 'ATIVA' && can(p, 'jornada.ausencias.gerenciar', res) ? (
                     <ActionForm action={cancelAbsenceAction} submitLabel="Cancelar" submitClass="btn btn-sm btn-danger" inline>
                       <input type="hidden" name="employeeId" value={id} /><input type="hidden" name="absenceId" value={a.id} />

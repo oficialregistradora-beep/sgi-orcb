@@ -51,6 +51,34 @@ try {
   await gabi.waitForURL(/\/solicitacoes\/administracao\//);
   check('Colaboradora lê a resposta', await gabi.locator('text=Cadeira comprada; chega na sexta.').isVisible());
   check('Colaboradora não tem o quadro “Atender”', !(await gabi.locator('h2:has-text("Atender")').count()));
+
+  // Atestado com anexo: o campo de anexo fica abaixo da descrição; ao atender, a ausência é lançada e abonada.
+  await gabi.goto(`${BASE}/solicitacoes?aba=administracao`);
+  const boxB = await gabi.locator('#ar-b').boundingBox();
+  const boxF = await gabi.locator('#ar-f').boundingBox();
+  check('Campo de anexo logo abaixo da caixa do pedido', !!boxB && !!boxF && boxF.y > boxB.y);
+  const d = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
+  await gabi.selectOption('#ar-c', 'ATESTADO');
+  await gabi.fill('#ar-s', 'Atestado médico (fictício)');
+  await gabi.fill('#ar-b', 'Peço o abono do dia do atestado.');
+  await gabi.fill('#ar-i', d);
+  await gabi.fill('#ar-e', d);
+  await gabi.setInputFiles('#ar-f', { name: 'atestado.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n% atestado ficticio\n%%EOF\n') });
+  await gabi.click('button:has-text("Enviar solicitação")');
+  await gabi.waitForSelector('text=com 1 anexo', { timeout: 15000 });
+  check('Atestado enviado com anexo', await gabi.locator('td a:has-text("Atestado médico (fictício)")').isVisible());
+
+  await helena.goto(`${BASE}/solicitacoes?aba=recebidas`);
+  await helena.click('td a:has-text("Atestado médico (fictício)")');
+  await helena.waitForURL(/\/solicitacoes\/administracao\//);
+  check('Oficial vê o anexo verificado pelo antivírus', await helena.locator('a:has-text("atestado.pdf")').isVisible() && await helena.locator('text=Verificado pelo antivírus').isVisible());
+  const dl = await helena.request.get(new URL(await helena.locator('a:has-text("atestado.pdf")').getAttribute('href'), BASE).toString());
+  check('Download do atestado como anexo', dl.status() === 200 && /attachment/.test(dl.headers()['content-disposition'] ?? ''));
+  await helena.selectOption('#ah-s', 'ATENDIDA');
+  await helena.fill('#ah-r', 'Atestado recebido; dia abonado.');
+  await helena.click('button:has-text("Registrar")');
+  await helena.waitForSelector('text=ausência lançada e abonada', { timeout: 15000 });
+  check('Ao atender, ausência lançada e abonada', true);
 } catch (e) {
   check('Execução sem exceções', false, String(e).slice(0, 300));
 } finally {

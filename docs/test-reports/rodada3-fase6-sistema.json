@@ -1,9 +1,9 @@
 {
-  "executadoEm": "2026-11-25T17:48:07.175Z",
+  "executadoEm": "2026-11-26T14:46:33.714Z",
   "metricas": {
     "antes": {
       "notificacoes": 46,
-      "tarefas": 29,
+      "tarefas": 28,
       "avaliacoes": 2,
       "fila": 0,
       "automacoes": 0,
@@ -13,7 +13,7 @@
       "processados": 9,
       "avisosDeRevisao": 0,
       "tarefasDeRotina": 0,
-      "avisosDePrazo": 20,
+      "avisosDePrazo": 19,
       "avisosDeVencimento": 1,
       "avisosDeQualidade": 3,
       "avisosDeTreinamento": 8,
@@ -21,7 +21,7 @@
       "avisosDeAvaliacao": 7,
       "automacoes": {
         "rules": 2,
-        "fired": 8
+        "fired": 7
       },
       "envio": {
         "sent": 0,
@@ -38,11 +38,11 @@
       }
     },
     "depoisDaPrimeira": {
-      "notificacoes": 106,
-      "tarefas": 29,
+      "notificacoes": 104,
+      "tarefas": 28,
       "avaliacoes": 9,
       "fila": 0,
-      "automacoes": 8,
+      "automacoes": 7,
       "lembretes": 18
     },
     "segundaExecucao": {

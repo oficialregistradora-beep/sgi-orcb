@@ -47,6 +47,11 @@ export async function findEmployee(db: Db, id: string): Promise<EmployeeRow> {
   return e;
 }
 
+/** Ficha ativa ligada a um usuário (null se não houver). */
+export async function findEmployeeByUser(db: Db, userId: string): Promise<EmployeeRow | null> {
+  return queryOne<EmployeeRow>(db, `${EMPLOYEE_SELECT} WHERE e.user_id = $1 AND e.status <> 'DESLIGADO' ORDER BY e.admission_date DESC LIMIT 1`, [userId]);
+}
+
 /** Busca o funcionário e exige a permissão sobre ele (evita acesso indevido por identificador — IDOR). */
 export async function getEmployeeFor(ctx: Ctx, permission: string, id: string, db: Db = getPool()): Promise<EmployeeRow> {
   const e = await findEmployee(db, id);
@@ -438,8 +443,10 @@ export async function revokeAgreement(ctx: Ctx, agreementId: string, endDate: st
 }
 
 export async function listAbsences(db: Db, employeeId: string) {
-  return query<{ id: string; type: string; start_date: string; end_date: string; counts_as_worked: boolean; notes: string | null; status: string }>(
-    db, 'SELECT id, type, start_date, end_date, counts_as_worked, notes, status FROM absences WHERE employee_id = $1 ORDER BY start_date DESC', [employeeId]);
+  return query<{ id: string; type: string; start_date: string; end_date: string; counts_as_worked: boolean; notes: string | null; status: string; request_id: string | null }>(
+    db, `SELECT a.id, a.type, a.start_date, a.end_date, a.counts_as_worked, a.notes, a.status,
+                (SELECT r.id FROM admin_requests r WHERE r.absence_id = a.id) AS request_id
+           FROM absences a WHERE a.employee_id = $1 ORDER BY a.start_date DESC`, [employeeId]);
 }
 
 const absenceSchema = z.object({
@@ -454,7 +461,15 @@ export async function addAbsence(ctx: Ctx, employeeId: string, input: z.input<ty
   const d = absenceSchema.parse(input);
   if (d.endDate < d.startDate) throw new AppError('A data final é anterior à inicial.');
   const e = await getEmployeeFor(ctx, 'jornada.ausencias.gerenciar', employeeId);
-  return tx(async (c) => {
+  return tx((c) => insertAbsence(c, ctx, e, d));
+}
+
+/** Lança a ausência dentro de uma transação já aberta (a permissão é conferida por quem chama). */
+export async function insertAbsence(c: Db, ctx: Ctx, e: { id: string; full_name: string }, input: z.input<typeof absenceSchema>): Promise<string> {
+  const d = absenceSchema.parse(input);
+  if (d.endDate < d.startDate) throw new AppError('A data final é anterior à inicial.');
+  const employeeId = e.id;
+  {
     const overlap = await queryOne(
       c,
       `SELECT 1 FROM absences WHERE employee_id = $1 AND status = 'ATIVA' AND daterange(start_date, end_date, '[]') && daterange($2::date, $3::date, '[]')`,
@@ -469,7 +484,7 @@ export async function addAbsence(ctx: Ctx, employeeId: string, input: z.input<ty
     await audit(c, ctx, { action: 'AUSENCIA_LANCADA', entityType: 'employee', entityId: employeeId, summary: `${d.type} de ${e.full_name}: ${d.startDate} a ${d.endDate}`, data: d });
     await recomputeDays(c, ctx, employeeId, d.startDate, d.endDate);
     return r!.id;
-  });
+  }
 }
 
 export async function cancelAbsence(ctx: Ctx, absenceId: string, reason: string): Promise<void> {

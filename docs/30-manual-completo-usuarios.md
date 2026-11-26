@@ -172,6 +172,8 @@ Menu **Solicitações** → aba **Minhas**: acompanhe tudo o que você pediu (co
 
 **Pedidos à administração** (declarações, material ou equipamento, ajuste de dados cadastrais, assunto pessoal, sugestão ou reclamação): aba **À administração** → **Nova solicitação à administração** → escolha o **Tipo**, escreva o **Assunto** e **Descreva o pedido** → **Enviar solicitação**.
 - Marque **Somente para a Oficial** quando o assunto for reservado: ninguém mais da administração vê.
+- **Anexar arquivo(s):** logo abaixo da caixa **Descreva o pedido**, clique no campo de anexo e escolha até **5 arquivos** (foto ou PDF de atestado, declaração, comprovante etc.). Os arquivos passam pelo antivírus e ficam guardados com a "impressão digital" (hash).
+- **Atestado / ausência (pedido de abono):** escolha esse **Tipo**, informe o **Primeiro dia** e o **Último dia** da ausência e **anexe o atestado** (obrigatório). Por ser dado de saúde, só você, a Oficial e quem lança ausências veem o pedido e o anexo. Quando for atendido, a ausência entra na sua ficha e os dias ficam **abonados** no ponto.
 - A resposta chega no **sino** e aparece na lista **Minhas solicitações à administração**. Clique no assunto para ver a **conversa** e responder perguntas da administração.
 - Enquanto estiver aberta, você pode **Cancelar minha solicitação**.
 
@@ -290,6 +292,8 @@ Menu **Ocorrências** → **Pendentes** / **Resolvidas**. Só a Substituta e a O
 Menu **Solicitações** → **Para decidir**: correções de ponto, compensações e autorizações de hora extra. Aprove ou rejeite (a rejeição exige motivo). O histórico fica em **Decididas**.
 
 **Recebidas pela administração** (Oficial e quem tem a permissão *Atender solicitações à administração* — por padrão, a Substituta): lista **Em aberto** e **Encerradas**. Abra o pedido, converse em **Mensagem** se precisar de mais informação e, no quadro **Atender**, escolha **Em andamento**, **Atendida** ou **Recusada** (encerrar exige a **resposta** escrita; quem pediu é avisada). Pedidos **somente para a Oficial** só aparecem para ela. Ninguém atende o próprio pedido.
+- Os **anexos** aparecem no pedido, com a etiqueta do antivírus; clique no nome para baixar (o download fica na Auditoria).
+- **Atestado / ausência:** só aparece para a Oficial e para quem, além de atender, tem a permissão *Lançar férias, afastamentos e ausências abonadas*. No quadro **Atender**, com **Atendida**, deixe marcado **lançar a ausência na ficha e abonar os dias no ponto**, confira o **Tipo** (atestado médico ou falta justificada) e o período → **Registrar**. A ausência fica na ficha da funcionária (*Equipe → ficha → Ausências*) com o link **Ver pedido e atestado anexado**. Para não abonar, marque **Recusada** e escreva o motivo.
 
 ### 5.5 Espelhos → Aguardando aprovação
 Menu **Meus documentos** → **Aguardando aprovação**: documentos mensais da equipe.
